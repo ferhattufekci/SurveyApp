@@ -1,0 +1,323 @@
+import SearchInput from '../../components/admin/SearchInput';
+import { useEffect, useState } from 'react';
+import { usersApi, extractErrorMessage } from '../../api';
+import { useAuthStore } from '../../store/authStore';
+import { useLanguageStore } from '../../store/languageStore';
+import { t, tx } from '../../i18n/translations';
+import type { User } from '../../types';
+
+type FilterKey = 'all' | 'active' | 'passive' | 'admin' | 'admin_active' | 'admin_passive' | 'user' | 'user_active' | 'user_passive';
+const PAGE_SIZE = 8;
+const Req = () => <span style={{ color: '#ef4444', marginLeft: '2px' }}>*</span>;
+
+function Tooltip({ text, children }: { text: string; children: React.ReactNode }) {
+  const [show, setShow] = useState(false);
+  return (
+    <span style={{ position: 'relative', display: 'inline-block' }} onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
+      {children}
+      {show && (
+        <span style={{ position: 'absolute', bottom: 'calc(100% + 6px)', left: '50%', transform: 'translateX(-50%)', whiteSpace: 'nowrap', background: '#1f2937', color: '#fff', fontSize: '12px', padding: '5px 10px', borderRadius: '6px', zIndex: 999, boxShadow: '0 2px 8px rgba(0,0,0,.25)', pointerEvents: 'none' }}>
+          {text}
+          <span style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', borderWidth: '5px', borderStyle: 'solid', borderColor: '#1f2937 transparent transparent transparent' }} />
+        </span>
+      )}
+    </span>
+  );
+}
+
+export default function UsersPage() {
+  const { language } = useLanguageStore();
+  const [users, setUsers]     = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal]   = useState(false);
+  const [editItem, setEditItem]     = useState<User | null>(null);
+  const [editRowNum, setEditRowNum] = useState(0);
+  const [form, setForm] = useState({ email: '', password: '', fullName: '', role: 'User', isActive: true });
+  const [saving, setSaving]   = useState(false);
+  const [error, setError]     = useState('');
+  const [errorType, setErrorType] = useState<'passive_conflict' | 'general' | ''>('');
+  const [errorDetail, setErrorDetail] = useState('');
+  const [shake, setShake]     = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
+  const [search, setSearch]   = useState('');
+  const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
+  const [page, setPage]       = useState(1);
+  const currentUser = useAuthStore(s => s.user);
+
+  const showSuccess = (msg: string) => { setSuccessMsg(msg); setTimeout(() => setSuccessMsg(''), 3000); };
+
+  // FIX: removed unnecessary surveysApi.getAll() parallel fetch —
+  // surveys state was loaded but never read anywhere in this component,
+  // causing a wasted GET /api/surveys on every mount and mutation.
+  const load = () =>
+    usersApi.getAll()
+      .then(u => setUsers(u))
+      .finally(() => setLoading(false));
+
+  useEffect(() => { load(); }, []);
+
+  const closeModal = () => { setShowModal(false); setError(''); setErrorType(''); setErrorDetail(''); };
+  const openCreate = () => { setEditItem(null); setEditRowNum(0); setForm({ email: '', password: '', fullName: '', role: 'User', isActive: true }); setError(''); setErrorType(''); setErrorDetail(''); setShowModal(true); };
+  const openEdit   = (u: User, rowNum: number) => { setEditItem(u); setEditRowNum(rowNum); setForm({ email: u.email, password: '', fullName: u.fullName, role: u.role, isActive: u.isActive }); setError(''); setErrorType(''); setErrorDetail(''); setShowModal(true); };
+
+  const handleSave = async () => {
+    setError(''); setErrorType(''); setErrorDetail('');
+    if (!form.fullName.trim()) { setError(tx(language, t.users.errFullName)); setErrorType('general'); return; }
+    if (!editItem && !form.email.trim()) { setError(tx(language, t.users.errEmail)); setErrorType('general'); return; }
+    if (!editItem && !form.password.trim()) { setError(tx(language, t.users.errPassword)); setErrorType('general'); return; }
+    setSaving(true);
+    try {
+      if (editItem) await usersApi.update(editItem.id, { fullName: form.fullName, isActive: form.isActive });
+      else await usersApi.create({ email: form.email, password: form.password, fullName: form.fullName, role: form.role, isActive: form.isActive });
+      closeModal();
+      showSuccess(editItem ? tx(language, t.users.successUpdate) : tx(language, t.users.successCreate));
+      load();
+    } catch (e: any) {
+      const msg = extractErrorMessage(e);
+      const parts = msg.split('|');
+      const isPC = parts.length === 3 && (msg.toLowerCase().includes('aktif ankete') || msg.toLowerCase().includes('active survey'));
+      setError(isPC ? parts[0] : msg); setErrorType(isPC ? 'passive_conflict' : 'general');
+      if (isPC) setErrorDetail(parts[2]);
+      setShake(true); setTimeout(() => setShake(false), 600);
+    } finally { setSaving(false); }
+  };
+
+  const handleDelete = async (u: User, rowNum: number) => {
+    if (u.email === currentUser?.email) { alert(tx(language, t.users.errSelf)); return; }
+    const adminCount = users.filter(x => x.role === 'Admin' && x.isActive).length;
+    if (u.role === 'Admin' && u.isActive && adminCount <= 1) { alert(tx(language, t.users.errLastAdmin)); return; }
+    if (!confirm(`${rowNum} ${u.role === 'Admin' ? tx(language, t.users.deleteAdminConfirm) : tx(language, t.users.deleteConfirm)}`)) return;
+    try { await usersApi.delete(u.id); load(); showSuccess(`${rowNum} ${tx(language, t.users.successDelete)}`); }
+    catch (e: any) { alert(e.response?.data?.message || tx(language, t.common.error)); }
+  };
+
+  const handleFilterClick = (key: FilterKey) => { setActiveFilter(prev => prev === key ? 'all' : key); setSearch(''); setPage(1); };
+
+  const totalCount   = users.length;
+  const activeCount  = users.filter(u => u.isActive).length;
+  const passiveCount = users.filter(u => !u.isActive).length;
+  const adminTotal   = users.filter(u => u.role === 'Admin').length;
+  const adminActive  = users.filter(u => u.role === 'Admin' && u.isActive).length;
+  const adminPassive = users.filter(u => u.role === 'Admin' && !u.isActive).length;
+  const userTotal    = users.filter(u => u.role === 'User').length;
+  const userActive   = users.filter(u => u.role === 'User' && u.isActive).length;
+  const userPassive  = users.filter(u => u.role === 'User' && !u.isActive).length;
+
+  const filtered = users.filter(u => {
+    const ok =
+      activeFilter === 'all'           ? true :
+      activeFilter === 'active'        ? u.isActive :
+      activeFilter === 'passive'       ? !u.isActive :
+      activeFilter === 'admin'         ? u.role === 'Admin' :
+      activeFilter === 'admin_active'  ? u.role === 'Admin' && u.isActive :
+      activeFilter === 'admin_passive' ? u.role === 'Admin' && !u.isActive :
+      activeFilter === 'user'          ? u.role === 'User' :
+      activeFilter === 'user_active'   ? u.role === 'User' && u.isActive :
+      activeFilter === 'user_passive'  ? u.role === 'User' && !u.isActive : true;
+    if (!ok) return false;
+    if (!search) return true;
+    const q = search.toLowerCase();
+    const st = u.isActive ? `${tx(language, t.common.active).toLowerCase()} active` : `${tx(language, t.common.passive).toLowerCase()} passive`;
+    return u.fullName.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || u.role.toLowerCase().includes(q) || st.includes(q);
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage   = Math.min(page, totalPages);
+  const paginated  = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  const pill = (key: FilterKey, aBg: string, aC: string, iBg: string, iC: string) => ({
+    flex: 1, background: activeFilter === key ? aBg : iBg, color: activeFilter === key ? aC : iC,
+    borderRadius: '8px', padding: '6px 10px', textAlign: 'center' as const,
+    fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+    border: activeFilter === key ? `2px solid ${aC}` : '2px solid transparent',
+    transition: 'all 0.15s', userSelect: 'none' as const,
+  });
+
+  const cardTitle = (key: FilterKey, color: string): React.CSSProperties => ({
+    fontWeight: 700, fontSize: '15px', cursor: 'pointer',
+    color: activeFilter === key ? color : '#4b5563',
+    background: activeFilter === key ? `${color}18` : 'transparent',
+    borderRadius: '6px', padding: '2px 8px', transition: 'all 0.15s', userSelect: 'none',
+    border: activeFilter === key ? `1.5px solid ${color}44` : '1.5px solid transparent',
+  });
+
+  if (loading) return <div className="loading-container"><div className="spinner-large"></div></div>;
+
+  return (
+    <div className="page">
+      <style>{`@keyframes shake{0%,100%{transform:translateX(0)}15%{transform:translateX(-8px)}30%{transform:translateX(8px)}45%{transform:translateX(-6px)}60%{transform:translateX(6px)}75%{transform:translateX(-3px)}90%{transform:translateX(3px)}}.modal-shake{animation:shake 0.6s ease;}`}</style>
+
+      {successMsg && <div style={{ position: 'fixed', top: '20px', right: '24px', zIndex: 9999, background: '#10b981', color: '#fff', padding: '12px 20px', borderRadius: '10px', fontWeight: 600, fontSize: '14px', boxShadow: '0 4px 16px rgba(16,185,129,.35)' }}>✅ {successMsg}</div>}
+
+      <div className="page-header">
+        <div><h1>{tx(language, t.users.title)}</h1><p>{tx(language, t.users.subtitle)}</p></div>
+        <button className="btn btn-primary" onClick={openCreate}>{tx(language, t.users.newUser)}</button>
+      </div>
+
+      {/* İstatistik kartları */}
+      <div className="users-stats-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '12px', marginBottom: '20px' }}>
+        {/* Toplam */}
+        <div style={{ background: '#eef2ff', border: '1px solid #6366f122', borderRadius: '12px', padding: '16px 20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '20px' }}>👥</span>
+            <span style={cardTitle('all', '#6366f1')} onClick={() => handleFilterClick('all')}>{tx(language, t.users.totalUsers)}</span>
+            <span style={{ marginLeft: 'auto', fontSize: '26px', fontWeight: 700, color: '#6366f1' }}>{totalCount}</span>
+          </div>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            <span style={pill('active',  '#15803d','#fff','#dcfce7','#15803d')} onClick={() => handleFilterClick('active')}>✅ {activeCount} {tx(language, t.common.active)}</span>
+            <span style={pill('passive', '#6b7280','#fff','#f3f4f6','#6b7280')} onClick={() => handleFilterClick('passive')}>⏸ {passiveCount} {tx(language, t.common.passive)}</span>
+          </div>
+        </div>
+        {/* Admin */}
+        <div style={{ background: '#fffbeb', border: '1px solid #f59e0b22', borderRadius: '12px', padding: '16px 20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '20px' }}>👑</span>
+            <span style={cardTitle('admin', '#f59e0b')} onClick={() => handleFilterClick('admin')}>{tx(language, t.users.adminLabel)}</span>
+            <span style={{ marginLeft: 'auto', fontSize: '26px', fontWeight: 700, color: '#f59e0b' }}>{adminTotal}</span>
+          </div>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            <span style={pill('admin_active',  '#15803d','#fff','#dcfce7','#15803d')} onClick={() => handleFilterClick('admin_active')}>✅ {adminActive} {tx(language, t.common.active)}</span>
+            <span style={pill('admin_passive', '#6b7280','#fff','#f3f4f6','#6b7280')} onClick={() => handleFilterClick('admin_passive')}>⏸ {adminPassive} {tx(language, t.common.passive)}</span>
+          </div>
+        </div>
+        {/* User */}
+        <div style={{ background: '#eff6ff', border: '1px solid #3b82f622', borderRadius: '12px', padding: '16px 20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '20px' }}>👤</span>
+            <span style={cardTitle('user', '#3b82f6')} onClick={() => handleFilterClick('user')}>{tx(language, t.users.userLabel)}</span>
+            <span style={{ marginLeft: 'auto', fontSize: '26px', fontWeight: 700, color: '#3b82f6' }}>{userTotal}</span>
+          </div>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            <span style={pill('user_active',  '#15803d','#fff','#dcfce7','#15803d')} onClick={() => handleFilterClick('user_active')}>✅ {userActive} {tx(language, t.common.active)}</span>
+            <span style={pill('user_passive', '#6b7280','#fff','#f3f4f6','#6b7280')} onClick={() => handleFilterClick('user_passive')}>⏸ {userPassive} {tx(language, t.common.passive)}</span>
+          </div>
+        </div>
+        {/* Bilgi */}
+        <div style={{ background: '#f0fdf4', border: '1px solid #10b98122', borderRadius: '12px', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span style={{ fontSize: '28px', flexShrink: 0 }}>💡</span>
+          <div>
+            <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '2px' }}>{tx(language, t.users.infoDesc)}</div>
+            <div style={{ fontWeight: 600, color: '#374151', fontSize: '13px' }}>{tx(language, t.users.infoSub)}</div>
+            <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>{tx(language, t.users.infoHint)}</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-toolbar">
+          <SearchInput value={search} placeholder={tx(language, t.users.searchPlaceholder)} onChange={v => { setSearch(v); setActiveFilter('all'); setPage(1); }} />
+          {activeFilter !== 'all' && <button className="btn btn-sm btn-outline" onClick={() => { setActiveFilter('all'); setPage(1); }}>{tx(language, t.common.clearFilter)}</button>}
+        </div>
+        <div className="table-container">
+          <table className="table">
+            <thead><tr><th>#</th><th>{tx(language, t.common.status)}</th><th>{tx(language, t.users.colRole)}</th><th>{tx(language, t.users.colFullName)}</th><th>{tx(language, t.users.colEmail)}</th><th>{tx(language, t.common.actions)}</th></tr></thead>
+            <tbody>
+              {paginated.map((u, i) => {
+                const rowNum      = (safePage - 1) * PAGE_SIZE + i + 1;
+                const isSelf      = u.email === currentUser?.email;
+                const isLastAdmin = u.role === 'Admin' && u.isActive && users.filter(x => x.role === 'Admin' && x.isActive).length <= 1;
+                const canDelete   = !isSelf && !isLastAdmin;
+                const deleteTip   = isSelf ? tx(language, t.users.tooltipSelf) : isLastAdmin ? tx(language, t.users.tooltipLastAdmin) : '';
+                return (
+                  <tr key={u.id}>
+                    <td className="text-muted" style={{ fontWeight: 600 }}>{rowNum}</td>
+                    <td><span className={`badge ${u.isActive ? 'badge-success' : 'badge-secondary'}`}>{u.isActive ? tx(language, t.common.active) : tx(language, t.common.passive)}</span></td>
+                    <td><span className={`badge ${u.role === 'Admin' ? 'badge-warning' : 'badge-info'}`}>{u.role}</span></td>
+                    <td>
+                      <div className="user-cell">
+                        <div className="user-avatar-sm">{u.fullName[0]?.toUpperCase()}</div>
+                        <strong>{u.fullName}</strong>
+                        {isSelf && <span style={{ fontSize: '11px', color: '#6b7280', marginLeft: '6px' }}>{tx(language, t.users.you)}</span>}
+                      </div>
+                    </td>
+                    <td>{u.email}</td>
+                    <td>
+                      <div className="action-btns">
+                        <button className="btn btn-sm btn-outline" onClick={() => openEdit(u, rowNum)}>{tx(language, t.common.edit)}</button>
+                        {canDelete
+                          ? <button className="btn btn-sm btn-danger" onClick={() => handleDelete(u, rowNum)}>{tx(language, t.common.delete)}</button>
+                          : <Tooltip text={deleteTip}><button className="btn btn-sm btn-danger" disabled style={{ opacity: 0.45, cursor: 'not-allowed' }}>{tx(language, t.common.delete)}</button></Tooltip>}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {filtered.length === 0 && <div className="empty-state">{tx(language, t.common.notFound)}</div>}
+        </div>
+        {totalPages > 1 && (
+          <div className="pagination-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderTop: '1px solid #e5e7eb', flexWrap: 'wrap', gap: '8px' }}>
+            <span style={{ fontSize: '13px', color: '#6b7280' }}>{filtered.length} {language === 'tr' ? 'kullanıcıdan' : 'users'} {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} {tx(language, t.common.showing)}</span>
+            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+              <button className="btn btn-sm btn-outline" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage === 1}>{tx(language, t.common.prev)}</button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => <button key={p} className={`btn btn-sm ${p === safePage ? 'btn-primary' : 'btn-outline'}`} onClick={() => setPage(p)} style={{ minWidth: '36px' }}>{p}</button>)}
+              <button className="btn btn-sm btn-outline" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}>{tx(language, t.common.next)}</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Modal ── */}
+      {showModal && (
+        <div className="modal-overlay" onClick={closeModal}>
+          <div className={`modal${shake ? ' modal-shake' : ''}`} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>{editItem ? `#${editRowNum} ${tx(language, t.users.modalEdit)}` : tx(language, t.users.modalCreate)}</h3>
+              <button className="modal-close" onClick={closeModal}>×</button>
+            </div>
+            <div className="modal-body">
+              {error && (
+                <div style={{ display: 'flex', gap: '10px', background: errorType === 'passive_conflict' ? '#fefce8' : '#fef2f2', border: `1px solid ${errorType === 'passive_conflict' ? '#fde047' : '#fecaca'}`, borderLeft: `4px solid ${errorType === 'passive_conflict' ? '#eab308' : '#ef4444'}`, borderRadius: '8px', padding: '12px 14px', marginBottom: '4px' }}>
+                  <span style={{ fontSize: '18px', lineHeight: 1 }}>{errorType === 'passive_conflict' ? '🔒' : '❌'}</span>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: '2px', color: errorType === 'passive_conflict' ? '#854d0e' : '#dc2626' }}>
+                      {errorType === 'passive_conflict' ? tx(language, t.users.passiveTitle) : tx(language, t.common.error)}
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#374151' }}>{error}</div>
+                    {errorType === 'passive_conflict' && errorDetail && <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>{errorDetail}</div>}
+                    {errorType === 'passive_conflict' && <div style={{ fontSize: '12px', color: '#92400e', fontWeight: 500, marginTop: '6px' }}>{tx(language, t.users.passiveHint)}</div>}
+                  </div>
+                </div>
+              )}
+              <div className="form-group">
+                <label>{tx(language, t.users.fullNameLabel)}<Req /></label>
+                <input value={form.fullName} onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))} placeholder={tx(language, t.users.fullNameLabel)} />
+              </div>
+              {!editItem && (
+                <>
+                  <div className="form-group">
+                    <label>{tx(language, t.users.emailLabel)}<Req /></label>
+                    <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder={tx(language, t.users.emailPh)} />
+                  </div>
+                  <div className="form-group">
+                    <label>{tx(language, t.users.passwordLabel)}<Req /></label>
+                    <input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••••" />
+                  </div>
+                  <div className="form-group">
+                    <label>{tx(language, t.users.roleLabel)}</label>
+                    <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))}>
+                      <option value="User">User</option>
+                      <option value="Admin">Admin</option>
+                    </select>
+                  </div>
+                </>
+              )}
+              <div className="form-group">
+                <label>{tx(language, t.common.status)}</label>
+                <select value={form.isActive ? 'true' : 'false'} onChange={e => { setForm(f => ({ ...f, isActive: e.target.value === 'true' })); if (errorType === 'passive_conflict') { setError(''); setErrorType(''); setErrorDetail(''); } }}>
+                  <option value="true">{tx(language, t.common.active)}</option>
+                  <option value="false">{tx(language, t.common.passive)}</option>
+                </select>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-outline" onClick={closeModal}>{tx(language, t.common.cancel)}</button>
+              <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? tx(language, t.common.saving) : tx(language, t.common.save)}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
