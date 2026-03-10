@@ -97,8 +97,12 @@ export default function UsersPage() {
   const totalCount = users.length;
   const activeCount = users.filter(u => u.isActive).length;
   const passiveCount = users.filter(u => !u.isActive).length;
-  const adminCount = users.filter(u => u.role === 'Admin').length;
-  const userCount = users.filter(u => u.role === 'User').length;
+  const adminTotal = users.filter(u => u.role === 'Admin').length;
+  const adminActive = users.filter(u => u.role === 'Admin' && u.isActive).length;
+  const adminPassive = users.filter(u => u.role === 'Admin' && !u.isActive).length;
+  const userTotal = users.filter(u => u.role === 'User').length;
+  const userActive = users.filter(u => u.role === 'User' && u.isActive).length;
+  const userPassive = users.filter(u => u.role === 'User' && !u.isActive).length;
 
   return (
     <div className="page">
@@ -108,26 +112,59 @@ export default function UsersPage() {
       </div>
 
       {/* İstatistik kartları */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', marginBottom: '20px' }}>
-        {[
-          { label: 'Toplam', value: totalCount, color: '#6366f1', bg: '#eef2ff', icon: '👥' },
-          { label: 'Aktif', value: activeCount, color: '#10b981', bg: '#ecfdf5', icon: '✅' },
-          { label: 'Pasif', value: passiveCount, color: '#6b7280', bg: '#f3f4f6', icon: '⏸️' },
-          { label: 'Admin', value: adminCount, color: '#f59e0b', bg: '#fffbeb', icon: '👑' },
-          { label: 'User', value: userCount, color: '#3b82f6', bg: '#eff6ff', icon: '👤' },
-        ].map(stat => (
-          <div key={stat.label} style={{
-            background: stat.bg, border: `1px solid ${stat.color}22`,
-            borderRadius: '12px', padding: '16px 20px',
-            display: 'flex', alignItems: 'center', gap: '12px'
-          }}>
-            <span style={{ fontSize: '24px' }}>{stat.icon}</span>
-            <div>
-              <div style={{ fontSize: '22px', fontWeight: 700, color: stat.color, lineHeight: 1 }}>{stat.value}</div>
-              <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{stat.label}</div>
-            </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '20px' }}>
+
+        {/* Toplam */}
+        <div style={{ background: '#eef2ff', border: '1px solid #6366f122', borderRadius: '12px', padding: '16px 20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+            <span style={{ fontSize: '20px' }}>👥</span>
+            <span style={{ fontWeight: 600, color: '#4b5563' }}>Toplam Kullanıcı</span>
+            <span style={{ marginLeft: 'auto', fontSize: '28px', fontWeight: 700, color: '#6366f1' }}>{totalCount}</span>
           </div>
-        ))}
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <span style={{ flex: 1, background: '#dcfce7', color: '#15803d', borderRadius: '8px', padding: '6px 10px', textAlign: 'center', fontSize: '13px', fontWeight: 600 }}>
+              ✅ {activeCount} Aktif
+            </span>
+            <span style={{ flex: 1, background: '#f3f4f6', color: '#6b7280', borderRadius: '8px', padding: '6px 10px', textAlign: 'center', fontSize: '13px', fontWeight: 600 }}>
+              ⏸ {passiveCount} Pasif
+            </span>
+          </div>
+        </div>
+
+        {/* Admin */}
+        <div style={{ background: '#fffbeb', border: '1px solid #f59e0b22', borderRadius: '12px', padding: '16px 20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+            <span style={{ fontSize: '20px' }}>👑</span>
+            <span style={{ fontWeight: 600, color: '#4b5563' }}>Admin</span>
+            <span style={{ marginLeft: 'auto', fontSize: '28px', fontWeight: 700, color: '#f59e0b' }}>{adminTotal}</span>
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <span style={{ flex: 1, background: '#dcfce7', color: '#15803d', borderRadius: '8px', padding: '6px 10px', textAlign: 'center', fontSize: '13px', fontWeight: 600 }}>
+              ✅ {adminActive} Aktif
+            </span>
+            <span style={{ flex: 1, background: '#f3f4f6', color: '#6b7280', borderRadius: '8px', padding: '6px 10px', textAlign: 'center', fontSize: '13px', fontWeight: 600 }}>
+              ⏸ {adminPassive} Pasif
+            </span>
+          </div>
+        </div>
+
+        {/* User */}
+        <div style={{ background: '#eff6ff', border: '1px solid #3b82f622', borderRadius: '12px', padding: '16px 20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+            <span style={{ fontSize: '20px' }}>👤</span>
+            <span style={{ fontWeight: 600, color: '#4b5563' }}>User</span>
+            <span style={{ marginLeft: 'auto', fontSize: '28px', fontWeight: 700, color: '#3b82f6' }}>{userTotal}</span>
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <span style={{ flex: 1, background: '#dcfce7', color: '#15803d', borderRadius: '8px', padding: '6px 10px', textAlign: 'center', fontSize: '13px', fontWeight: 600 }}>
+              ✅ {userActive} Aktif
+            </span>
+            <span style={{ flex: 1, background: '#f3f4f6', color: '#6b7280', borderRadius: '8px', padding: '6px 10px', textAlign: 'center', fontSize: '13px', fontWeight: 600 }}>
+              ⏸ {userPassive} Pasif
+            </span>
+          </div>
+        </div>
+
       </div>
 
       <div className="card">
