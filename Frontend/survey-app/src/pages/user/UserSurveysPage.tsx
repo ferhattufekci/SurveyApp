@@ -104,6 +104,26 @@ export function UserSurveysListPage() {
           </div>
         )}
 
+        {expired.length > 0 && (
+          <div className="survey-section">
+            <h2 className="section-title">⏰ Süresi Geçen Anketler</h2>
+            <div className="survey-cards">
+              {expired.map(s => (
+                <div key={s.id} className="survey-card survey-card-expired">
+                  <div className="survey-card-header">
+                    <h3>{s.title}</h3>
+                    <span className="badge badge-danger">Süresi Geçti</span>
+                  </div>
+                  <p>{s.description}</p>
+                  <div className="survey-card-meta">
+                    <span>📅 {new Date(s.endDate).toLocaleDateString('tr-TR')} tarihinde sona erdi</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {surveys.length === 0 && (
           <div className="empty-full">
             <div className="empty-icon">📋</div>
