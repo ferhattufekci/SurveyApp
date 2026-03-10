@@ -6,7 +6,7 @@ public record LoginResponse(string Token, string Email, string FullName, string 
 
 // User DTOs
 public record UserDto(int Id, string Email, string FullName, string Role, bool IsActive);
-public record CreateUserRequest(string Email, string Password, string FullName, string Role);
+public record CreateUserRequest(string Email, string Password, string FullName, string Role, bool IsActive = true);
 public record UpdateUserRequest(string FullName, bool IsActive);
 
 // AnswerTemplate DTOs

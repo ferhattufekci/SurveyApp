@@ -107,6 +107,7 @@ export interface CreateUserRequest {
   password: string;
   fullName: string;
   role: string;
+  isActive: boolean;
 }
 
 export interface CreateAnswerTemplateRequest {

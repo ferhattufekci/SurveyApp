@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { usersApi } from '../../api';
+import { useAuthStore } from '../../store/authStore';
 import type { User } from '../../types';
 
 export default function UsersPage() {
@@ -11,6 +12,8 @@ export default function UsersPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+
+  const currentUser = useAuthStore(s => s.user);
 
   const load = () => usersApi.getAll().then(setUsers).finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
@@ -35,8 +38,11 @@ export default function UsersPage() {
     if (!editItem && !form.password.trim()) { setError('Şifre zorunludur.'); return; }
     setSaving(true);
     try {
-      if (editItem) await usersApi.update(editItem.id, { fullName: form.fullName, isActive: form.isActive });
-      else await usersApi.create({ email: form.email, password: form.password, fullName: form.fullName, role: form.role });
+      if (editItem) {
+        await usersApi.update(editItem.id, { fullName: form.fullName, isActive: form.isActive });
+      } else {
+        await usersApi.create({ email: form.email, password: form.password, fullName: form.fullName, role: form.role, isActive: form.isActive });
+      }
       setShowModal(false);
       load();
     } catch (e: any) {
@@ -46,29 +52,35 @@ export default function UsersPage() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    const userToDelete = users.find(u => u.id === id);
-    const adminCount = users.filter(u => u.role === 'Admin' && u.isActive).length;
-
-    if (userToDelete?.role === 'Admin' && adminCount <= 1) {
-      alert('Bu kullanıcı silinemez. Sistemde en az bir aktif admin bulunmalıdır.');
+  const handleDelete = async (u: User) => {
+    // Kendi kendini silme engeli
+    if (u.email === currentUser?.email) {
+      alert('Kendi hesabınızı silemezsiniz.');
       return;
     }
 
-    const confirmMsg = userToDelete?.role === 'Admin'
-      ? `"${userToDelete.fullName}" bir Admin kullanıcısıdır. Silmek istediğinize emin misiniz?`
-      : `"${userToDelete?.fullName}" kullanıcısını silmek istediğinize emin misiniz?`;
+    // Son aktif admin koruması
+    const activeAdminCount = users.filter(x => x.role === 'Admin' && x.isActive).length;
+    if (u.role === 'Admin' && activeAdminCount <= 1) {
+      alert('Sistemde en az bir aktif admin bulunmalıdır. Son admin silinemez.');
+      return;
+    }
+
+    const confirmMsg = u.role === 'Admin'
+      ? `"${u.fullName}" bir Admin kullanıcısıdır. Silmek istediğinize emin misiniz?`
+      : `"${u.fullName}" kullanıcısını silmek istediğinize emin misiniz?`;
 
     if (!confirm(confirmMsg)) return;
 
     try {
-      await usersApi.delete(id);
+      await usersApi.delete(u.id);
       load();
     } catch (e: any) {
       alert(e.response?.data?.message || 'Silme işlemi başarısız.');
     }
   };
 
+  // Tüm kullanıcılarda ara (aktif + pasif)
   const filtered = users.filter(u =>
     u.fullName.toLowerCase().includes(search.toLowerCase()) ||
     u.email.toLowerCase().includes(search.toLowerCase())
@@ -91,28 +103,42 @@ export default function UsersPage() {
         <div className="table-container">
           <table className="table">
             <thead>
-              <tr><th>Ad Soyad</th><th>E-posta</th><th>Rol</th><th>Durum</th><th>İşlemler</th></tr>
+              <tr><th>Rol</th><th>Durum</th><th>Ad Soyad</th><th>E-posta</th><th>İşlemler</th></tr>
             </thead>
             <tbody>
-              {filtered.map(u => (
-                <tr key={u.id}>
-                  <td>
-                    <div className="user-cell">
-                      <div className="user-avatar-sm">{u.fullName[0]?.toUpperCase()}</div>
-                      <strong>{u.fullName}</strong>
-                    </div>
-                  </td>
-                  <td>{u.email}</td>
-                  <td><span className={`badge ${u.role === 'Admin' ? 'badge-warning' : 'badge-info'}`}>{u.role}</span></td>
-                  <td><span className={`badge ${u.isActive ? 'badge-success' : 'badge-secondary'}`}>{u.isActive ? 'Aktif' : 'Pasif'}</span></td>
-                  <td>
-                    <div className="action-btns">
-                      <button className="btn btn-sm btn-outline" onClick={() => openEdit(u)}>Düzenle</button>
-                      <button className="btn btn-sm btn-danger" onClick={() => handleDelete(u.id)}>Sil</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {filtered.map(u => {
+                const isSelf = u.email === currentUser?.email;
+                const isLastAdmin = u.role === 'Admin' && users.filter(x => x.role === 'Admin' && x.isActive).length <= 1;
+                const canDelete = !isSelf && !isLastAdmin;
+
+                return (
+                  <tr key={u.id}>
+                    <td><span className={`badge ${u.role === 'Admin' ? 'badge-warning' : 'badge-info'}`}>{u.role}</span></td>
+                    <td><span className={`badge ${u.isActive ? 'badge-success' : 'badge-secondary'}`}>{u.isActive ? 'Aktif' : 'Pasif'}</span></td>
+                    <td>
+                      <div className="user-cell">
+                        <div className="user-avatar-sm">{u.fullName[0]?.toUpperCase()}</div>
+                        <strong>{u.fullName}{isSelf && <span className="text-muted" style={{fontWeight:'normal'}}> (siz)</span>}</strong>
+                      </div>
+                    </td>
+                    <td>{u.email}</td>
+                    <td>
+                      <div className="action-btns">
+                        <button className="btn btn-sm btn-outline" onClick={() => openEdit(u)}>Düzenle</button>
+                        <button
+                          className="btn btn-sm btn-danger"
+                          onClick={() => handleDelete(u)}
+                          disabled={!canDelete}
+                          title={isSelf ? 'Kendi hesabınızı silemezsiniz' : isLastAdmin ? 'Son admin silinemez' : ''}
+                          style={{ opacity: canDelete ? 1 : 0.4, cursor: canDelete ? 'pointer' : 'not-allowed' }}
+                        >
+                          Sil
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           {filtered.length === 0 && <div className="empty-state">Kullanıcı bulunamadı.</div>}
@@ -149,14 +175,13 @@ export default function UsersPage() {
                   </select>
                 </div>
               </>}
-              {editItem && (
-                <div className="form-group">
-                  <label className="checkbox-label">
-                    <input type="checkbox" checked={form.isActive} onChange={e => setForm(f => ({ ...f, isActive: e.target.checked }))} />
-                    Aktif
-                  </label>
-                </div>
-              )}
+              <div className="form-group">
+                <label>Durum</label>
+                <select value={form.isActive ? 'true' : 'false'} onChange={e => setForm(f => ({ ...f, isActive: e.target.value === 'true' }))}>
+                  <option value="true">Aktif</option>
+                  <option value="false">Pasif</option>
+                </select>
+              </div>
             </div>
             <div className="modal-footer">
               <button className="btn btn-outline" onClick={() => setShowModal(false)}>İptal</button>

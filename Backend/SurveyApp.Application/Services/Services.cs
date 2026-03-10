@@ -310,7 +310,7 @@ public class UserService : IUserService
 
     public async Task<List<UserDto>> GetAllAsync()
     {
-        var users = await _uow.Users.GetAllActiveUsersAsync();
+        var users = await _uow.Users.GetAllAsync();
         return users.Select(u => new UserDto(u.Id, u.Email, u.FullName, u.Role, u.IsActive)).ToList();
     }
 
@@ -332,7 +332,8 @@ public class UserService : IUserService
             Email = request.Email,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
             FullName = request.FullName,
-            Role = request.Role
+            Role = request.Role,
+            IsActive = request.IsActive
         };
         await _uow.Users.AddAsync(user);
         await _uow.SaveChangesAsync();
