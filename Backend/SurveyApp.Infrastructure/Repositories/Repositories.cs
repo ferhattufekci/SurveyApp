@@ -83,14 +83,11 @@ public class SurveyRepository : Repository<Survey>, ISurveyRepository
             .Include(s => s.SurveyResponses)
             .ToListAsync();
 
-    public async Task<IEnumerable<Survey>> GetAssignedSurveysForUserAsync(int userId)
-    {
-        var now = DateTime.UtcNow;
-        return await _db.Surveys
+    public async Task<IEnumerable<Survey>> GetAssignedSurveysForUserAsync(int userId) =>
+        await _db.Surveys
             .Include(s => s.SurveyAssignments)
             .Where(s => s.IsActive && s.SurveyAssignments.Any(a => a.UserId == userId))
             .ToListAsync();
-    }
 
     public async Task<bool> HasUserCompletedSurveyAsync(int surveyId, int userId) =>
         await _db.SurveyResponses.AnyAsync(r => r.SurveyId == surveyId && r.UserId == userId);
