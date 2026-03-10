@@ -15,6 +15,7 @@ public interface IUserRepository : IRepository<User>
 {
     Task<User?> GetByEmailAsync(string email);
     Task<IEnumerable<User>> GetAllActiveUsersAsync();
+    Task<int> GetActiveAdminCountAsync();
 }
 
 public interface IAnswerTemplateRepository : IRepository<AnswerTemplate>

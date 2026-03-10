@@ -41,6 +41,9 @@ public class UserRepository : Repository<User>, IUserRepository
 
     public async Task<IEnumerable<User>> GetAllActiveUsersAsync() =>
         await _db.Users.Where(u => u.IsActive).ToListAsync();
+
+    public async Task<int> GetActiveAdminCountAsync() =>
+        await _db.Users.CountAsync(u => u.Role == "Admin" && u.IsActive);
 }
 
 public class AnswerTemplateRepository : Repository<AnswerTemplate>, IAnswerTemplateRepository

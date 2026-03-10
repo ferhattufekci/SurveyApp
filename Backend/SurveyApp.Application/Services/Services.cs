@@ -354,6 +354,15 @@ public class UserService : IUserService
     {
         var u = await _uow.Users.GetByIdAsync(id);
         if (u == null) return false;
+
+        // Son admin koruması
+        if (u.Role == "Admin")
+        {
+            var adminCount = await _uow.Users.GetActiveAdminCountAsync();
+            if (adminCount <= 1)
+                throw new InvalidOperationException("Sistemde en az bir aktif admin bulunmalıdır. Son admin silinemez.");
+        }
+
         await _uow.Users.DeleteAsync(u);
         await _uow.SaveChangesAsync();
         return true;

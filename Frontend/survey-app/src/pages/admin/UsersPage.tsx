@@ -47,9 +47,26 @@ export default function UsersPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Bu kullanıcıyı silmek istediğinize emin misiniz?')) return;
-    await usersApi.delete(id);
-    load();
+    const userToDelete = users.find(u => u.id === id);
+    const adminCount = users.filter(u => u.role === 'Admin' && u.isActive).length;
+
+    if (userToDelete?.role === 'Admin' && adminCount <= 1) {
+      alert('Bu kullanıcı silinemez. Sistemde en az bir aktif admin bulunmalıdır.');
+      return;
+    }
+
+    const confirmMsg = userToDelete?.role === 'Admin'
+      ? `"${userToDelete.fullName}" bir Admin kullanıcısıdır. Silmek istediğinize emin misiniz?`
+      : `"${userToDelete?.fullName}" kullanıcısını silmek istediğinize emin misiniz?`;
+
+    if (!confirm(confirmMsg)) return;
+
+    try {
+      await usersApi.delete(id);
+      load();
+    } catch (e: any) {
+      alert(e.response?.data?.message || 'Silme işlemi başarısız.');
+    }
   };
 
   const filtered = users.filter(u =>
