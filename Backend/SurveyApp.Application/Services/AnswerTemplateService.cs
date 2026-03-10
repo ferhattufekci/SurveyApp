@@ -50,9 +50,7 @@ public class AnswerTemplateService : IAnswerTemplateService
         var template = await _uow.AnswerTemplates.GetWithOptionsAsync(id);
         if (template == null) return null;
 
-        var newOptions = request.Options.Where(o => o.Id == null).ToList();
-        int newCount = request.Options.Count;
-        if (newCount < 2 || newCount > 4)
+        if (request.Options.Count < 2 || request.Options.Count > 4)
             throw new ArgumentException("Option count must be between 2 and 4.");
 
         template.Name = request.Name;
