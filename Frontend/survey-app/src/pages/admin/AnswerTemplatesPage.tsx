@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { answerTemplatesApi } from '../../api';
 import type { AnswerTemplate } from '../../types';
 
+type FilterKey = 'all' | 'active' | 'passive';
+
 export default function AnswerTemplatesPage() {
   const [templates, setTemplates] = useState<AnswerTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -10,35 +12,17 @@ export default function AnswerTemplatesPage() {
   const [form, setForm] = useState({ name: '', options: ['', ''] });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
 
   const load = () => answerTemplatesApi.getAll().then(setTemplates).finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
 
-  const openCreate = () => {
-    setEditItem(null);
-    setForm({ name: '', options: ['', ''] });
-    setError('');
-    setShowModal(true);
-  };
-
-  const openEdit = (t: AnswerTemplate) => {
-    setEditItem(t);
-    setForm({ name: t.name, options: t.options.map(o => o.text) });
-    setError('');
-    setShowModal(true);
-  };
-
-  const addOption = () => {
-    if (form.options.length < 4) setForm(f => ({ ...f, options: [...f.options, ''] }));
-  };
-
-  const removeOption = (i: number) => {
-    if (form.options.length > 2) setForm(f => ({ ...f, options: f.options.filter((_, idx) => idx !== i) }));
-  };
-
-  const updateOption = (i: number, val: string) => {
-    setForm(f => ({ ...f, options: f.options.map((o, idx) => idx === i ? val : o) }));
-  };
+  const openCreate = () => { setEditItem(null); setForm({ name: '', options: ['', ''] }); setError(''); setShowModal(true); };
+  const openEdit = (t: AnswerTemplate) => { setEditItem(t); setForm({ name: t.name, options: t.options.map(o => o.text) }); setError(''); setShowModal(true); };
+  const addOption = () => { if (form.options.length < 4) setForm(f => ({ ...f, options: [...f.options, ''] })); };
+  const removeOption = (i: number) => { if (form.options.length > 2) setForm(f => ({ ...f, options: f.options.filter((_, idx) => idx !== i) })); };
+  const updateOption = (i: number, val: string) => setForm(f => ({ ...f, options: f.options.map((o, idx) => idx === i ? val : o) }));
 
   const handleSave = async () => {
     setError('');
@@ -48,63 +32,101 @@ export default function AnswerTemplatesPage() {
     try {
       if (editItem) {
         await answerTemplatesApi.update(editItem.id, {
-          name: form.name,
-          isActive: editItem.isActive,
+          name: form.name, isActive: editItem.isActive,
           options: form.options.map((text, i) => ({ id: editItem.options[i]?.id ?? null, text, orderIndex: i }))
         });
       } else {
         await answerTemplatesApi.create({ name: form.name, options: form.options });
       }
-      setShowModal(false);
-      load();
-    } catch (e: any) {
-      setError(e.response?.data?.message || 'Bir hata oluştu.');
-    } finally {
-      setSaving(false);
-    }
+      setShowModal(false); load();
+    } catch (e: any) { setError(e.response?.data?.message || 'Bir hata oluştu.');
+    } finally { setSaving(false); }
   };
 
   const handleDelete = async (id: number) => {
     if (!confirm('Bu şablonu silmek istediğinize emin misiniz?')) return;
-    await answerTemplatesApi.delete(id);
-    load();
+    await answerTemplatesApi.delete(id); load();
   };
+
+  const handleFilterClick = (key: FilterKey) => { setActiveFilter(prev => prev === key ? 'all' : key); setSearch(''); };
+
+  const totalCount   = templates.length;
+  const activeCount  = templates.filter(t => t.isActive).length;
+  const passiveCount = templates.filter(t => !t.isActive).length;
+
+  const filtered = templates.filter(t => {
+    const passesFilter =
+      activeFilter === 'active'  ? t.isActive :
+      activeFilter === 'passive' ? !t.isActive : true;
+    if (!passesFilter) return false;
+    if (!search) return true;
+    const q = search.toLowerCase();
+    const durum = t.isActive ? 'aktif' : 'pasif';
+    return t.name.toLowerCase().includes(q) || durum.includes(q) ||
+      t.options.some(o => o.text.toLowerCase().includes(q));
+  });
+
+  const pillStyle = (key: FilterKey, activeBg: string, activeColor: string, inactiveBg: string, inactiveColor: string) => ({
+    flex: 1, background: activeFilter === key ? activeBg : inactiveBg,
+    color: activeFilter === key ? activeColor : inactiveColor,
+    borderRadius: '8px', padding: '6px 10px', textAlign: 'center' as const,
+    fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+    border: activeFilter === key ? `2px solid ${activeColor}` : '2px solid transparent',
+    transition: 'all 0.15s', userSelect: 'none' as const,
+  });
 
   if (loading) return <div className="loading-container"><div className="spinner-large"></div></div>;
 
   return (
     <div className="page">
       <div className="page-header">
-        <div>
-          <h1>Cevap Şablonları</h1>
-          <p>Sorular için cevap seçenek şablonlarını yönetin</p>
-        </div>
+        <div><h1>Cevap Şablonları</h1><p>Sorular için cevap seçenek şablonlarını yönetin</p></div>
         <button className="btn btn-primary" onClick={openCreate}>+ Yeni Şablon</button>
       </div>
 
+      {/* Stat kartları */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
+        <div style={{ background: '#eef2ff', border: '1px solid #6366f122', borderRadius: '12px', padding: '16px 20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+            <span style={{ fontSize: '20px' }}>📋</span>
+            <span style={{ fontWeight: 600, color: '#4b5563' }}>Toplam Şablon</span>
+            <span style={{ marginLeft: 'auto', fontSize: '28px', fontWeight: 700, color: '#6366f1' }}>{totalCount}</span>
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <span style={pillStyle('active', '#15803d', '#fff', '#dcfce7', '#15803d')} onClick={() => handleFilterClick('active')}>✅ {activeCount} Aktif</span>
+            <span style={pillStyle('passive', '#6b7280', '#fff', '#f3f4f6', '#6b7280')} onClick={() => handleFilterClick('passive')}>⏸ {passiveCount} Pasif</span>
+          </div>
+        </div>
+        <div style={{ background: '#f0fdf4', border: '1px solid #10b98122', borderRadius: '12px', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <span style={{ fontSize: '32px' }}>💡</span>
+          <div>
+            <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '4px' }}>Her şablon</div>
+            <div style={{ fontWeight: 600, color: '#374151' }}>2 ila 4 seçenek içerebilir</div>
+            <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>Aktif şablonlar sorularda kullanılabilir</div>
+          </div>
+        </div>
+      </div>
+
       <div className="card">
+        <div className="card-toolbar">
+          <input className="search-input" placeholder="Şablon adı, seçenek veya durum ara..." value={search}
+            onChange={e => { setSearch(e.target.value); setActiveFilter('all'); }} />
+          {activeFilter !== 'all' && (
+            <button className="btn btn-sm btn-outline" onClick={() => setActiveFilter('all')}>Filtreyi Temizle ×</button>
+          )}
+        </div>
         <div className="table-container">
           <table className="table">
             <thead>
-              <tr>
-                <th>Ad</th>
-                <th>Seçenek Sayısı</th>
-                <th>Seçenekler</th>
-                <th>Durum</th>
-                <th>İşlemler</th>
-              </tr>
+              <tr><th>Durum</th><th>Ad</th><th>Seçenek Sayısı</th><th>Seçenekler</th><th>İşlemler</th></tr>
             </thead>
             <tbody>
-              {templates.map(t => (
+              {filtered.map(t => (
                 <tr key={t.id}>
+                  <td><span className={`badge ${t.isActive ? 'badge-success' : 'badge-secondary'}`}>{t.isActive ? 'Aktif' : 'Pasif'}</span></td>
                   <td><strong>{t.name}</strong></td>
                   <td>{t.options.length}</td>
-                  <td>
-                    <div className="option-pills">
-                      {t.options.map(o => <span key={o.id} className="pill">{o.text}</span>)}
-                    </div>
-                  </td>
-                  <td><span className={`badge ${t.isActive ? 'badge-success' : 'badge-secondary'}`}>{t.isActive ? 'Aktif' : 'Pasif'}</span></td>
+                  <td><div className="option-pills">{t.options.map(o => <span key={o.id} className="pill">{o.text}</span>)}</div></td>
                   <td>
                     <div className="action-btns">
                       <button className="btn btn-sm btn-outline" onClick={() => openEdit(t)}>Düzenle</button>
@@ -115,7 +137,7 @@ export default function AnswerTemplatesPage() {
               ))}
             </tbody>
           </table>
-          {templates.length === 0 && <div className="empty-state">Henüz şablon eklenmemiş.</div>}
+          {filtered.length === 0 && <div className="empty-state">Şablon bulunamadı.</div>}
         </div>
       </div>
 
@@ -138,21 +160,15 @@ export default function AnswerTemplatesPage() {
                   <div key={i} className="option-row">
                     <span className="option-num">{i + 1}.</span>
                     <input value={opt} onChange={e => updateOption(i, e.target.value)} placeholder={`Seçenek ${i + 1}`} />
-                    {form.options.length > 2 && (
-                      <button className="btn btn-sm btn-danger" onClick={() => removeOption(i)}>×</button>
-                    )}
+                    {form.options.length > 2 && <button className="btn btn-sm btn-danger" onClick={() => removeOption(i)}>×</button>}
                   </div>
                 ))}
-                {form.options.length < 4 && (
-                  <button className="btn btn-sm btn-outline mt-2" onClick={addOption}>+ Seçenek Ekle</button>
-                )}
+                {form.options.length < 4 && <button className="btn btn-sm btn-outline mt-2" onClick={addOption}>+ Seçenek Ekle</button>}
               </div>
             </div>
             <div className="modal-footer">
               <button className="btn btn-outline" onClick={() => setShowModal(false)}>İptal</button>
-              <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-                {saving ? 'Kaydediliyor...' : 'Kaydet'}
-              </button>
+              <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Kaydediliyor...' : 'Kaydet'}</button>
             </div>
           </div>
         </div>
