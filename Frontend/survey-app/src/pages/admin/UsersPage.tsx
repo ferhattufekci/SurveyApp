@@ -94,6 +94,12 @@ export default function UsersPage() {
 
   if (loading) return <div className="loading-container"><div className="spinner-large"></div></div>;
 
+  const totalCount = users.length;
+  const activeCount = users.filter(u => u.isActive).length;
+  const passiveCount = users.filter(u => !u.isActive).length;
+  const adminCount = users.filter(u => u.role === 'Admin').length;
+  const userCount = users.filter(u => u.role === 'User').length;
+
   return (
     <div className="page">
       <div className="page-header">
@@ -101,10 +107,33 @@ export default function UsersPage() {
         <button className="btn btn-primary" onClick={openCreate}>+ Yeni Kullanıcı</button>
       </div>
 
+      {/* İstatistik kartları */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', marginBottom: '20px' }}>
+        {[
+          { label: 'Toplam', value: totalCount, color: '#6366f1', bg: '#eef2ff', icon: '👥' },
+          { label: 'Aktif', value: activeCount, color: '#10b981', bg: '#ecfdf5', icon: '✅' },
+          { label: 'Pasif', value: passiveCount, color: '#6b7280', bg: '#f3f4f6', icon: '⏸️' },
+          { label: 'Admin', value: adminCount, color: '#f59e0b', bg: '#fffbeb', icon: '👑' },
+          { label: 'User', value: userCount, color: '#3b82f6', bg: '#eff6ff', icon: '👤' },
+        ].map(stat => (
+          <div key={stat.label} style={{
+            background: stat.bg, border: `1px solid ${stat.color}22`,
+            borderRadius: '12px', padding: '16px 20px',
+            display: 'flex', alignItems: 'center', gap: '12px'
+          }}>
+            <span style={{ fontSize: '24px' }}>{stat.icon}</span>
+            <div>
+              <div style={{ fontSize: '22px', fontWeight: 700, color: stat.color, lineHeight: 1 }}>{stat.value}</div>
+              <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{stat.label}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
       <div className="card">
         <div className="card-toolbar">
           <input className="search-input" placeholder="Ad, e-posta, rol veya durum ara..." value={search} onChange={e => setSearch(e.target.value)} />
-          <span className="record-count">{filtered.length} kullanıcı</span>
+          <span className="record-count">{filtered.length} sonuç</span>
         </div>
         <div className="table-container">
           <table className="table">
