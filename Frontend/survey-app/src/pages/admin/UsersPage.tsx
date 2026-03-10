@@ -53,7 +53,7 @@ export default function UsersPage() {
   };
 
   const handleDelete = async (u: User) => {
-    // Kendi kendini silme engeli
+    // Giriş yapan kullanıcı kendini silemez
     if (u.email === currentUser?.email) {
       alert('Kendi hesabınızı silemezsiniz.');
       return;
@@ -80,11 +80,17 @@ export default function UsersPage() {
     }
   };
 
-  // Tüm kullanıcılarda ara (aktif + pasif)
-  const filtered = users.filter(u =>
-    u.fullName.toLowerCase().includes(search.toLowerCase()) ||
-    u.email.toLowerCase().includes(search.toLowerCase())
-  );
+  // Arama: ad soyad, e-posta ve durum (aktif/pasif) alanlarında
+  const filtered = users.filter(u => {
+    const q = search.toLowerCase();
+    const durum = u.isActive ? 'aktif' : 'pasif';
+    return (
+      u.fullName.toLowerCase().includes(q) ||
+      u.email.toLowerCase().includes(q) ||
+      u.role.toLowerCase().includes(q) ||
+      durum.includes(q)
+    );
+  });
 
   if (loading) return <div className="loading-container"><div className="spinner-large"></div></div>;
 
@@ -97,7 +103,7 @@ export default function UsersPage() {
 
       <div className="card">
         <div className="card-toolbar">
-          <input className="search-input" placeholder="Kullanıcı ara..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input className="search-input" placeholder="Ad, e-posta, rol veya durum ara..." value={search} onChange={e => setSearch(e.target.value)} />
           <span className="record-count">{filtered.length} kullanıcı</span>
         </div>
         <div className="table-container">
@@ -106,39 +112,25 @@ export default function UsersPage() {
               <tr><th>Rol</th><th>Durum</th><th>Ad Soyad</th><th>E-posta</th><th>İşlemler</th></tr>
             </thead>
             <tbody>
-              {filtered.map(u => {
-                const isSelf = u.email === currentUser?.email;
-                const isLastAdmin = u.role === 'Admin' && users.filter(x => x.role === 'Admin' && x.isActive).length <= 1;
-                const canDelete = !isSelf && !isLastAdmin;
-
-                return (
-                  <tr key={u.id}>
-                    <td><span className={`badge ${u.role === 'Admin' ? 'badge-warning' : 'badge-info'}`}>{u.role}</span></td>
-                    <td><span className={`badge ${u.isActive ? 'badge-success' : 'badge-secondary'}`}>{u.isActive ? 'Aktif' : 'Pasif'}</span></td>
-                    <td>
-                      <div className="user-cell">
-                        <div className="user-avatar-sm">{u.fullName[0]?.toUpperCase()}</div>
-                        <strong>{u.fullName}{isSelf && <span className="text-muted" style={{fontWeight:'normal'}}> (siz)</span>}</strong>
-                      </div>
-                    </td>
-                    <td>{u.email}</td>
-                    <td>
-                      <div className="action-btns">
-                        <button className="btn btn-sm btn-outline" onClick={() => openEdit(u)}>Düzenle</button>
-                        <button
-                          className="btn btn-sm btn-danger"
-                          onClick={() => handleDelete(u)}
-                          disabled={!canDelete}
-                          title={isSelf ? 'Kendi hesabınızı silemezsiniz' : isLastAdmin ? 'Son admin silinemez' : ''}
-                          style={{ opacity: canDelete ? 1 : 0.4, cursor: canDelete ? 'pointer' : 'not-allowed' }}
-                        >
-                          Sil
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+              {filtered.map(u => (
+                <tr key={u.id}>
+                  <td><span className={`badge ${u.role === 'Admin' ? 'badge-warning' : 'badge-info'}`}>{u.role}</span></td>
+                  <td><span className={`badge ${u.isActive ? 'badge-success' : 'badge-secondary'}`}>{u.isActive ? 'Aktif' : 'Pasif'}</span></td>
+                  <td>
+                    <div className="user-cell">
+                      <div className="user-avatar-sm">{u.fullName[0]?.toUpperCase()}</div>
+                      <strong>{u.fullName}</strong>
+                    </div>
+                  </td>
+                  <td>{u.email}</td>
+                  <td>
+                    <div className="action-btns">
+                      <button className="btn btn-sm btn-outline" onClick={() => openEdit(u)}>Düzenle</button>
+                      <button className="btn btn-sm btn-danger" onClick={() => handleDelete(u)}>Sil</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
           {filtered.length === 0 && <div className="empty-state">Kullanıcı bulunamadı.</div>}
