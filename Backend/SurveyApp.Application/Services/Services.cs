@@ -24,7 +24,7 @@ public class QuestionService : IQuestionService
 
     public async Task<QuestionDto> CreateAsync(CreateQuestionRequest request)
     {
-        var template = await _uow.AnswerTemplates.GetWithOptionsAsync(request.AnswerTemplateId)
+        _ = await _uow.AnswerTemplates.GetWithOptionsAsync(request.AnswerTemplateId)
             ?? throw new ArgumentException("Answer template not found.");
 
         var question = new Question { Text = request.Text, AnswerTemplateId = request.AnswerTemplateId };
@@ -182,7 +182,6 @@ public class UserSurveyService : IUserSurveyService
     public async Task<List<UserSurveyListDto>> GetAssignedSurveysAsync(int userId)
     {
         var surveys = await _uow.Surveys.GetAssignedSurveysForUserAsync(userId);
-        var now = DateTime.UtcNow;
         var result = new List<UserSurveyListDto>();
 
         foreach (var s in surveys)
@@ -219,8 +218,36 @@ public class UserSurveyService : IUserSurveyService
 
     public async Task<bool> SubmitSurveyAsync(int userId, SubmitSurveyRequest request)
     {
+        // Tekrar doldurma engeli
         var alreadyCompleted = await _uow.Surveys.HasUserCompletedSurveyAsync(request.SurveyId, userId);
         if (alreadyCompleted) return false;
+
+        // Anket var mı, aktif mi?
+        var survey = await _uow.Surveys.GetWithDetailsAsync(request.SurveyId);
+        if (survey == null || !survey.IsActive) return false;
+
+        // Tarih aralığı kontrolü
+        var now = DateTime.UtcNow;
+        if (now < survey.StartDate || now > survey.EndDate) return false;
+
+        // Kullanıcıya atanmış mı?
+        var isAssigned = survey.SurveyAssignments.Any(a => a.UserId == userId);
+        if (!isAssigned) return false;
+
+        // Tüm sorular cevaplanmış mı?
+        var surveyQuestionIds = survey.SurveyQuestions.Select(sq => sq.QuestionId).ToHashSet();
+        var answeredQuestionIds = request.Answers.Select(a => a.QuestionId).ToHashSet();
+        if (!surveyQuestionIds.SetEquals(answeredQuestionIds)) return false;
+
+        // Her cevap, ilgili sorunun şablonuna ait geçerli bir seçenek mi?
+        foreach (var answer in request.Answers)
+        {
+            var surveyQuestion = survey.SurveyQuestions.FirstOrDefault(sq => sq.QuestionId == answer.QuestionId);
+            if (surveyQuestion == null) return false;
+
+            var validOptionIds = surveyQuestion.Question.AnswerTemplate.Options.Select(o => o.Id).ToHashSet();
+            if (!validOptionIds.Contains(answer.AnswerOptionId)) return false;
+        }
 
         var response = new SurveyResponse
         {
@@ -295,6 +322,11 @@ public class UserService : IUserService
 
     public async Task<UserDto> CreateAsync(CreateUserRequest request)
     {
+        // Duplicate email kontrolü — DB exception yerine anlamlı hata mesajı
+        var existing = await _uow.Users.GetByEmailAsync(request.Email);
+        if (existing != null)
+            throw new ArgumentException("Bu e-posta adresiyle zaten bir kullanıcı mevcut.");
+
         var user = new Domain.Entities.User
         {
             Email = request.Email,
