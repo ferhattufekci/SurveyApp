@@ -1,4 +1,10 @@
 import axios from 'axios';
+import type {
+  User, AnswerTemplate, QuestionListItem, Question,
+  SurveyListItem, SurveyDetail, UserSurvey, SurveyReport,
+  CreateUserRequest, CreateAnswerTemplateRequest,
+  CreateQuestionRequest, CreateSurveyRequest, SubmitSurveyRequest
+} from '../types';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -30,51 +36,60 @@ export const authApi = {
 
 // Users (Admin)
 export const usersApi = {
-  getAll: () => api.get('/users').then(r => r.data),
-  getById: (id: number) => api.get(`/users/${id}`).then(r => r.data),
-  create: (data: any) => api.post('/users', data).then(r => r.data),
-  update: (id: number, data: any) => api.put(`/users/${id}`, data).then(r => r.data),
+  getAll: (): Promise<User[]> => api.get('/users').then(r => r.data),
+  getById: (id: number): Promise<User> => api.get(`/users/${id}`).then(r => r.data),
+  create: (data: CreateUserRequest): Promise<User> => api.post('/users', data).then(r => r.data),
+  update: (id: number, data: { fullName: string; isActive: boolean }): Promise<User> =>
+    api.put(`/users/${id}`, data).then(r => r.data),
   delete: (id: number) => api.delete(`/users/${id}`),
 };
 
 // Answer Templates (Admin)
 export const answerTemplatesApi = {
-  getAll: () => api.get('/answertemplates').then(r => r.data),
-  getById: (id: number) => api.get(`/answertemplates/${id}`).then(r => r.data),
-  create: (data: any) => api.post('/answertemplates', data).then(r => r.data),
-  update: (id: number, data: any) => api.put(`/answertemplates/${id}`, data).then(r => r.data),
+  getAll: (): Promise<AnswerTemplate[]> => api.get('/answertemplates').then(r => r.data),
+  getById: (id: number): Promise<AnswerTemplate> => api.get(`/answertemplates/${id}`).then(r => r.data),
+  create: (data: CreateAnswerTemplateRequest): Promise<AnswerTemplate> =>
+    api.post('/answertemplates', data).then(r => r.data),
+  update: (id: number, data: { name: string; isActive: boolean; options: { id?: number; text: string; orderIndex: number }[] }): Promise<AnswerTemplate> =>
+    api.put(`/answertemplates/${id}`, data).then(r => r.data),
   delete: (id: number) => api.delete(`/answertemplates/${id}`),
 };
 
 // Questions (Admin)
 export const questionsApi = {
-  getAll: () => api.get('/questions').then(r => r.data),
-  getById: (id: number) => api.get(`/questions/${id}`).then(r => r.data),
-  create: (data: any) => api.post('/questions', data).then(r => r.data),
-  update: (id: number, data: any) => api.put(`/questions/${id}`, data).then(r => r.data),
+  getAll: (): Promise<QuestionListItem[]> => api.get('/questions').then(r => r.data),
+  getById: (id: number): Promise<Question> => api.get(`/questions/${id}`).then(r => r.data),
+  create: (data: CreateQuestionRequest): Promise<Question> =>
+    api.post('/questions', data).then(r => r.data),
+  update: (id: number, data: { text: string; answerTemplateId: number; isActive: boolean }): Promise<Question> =>
+    api.put(`/questions/${id}`, data).then(r => r.data),
   delete: (id: number) => api.delete(`/questions/${id}`),
 };
 
 // Surveys (Admin)
 export const surveysApi = {
-  getAll: () => api.get('/surveys').then(r => r.data),
-  getById: (id: number) => api.get(`/surveys/${id}`).then(r => r.data),
-  create: (data: any) => api.post('/surveys', data).then(r => r.data),
-  update: (id: number, data: any) => api.put(`/surveys/${id}`, data).then(r => r.data),
+  getAll: (): Promise<SurveyListItem[]> => api.get('/surveys').then(r => r.data),
+  getById: (id: number): Promise<SurveyDetail> => api.get(`/surveys/${id}`).then(r => r.data),
+  create: (data: CreateSurveyRequest): Promise<SurveyDetail> =>
+    api.post('/surveys', data).then(r => r.data),
+  update: (id: number, data: CreateSurveyRequest): Promise<SurveyDetail> =>
+    api.put(`/surveys/${id}`, data).then(r => r.data),
   delete: (id: number) => api.delete(`/surveys/${id}`),
 };
 
 // Reports (Admin)
 export const reportsApi = {
-  getAll: () => api.get('/reports').then(r => r.data),
-  getSurveyReport: (surveyId: number) => api.get(`/reports/${surveyId}`).then(r => r.data),
+  getAll: (): Promise<SurveyListItem[]> => api.get('/reports').then(r => r.data),
+  getSurveyReport: (surveyId: number): Promise<SurveyReport> =>
+    api.get(`/reports/${surveyId}`).then(r => r.data),
 };
 
 // My Surveys (User)
 export const mySurveysApi = {
-  getAll: () => api.get('/my-surveys').then(r => r.data),
-  getById: (id: number) => api.get(`/my-surveys/${id}`).then(r => r.data),
-  submit: (surveyId: number, data: any) => api.post(`/my-surveys/${surveyId}/submit`, data).then(r => r.data),
+  getAll: (): Promise<UserSurvey[]> => api.get('/my-surveys').then(r => r.data),
+  getById: (id: number): Promise<SurveyDetail> => api.get(`/my-surveys/${id}`).then(r => r.data),
+  submit: (surveyId: number, data: SubmitSurveyRequest) =>
+    api.post(`/my-surveys/${surveyId}/submit`, data).then(r => r.data),
 };
 
 export default api;
