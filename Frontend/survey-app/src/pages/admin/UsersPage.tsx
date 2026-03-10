@@ -3,6 +3,8 @@ import { usersApi } from '../../api';
 import { useAuthStore } from '../../store/authStore';
 import type { User } from '../../types';
 
+type FilterKey = 'all' | 'active' | 'passive' | 'admin_active' | 'admin_passive' | 'user_active' | 'user_passive';
+
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -12,6 +14,7 @@ export default function UsersPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
 
   const currentUser = useAuthStore(s => s.user);
 
@@ -53,25 +56,19 @@ export default function UsersPage() {
   };
 
   const handleDelete = async (u: User) => {
-    // Giriş yapan kullanıcı kendini silemez
     if (u.email === currentUser?.email) {
       alert('Kendi hesabınızı silemezsiniz.');
       return;
     }
-
-    // Son aktif admin koruması
     const activeAdminCount = users.filter(x => x.role === 'Admin' && x.isActive).length;
     if (u.role === 'Admin' && activeAdminCount <= 1) {
       alert('Sistemde en az bir aktif admin bulunmalıdır. Son admin silinemez.');
       return;
     }
-
     const confirmMsg = u.role === 'Admin'
       ? `"${u.fullName}" bir Admin kullanıcısıdır. Silmek istediğinize emin misiniz?`
       : `"${u.fullName}" kullanıcısını silmek istediğinize emin misiniz?`;
-
     if (!confirm(confirmMsg)) return;
-
     try {
       await usersApi.delete(u.id);
       load();
@@ -80,8 +77,38 @@ export default function UsersPage() {
     }
   };
 
-  // Arama: ad soyad, e-posta ve durum (aktif/pasif) alanlarında
+  const handleFilterClick = (key: FilterKey) => {
+    setActiveFilter(prev => prev === key ? 'all' : key);
+    setSearch('');
+  };
+
+  // İstatistikler
+  const totalCount   = users.length;
+  const activeCount  = users.filter(u => u.isActive).length;
+  const passiveCount = users.filter(u => !u.isActive).length;
+  const adminTotal   = users.filter(u => u.role === 'Admin').length;
+  const adminActive  = users.filter(u => u.role === 'Admin' && u.isActive).length;
+  const adminPassive = users.filter(u => u.role === 'Admin' && !u.isActive).length;
+  const userTotal    = users.filter(u => u.role === 'User').length;
+  const userActive   = users.filter(u => u.role === 'User' && u.isActive).length;
+  const userPassive  = users.filter(u => u.role === 'User' && !u.isActive).length;
+
+  // Filtreleme
   const filtered = users.filter(u => {
+    // Pill filtresi
+    const passesFilter =
+      activeFilter === 'all'           ? true :
+      activeFilter === 'active'        ? u.isActive :
+      activeFilter === 'passive'       ? !u.isActive :
+      activeFilter === 'admin_active'  ? u.role === 'Admin' && u.isActive :
+      activeFilter === 'admin_passive' ? u.role === 'Admin' && !u.isActive :
+      activeFilter === 'user_active'   ? u.role === 'User' && u.isActive :
+      activeFilter === 'user_passive'  ? u.role === 'User' && !u.isActive : true;
+
+    if (!passesFilter) return false;
+
+    // Metin araması
+    if (!search) return true;
     const q = search.toLowerCase();
     const durum = u.isActive ? 'aktif' : 'pasif';
     return (
@@ -92,17 +119,22 @@ export default function UsersPage() {
     );
   });
 
-  if (loading) return <div className="loading-container"><div className="spinner-large"></div></div>;
+  const pillStyle = (key: FilterKey, activeBg: string, activeColor: string, inactiveBg: string, inactiveColor: string) => ({
+    flex: 1,
+    background: activeFilter === key ? activeBg : inactiveBg,
+    color: activeFilter === key ? activeColor : inactiveColor,
+    borderRadius: '8px',
+    padding: '6px 10px',
+    textAlign: 'center' as const,
+    fontSize: '13px',
+    fontWeight: 600,
+    cursor: 'pointer',
+    border: activeFilter === key ? `2px solid ${activeColor}` : '2px solid transparent',
+    transition: 'all 0.15s',
+    userSelect: 'none' as const,
+  });
 
-  const totalCount = users.length;
-  const activeCount = users.filter(u => u.isActive).length;
-  const passiveCount = users.filter(u => !u.isActive).length;
-  const adminTotal = users.filter(u => u.role === 'Admin').length;
-  const adminActive = users.filter(u => u.role === 'Admin' && u.isActive).length;
-  const adminPassive = users.filter(u => u.role === 'Admin' && !u.isActive).length;
-  const userTotal = users.filter(u => u.role === 'User').length;
-  const userActive = users.filter(u => u.role === 'User' && u.isActive).length;
-  const userPassive = users.filter(u => u.role === 'User' && !u.isActive).length;
+  if (loading) return <div className="loading-container"><div className="spinner-large"></div></div>;
 
   return (
     <div className="page">
@@ -118,14 +150,18 @@ export default function UsersPage() {
         <div style={{ background: '#eef2ff', border: '1px solid #6366f122', borderRadius: '12px', padding: '16px 20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
             <span style={{ fontSize: '20px' }}>👥</span>
-            <span style={{ fontWeight: 600, color: '#4b5563' }}>Toplam Kullanıcı</span>
+            <span
+              style={{ fontWeight: 600, color: '#4b5563', cursor: 'pointer', textDecoration: activeFilter === 'all' ? 'underline' : 'none' }}
+              onClick={() => handleFilterClick('all')}
+              title="Tümünü göster"
+            >Toplam Kullanıcı</span>
             <span style={{ marginLeft: 'auto', fontSize: '28px', fontWeight: 700, color: '#6366f1' }}>{totalCount}</span>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <span style={{ flex: 1, background: '#dcfce7', color: '#15803d', borderRadius: '8px', padding: '6px 10px', textAlign: 'center', fontSize: '13px', fontWeight: 600 }}>
+            <span style={pillStyle('active', '#15803d', '#fff', '#dcfce7', '#15803d')} onClick={() => handleFilterClick('active')}>
               ✅ {activeCount} Aktif
             </span>
-            <span style={{ flex: 1, background: '#f3f4f6', color: '#6b7280', borderRadius: '8px', padding: '6px 10px', textAlign: 'center', fontSize: '13px', fontWeight: 600 }}>
+            <span style={pillStyle('passive', '#6b7280', '#fff', '#f3f4f6', '#6b7280')} onClick={() => handleFilterClick('passive')}>
               ⏸ {passiveCount} Pasif
             </span>
           </div>
@@ -139,10 +175,10 @@ export default function UsersPage() {
             <span style={{ marginLeft: 'auto', fontSize: '28px', fontWeight: 700, color: '#f59e0b' }}>{adminTotal}</span>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <span style={{ flex: 1, background: '#dcfce7', color: '#15803d', borderRadius: '8px', padding: '6px 10px', textAlign: 'center', fontSize: '13px', fontWeight: 600 }}>
+            <span style={pillStyle('admin_active', '#15803d', '#fff', '#dcfce7', '#15803d')} onClick={() => handleFilterClick('admin_active')}>
               ✅ {adminActive} Aktif
             </span>
-            <span style={{ flex: 1, background: '#f3f4f6', color: '#6b7280', borderRadius: '8px', padding: '6px 10px', textAlign: 'center', fontSize: '13px', fontWeight: 600 }}>
+            <span style={pillStyle('admin_passive', '#6b7280', '#fff', '#f3f4f6', '#6b7280')} onClick={() => handleFilterClick('admin_passive')}>
               ⏸ {adminPassive} Pasif
             </span>
           </div>
@@ -156,10 +192,10 @@ export default function UsersPage() {
             <span style={{ marginLeft: 'auto', fontSize: '28px', fontWeight: 700, color: '#3b82f6' }}>{userTotal}</span>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <span style={{ flex: 1, background: '#dcfce7', color: '#15803d', borderRadius: '8px', padding: '6px 10px', textAlign: 'center', fontSize: '13px', fontWeight: 600 }}>
+            <span style={pillStyle('user_active', '#15803d', '#fff', '#dcfce7', '#15803d')} onClick={() => handleFilterClick('user_active')}>
               ✅ {userActive} Aktif
             </span>
-            <span style={{ flex: 1, background: '#f3f4f6', color: '#6b7280', borderRadius: '8px', padding: '6px 10px', textAlign: 'center', fontSize: '13px', fontWeight: 600 }}>
+            <span style={pillStyle('user_passive', '#6b7280', '#fff', '#f3f4f6', '#6b7280')} onClick={() => handleFilterClick('user_passive')}>
               ⏸ {userPassive} Pasif
             </span>
           </div>
@@ -169,8 +205,17 @@ export default function UsersPage() {
 
       <div className="card">
         <div className="card-toolbar">
-          <input className="search-input" placeholder="Ad, e-posta, rol veya durum ara..." value={search} onChange={e => setSearch(e.target.value)} />
-          <span className="record-count">{filtered.length} sonuç</span>
+          <input
+            className="search-input"
+            placeholder="Ad, e-posta, rol veya durum ara..."
+            value={search}
+            onChange={e => { setSearch(e.target.value); setActiveFilter('all'); }}
+          />
+          {activeFilter !== 'all' && (
+            <button className="btn btn-sm btn-outline" onClick={() => setActiveFilter('all')}>
+              Filtreyi Temizle ×
+            </button>
+          )}
         </div>
         <div className="table-container">
           <table className="table">
