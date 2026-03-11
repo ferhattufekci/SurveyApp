@@ -258,7 +258,7 @@ export default function UsersPage() {
         <div style={{ background: '#f0fdf4', border: '1px solid #10b98122', borderRadius: '12px', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <span style={{ fontSize: '28px' }}>💡</span>
           <div>
-            <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '2px' }}>Her kullanıcı</div>
+            <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '2px' }}>Sadece aktif kullanıcı</div>
             <div style={{ fontWeight: 600, color: '#374151', fontSize: '13px' }}>Ankete atanabilir</div>
             <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>Ankete atanan kullanıcılar silinemez</div>
           </div>
