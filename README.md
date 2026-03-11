@@ -1,715 +1,438 @@
-# 📋 SurveyApp — Anket Yönetim Sistemi
+# SurveyApp
 
-> **Admin** rolündeki kullanıcılar; cevap şablonları, sorular ve anketler oluşturabilir, bu anketleri belirli kullanıcılara atayabilir ve anket sonuçlarını detaylı raporlar aracılığıyla takip edebilir. Anketler, sorular ve cevap şablonları için **Aktif/Pasif** durum yönetimi yapılabilir; pasif durumdaki anketler kullanıcılar tarafından görüntülenemez ve doldurulamaz.
->
-> **User** rolündeki kullanıcılar; kendilerine atanan, **aktif** durumda olan ve geçerli tarih aralığındaki anketleri görüntüleyebilir, soruları cevaplayarak anketi tamamlayabilir. Tamamlanan anketler tekrar doldurulamaz.
+A full-stack survey management system built with **.NET 8** (Clean Architecture) and **React TypeScript**. Admins create answer templates, questions, and surveys, assign them to users, and track completion through detailed reports. Users fill in assigned surveys and view their history.
 
-[![dotnet](https://img.shields.io/badge/dotnet-8.0-512BD4?style=flat-square&logo=dotnet&logoColor=white)](https://dotnet.microsoft.com)
+[![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=flat-square&logo=dotnet&logoColor=white)](https://dotnet.microsoft.com)
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![SQLite](https://img.shields.io/badge/SQLite-EF%20Core-003B57?style=flat-square&logo=sqlite&logoColor=white)](https://sqlite.org)
-[![JWT](https://img.shields.io/badge/Auth-JWT-black?style=flat-square&logo=jsonwebtokens&logoColor=white)](https://jwt.io)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![SQLite](https://img.shields.io/badge/SQLite-EF_Core-003B57?style=flat-square&logo=sqlite&logoColor=white)](https://sqlite.org)
+[![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 
 ---
 
-## 🏗️ Mimari
+## Table of Contents
 
-### Clean Architecture
-Backend, katmanlar arası bağımlılığın tek yönlü olduğu Clean Architecture prensipleriyle geliştirilmiştir:
+- [Features](#features)
+- [Architecture](#architecture)
+- [Tech Stack](#tech-stack)
+- [Database Schema](#database-schema)
+- [API Reference](#api-reference)
+- [Getting Started](#getting-started)
+- [Default Credentials](#default-credentials)
+- [Switching Databases](#switching-databases)
+
+---
+
+## Features
+
+### Admin Panel
+| Page | Description |
+|------|-------------|
+| **Dashboard** | Overview stats, active/expired survey breakdown, and recent survey table |
+| **Answer Templates** | Create reusable option sets (2–4 choices) used across questions |
+| **Questions** | Manage questions linked to answer templates; view option counts |
+| **Surveys** | Create surveys with date ranges, assign questions and users |
+| **Users** | Create, update, and delete user accounts; assign roles |
+| **Reports** | Completion rates with progress bars, response detail drill-down |
+
+### User Panel
+| Feature | Description |
+|---------|-------------|
+| **My Surveys** | Tabbed list: Active, Completed, Upcoming, Expired |
+| **Fill Survey** | Answer all questions, submit once per survey |
+| **Question Preview** | See answer template name and options per question in the list |
+| **Search** | Filter by title, description, question text, template name, or option text |
+
+### Core Business Rules
+- Surveys with received responses cannot be edited or deleted
+- Passive users cannot be assigned to surveys or submit responses
+- Questions used in surveys cannot be deleted until removed from all surveys
+- Templates used in questions cannot be deleted until re-assigned
+- The last remaining active admin cannot be deleted
+- JWT tokens are validated for expiry on every page load
+
+---
+
+## Architecture
+
+### Backend — Clean Architecture
+
+Dependencies flow strictly inward. The Domain layer has zero external dependencies.
 
 ```
 SurveyApp/
 ├── Backend/
-│   ├── SurveyApp.Domain/           → Entities, Interfaces (dışa bağımlılığı sıfır)
-│   ├── SurveyApp.Application/      → Use Cases, DTOs, Service Interfaces
-│   ├── SurveyApp.Infrastructure/   → EF Core, Repositories, UnitOfWork
-│   └── SurveyApp.API/              → Controllers, Middleware, JWT, Swagger
+│   ├── SurveyApp.Domain/           # Entities, repository interfaces
+│   ├── SurveyApp.Application/      # Use cases, DTOs, service interfaces
+│   ├── SurveyApp.Infrastructure/   # EF Core, repositories, Unit of Work
+│   └── SurveyApp.API/              # Controllers, JWT middleware, Swagger
 │
 └── Frontend/
     └── survey-app/src/
-        ├── api/                    → Axios HTTP istemcisi
-        ├── store/                  → Zustand state yönetimi
-        ├── pages/                  → Admin ve User sayfaları
-        ├── components/             → Layout bileşenleri
-        ├── types/                  → TypeScript tip tanımları
-        └── styles/                 → Global CSS
+        ├── api/                    # Axios HTTP client
+        ├── store/                  # Zustand auth store
+        ├── pages/admin/            # Admin pages
+        ├── pages/user/             # User-facing pages
+        ├── components/             # Shared UI components
+        ├── types/                  # TypeScript interfaces
+        └── styles/                 # Global CSS
 ```
 
-**Bağımlılık yönü:** `API → Application → Domain` ← `Infrastructure`  
-Her katman yalnızca bir alt katmana bağımlıdır; Domain hiçbir katmana bağımlı değildir.
+**Dependency direction:** `API → Application → Domain ← Infrastructure`
+
+### Frontend — Component Architecture
+
+- **Zustand** manages authentication state (token, role, user info)
+- **React Router v6** handles client-side routing with role-based guards
+- **Axios interceptors** attach the Bearer token to every request and redirect to login on 401
+- **URL search params** enable shareable filtered views across admin pages
 
 ---
 
-### RESTful API
-Backend, RESTful API prensipleri doğrultusunda tasarlanmıştır:
-
-| Prensip | Uygulama |
-|---------|----------|
-| **Resource-based URL** | `/api/surveys`, `/api/questions` gibi isim tabanlı endpoint'ler |
-| **HTTP metodları** | `GET` okuma, `POST` oluşturma, `PUT` güncelleme, `DELETE` silme |
-| **HTTP status kodları** | `200 OK`, `201 Created`, `204 No Content`, `400 Bad Request`, `401 Unauthorized`, `404 Not Found` |
-| **Stateless** | Her istek kendi JWT token'ını taşır, sunucuda oturum tutulmaz |
-| **JSON** | Tüm istek ve yanıtlar `application/json` formatında |
-
----
-
-## ⚙️ Teknoloji Yığını
+## Tech Stack
 
 ### Backend
-| Teknoloji | Kullanım |
-|-----------|----------|
-| .NET Core 8.0 | Web API framework |
+| Technology | Purpose |
+|------------|---------|
+| .NET 8 | Web API framework |
 | Entity Framework Core 8 | ORM |
-| SQLite | Veritabanı |
-| JWT Bearer | Kimlik doğrulama |
-| BCrypt.Net | Şifre hashleme |
-| Swagger / OpenAPI | API dokümantasyonu |
+| SQLite | Embedded database (swappable — see [Switching Databases](#switching-databases)) |
+| JWT Bearer | Stateless authentication |
+| BCrypt.Net | Password hashing |
+| Swagger / OpenAPI | Interactive API documentation |
 
 ### Frontend
-| Teknoloji | Kullanım |
-|-----------|----------|
+| Technology | Purpose |
+|------------|---------|
 | React 18 | UI framework |
-| TypeScript | Tip güvenliği |
-| Zustand | State yönetimi |
+| TypeScript | Static typing |
+| Zustand | Lightweight global state |
 | React Router v6 | Client-side routing |
-| Axios | HTTP istemcisi |
-| Vite | Build aracı |
+| Axios | HTTP client |
+| Vite | Build tool and dev server |
 
 ---
 
-## ✨ Özellikler
-
-### 🔐 Kimlik Doğrulama & Yetkilendirme
-- E-posta ve şifre ile giriş
-- JWT token tabanlı oturum yönetimi (7 gün geçerli)
-- BCrypt ile şifre hashleme
-- İki rol: **Admin** ve **User**
-
-### 👑 Admin Paneli
-- **Dashboard** — İstatistik kartları ve son anketler tablosu
-- **Cevap Şablonları** — 2-4 seçenek arası şablon CRUD
-- **Sorular** — Şablona bağlı soru CRUD
-- **Anketler** — Başlık, açıklama, tarih aralığı, kullanıcı & soru atama, aktif/pasif durumu
-- **Kullanıcılar** — Kullanıcı oluşturma, güncelleme, silme
-- **Raporlar** — Tamamlanma oranları, kim doldurdu/doldurmadı, detaylı cevap görüntüleme
-
-### 👤 Kullanıcı Paneli
-- Aktif / tamamlanan / yaklaşan anketleri listeleme
-- Sadece geçerli tarih aralığındaki anketleri doldurabilme (`StartDate ≤ Şimdi ≤ EndDate`)
-- Tüm sorular cevaplanmadan gönderim engeli
-- Aynı anketi tekrar doldurma engeli
-
----
-
-## 🗄️ Veritabanı Şeması
+## Database Schema
 
 ```
 Users
-  Id, Email (unique), PasswordHash, FullName, Role ('Admin'|'User'), IsActive, CreatedAt
+  Id · Email (unique) · PasswordHash · FullName · Role (Admin|User) · IsActive · CreatedAt
 
 AnswerTemplates
-  Id, Name, IsActive, CreatedAt, UpdatedAt
+  Id · Name · IsActive · CreatedAt · UpdatedAt
 
 AnswerOptions
-  Id, AnswerTemplateId (FK), Text, OrderIndex
+  Id · AnswerTemplateId (FK) · Text · OrderIndex
 
 Questions
-  Id, Text, AnswerTemplateId (FK), IsActive, CreatedAt, UpdatedAt
+  Id · Text · AnswerTemplateId (FK) · IsActive · CreatedAt · UpdatedAt
 
 Surveys
-  Id, Title, Description, StartDate, EndDate, IsActive, CreatedAt, UpdatedAt
+  Id · Title · Description · StartDate · EndDate · IsActive · CreatedAt · UpdatedAt
 
 SurveyQuestions
-  Id, SurveyId (FK), QuestionId (FK), OrderIndex
+  Id · SurveyId (FK) · QuestionId (FK) · OrderIndex
 
 SurveyAssignments
-  Id, SurveyId (FK), UserId (FK), AssignedAt
-  [UNIQUE: SurveyId + UserId]
+  Id · SurveyId (FK) · UserId (FK) · AssignedAt
+  UNIQUE (SurveyId, UserId)
 
 SurveyResponses
-  Id, SurveyId (FK), UserId (FK), SubmittedAt
-  [UNIQUE: SurveyId + UserId]
+  Id · SurveyId (FK) · UserId (FK) · SubmittedAt
+  UNIQUE (SurveyId, UserId)
 
 SurveyAnswers
-  Id, SurveyResponseId (FK), QuestionId (FK), AnswerOptionId (FK)
+  Id · SurveyResponseId (FK) · QuestionId (FK) · AnswerOptionId (FK)
 ```
 
 ---
 
-## 🔌 API Endpoints
+## API Reference
 
-Tüm isteklerde `Content-Type: application/json` header'ı kullanılmalıdır.  
-Admin ve User endpoint'leri için `Authorization: Bearer {token}` header'ı gereklidir.
+All endpoints require `Content-Type: application/json`.  
+Protected endpoints require `Authorization: Bearer <token>`.
 
 ---
 
-### 🔓 Auth — Herkese Açık
+### Authentication
 
 #### `POST /api/auth/login`
-Giriş yapar, JWT token döner.
 
-**Request Body:**
+**Request**
 ```json
-{
-  "email": "admin@surveyapp.com",
-  "password": "Admin123!"
-}
+{ "email": "admin@surveyapp.com", "password": "Admin123!" }
 ```
 
-**Response `200 OK`:**
+**Response `200 OK`**
 ```json
 {
   "token": "eyJhbGciOiJIUzI1NiIs...",
   "email": "admin@surveyapp.com",
   "fullName": "System Admin",
-  "role": "Admin"
+  "role": "Admin",
+  "isActive": true
 }
 ```
 
-**Response `401 Unauthorized`:**
+**Response `401 Unauthorized`**
 ```json
 { "message": "Invalid credentials" }
 ```
 
 ---
 
-### 👥 Users — Sadece Admin
+### Users *(Admin only)*
 
-#### `GET /api/users`
-Tüm aktif kullanıcıları listeler.
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/users` | List all users |
+| `GET` | `/api/users/{id}` | Get user by ID |
+| `POST` | `/api/users` | Create user |
+| `PUT` | `/api/users/{id}` | Update user |
+| `DELETE` | `/api/users/{id}` | Delete user |
 
-**Response `200 OK`:**
-```json
-[
-  {
-    "id": 1,
-    "email": "admin@surveyapp.com",
-    "fullName": "System Admin",
-    "role": "Admin",
-    "isActive": true
-  }
-]
-```
-
----
-
-#### `GET /api/users/{id}`
-Tek kullanıcı getirir.
-
-**Response `200 OK`:** Kullanıcı nesnesi  
-**Response `404 Not Found`**
-
----
-
-#### `POST /api/users`
-Yeni kullanıcı oluşturur.
-
-**Request Body:**
+**Create / Update body**
 ```json
 {
   "email": "user@example.com",
-  "password": "Sifre123!",
-  "fullName": "Ad Soyad",
-  "role": "User"
-}
-```
-
-**Response `201 Created`:** Oluşturulan kullanıcı nesnesi
-
----
-
-#### `PUT /api/users/{id}`
-Kullanıcı günceller.
-
-**Request Body:**
-```json
-{
-  "fullName": "Yeni Ad Soyad",
+  "password": "Secret123!",
+  "fullName": "Jane Doe",
+  "role": "User",
   "isActive": true
 }
 ```
 
-**Response `200 OK`:** Güncellenmiş kullanıcı nesnesi  
-**Response `404 Not Found`**
-
 ---
 
-#### `DELETE /api/users/{id}`
-Kullanıcı siler.
+### Answer Templates *(Admin only)*
 
-**Response `204 No Content`**  
-**Response `404 Not Found`**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/answertemplates` | List all templates with options |
+| `GET` | `/api/answertemplates/{id}` | Get template by ID |
+| `POST` | `/api/answertemplates` | Create template (2–4 options required) |
+| `PUT` | `/api/answertemplates/{id}` | Update template |
+| `DELETE` | `/api/answertemplates/{id}` | Delete template (blocked if used in questions) |
 
----
-
-### 📋 Answer Templates — Sadece Admin
-
-#### `GET /api/answertemplates`
-Tüm şablonları seçenekleriyle birlikte listeler.
-
-**Response `200 OK`:**
-```json
-[
-  {
-    "id": 1,
-    "name": "Evet/Hayır",
-    "isActive": true,
-    "options": [
-      { "id": 1, "text": "Evet", "orderIndex": 0 },
-      { "id": 2, "text": "Hayır", "orderIndex": 1 }
-    ]
-  }
-]
-```
-
----
-
-#### `GET /api/answertemplates/{id}`
-Tek şablon getirir.
-
-**Response `200 OK`:** Şablon nesnesi  
-**Response `404 Not Found`**
-
----
-
-#### `POST /api/answertemplates`
-Yeni şablon oluşturur. Seçenek sayısı 2-4 arası olmalıdır.
-
-**Request Body:**
+**Create body**
 ```json
 {
-  "name": "Katılım Düzeyi",
-  "options": ["Kesinlikle Katılıyorum", "Katılıyorum", "Katılmıyorum", "Kesinlikle Katılmıyorum"]
-}
-```
-
-**Response `201 Created`:** Oluşturulan şablon nesnesi  
-**Response `400 Bad Request`:**
-```json
-{ "message": "Option count must be between 2 and 4." }
-```
-
----
-
-#### `PUT /api/answertemplates/{id}`
-Şablon günceller.
-
-**Request Body:**
-```json
-{
-  "name": "Güncellenmiş Şablon",
+  "name": "Agreement Scale",
   "isActive": true,
-  "options": [
-    { "id": 1, "text": "Evet", "orderIndex": 0 },
-    { "id": 2, "text": "Hayır", "orderIndex": 1 }
-  ]
-}
-```
-
-**Response `200 OK`:** Güncellenmiş şablon  
-**Response `404 Not Found`**
-
----
-
-#### `DELETE /api/answertemplates/{id}`
-Şablon siler.
-
-**Response `204 No Content`**  
-**Response `404 Not Found`**
-
----
-
-### ❓ Questions — Sadece Admin
-
-#### `GET /api/questions`
-Tüm soruları şablon adıyla birlikte listeler.
-
-**Response `200 OK`:**
-```json
-[
-  {
-    "id": 1,
-    "text": "Ürünümüzden memnun musunuz?",
-    "isActive": true,
-    "answerTemplateId": 1,
-    "answerTemplateName": "Evet/Hayır"
-  }
-]
-```
-
----
-
-#### `GET /api/questions/{id}`
-Tek soruyu şablon ve seçenekleriyle getirir.
-
-**Response `200 OK`:**
-```json
-{
-  "id": 1,
-  "text": "Ürünümüzden memnun musunuz?",
-  "isActive": true,
-  "answerTemplate": {
-    "id": 1,
-    "name": "Evet/Hayır",
-    "isActive": true,
-    "options": [
-      { "id": 1, "text": "Evet", "orderIndex": 0 },
-      { "id": 2, "text": "Hayır", "orderIndex": 1 }
-    ]
-  }
+  "options": ["Strongly Agree", "Agree", "Disagree", "Strongly Disagree"]
 }
 ```
 
 ---
 
-#### `POST /api/questions`
-Yeni soru oluşturur.
+### Questions *(Admin only)*
 
-**Request Body:**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/questions` | List all questions with template info |
+| `GET` | `/api/questions/{id}` | Get question with full template and options |
+| `POST` | `/api/questions` | Create question |
+| `PUT` | `/api/questions/{id}` | Update question |
+| `DELETE` | `/api/questions/{id}` | Delete question (blocked if used in surveys) |
+
+**Create body**
 ```json
 {
-  "text": "Hizmetimizi tavsiye eder misiniz?",
-  "answerTemplateId": 1
-}
-```
-
-**Response `201 Created`:** Oluşturulan soru nesnesi  
-**Response `400 Bad Request`:** Şablon bulunamazsa
-
----
-
-#### `PUT /api/questions/{id}`
-Soru günceller.
-
-**Request Body:**
-```json
-{
-  "text": "Güncellenmiş soru metni",
-  "answerTemplateId": 2,
+  "text": "How satisfied are you with our service?",
+  "answerTemplateId": 1,
   "isActive": true
 }
 ```
 
-**Response `200 OK`:** Güncellenmiş soru  
-**Response `404 Not Found`**
-
 ---
 
-#### `DELETE /api/questions/{id}`
-Soru siler.
+### Surveys *(Admin only)*
 
-**Response `204 No Content`**  
-**Response `404 Not Found`**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/surveys` | List all surveys with assigned/response counts |
+| `GET` | `/api/surveys/{id}` | Get survey with questions and assigned user IDs |
+| `POST` | `/api/surveys` | Create survey |
+| `PUT` | `/api/surveys/{id}` | Update survey (blocked if responses exist) |
+| `DELETE` | `/api/surveys/{id}` | Delete survey (blocked if responses exist) |
 
----
-
-### 📝 Surveys — Sadece Admin
-
-#### `GET /api/surveys`
-Tüm anketleri atanan kullanıcı sayısı ve yanıt sayısıyla listeler.
-
-**Response `200 OK`:**
-```json
-[
-  {
-    "id": 1,
-    "title": "Müşteri Memnuniyet Anketi",
-    "description": "2024 yılı değerlendirmesi",
-    "startDate": "2024-01-01T00:00:00",
-    "endDate": "2024-12-31T00:00:00",
-    "isActive": true,
-    "assignedUserCount": 10,
-    "responseCount": 7
-  }
-]
-```
-
----
-
-#### `GET /api/surveys/{id}`
-Anket detayını sorular ve atanan kullanıcı ID'leriyle getirir.
-
-**Response `200 OK`:**
+**Create body**
 ```json
 {
-  "id": 1,
-  "title": "Müşteri Memnuniyet Anketi",
-  "description": "2024 yılı değerlendirmesi",
-  "startDate": "2024-01-01T00:00:00",
+  "title": "Q4 Employee Satisfaction",
+  "description": "End of year review",
+  "startDate": "2024-12-01T00:00:00",
   "endDate": "2024-12-31T00:00:00",
   "isActive": true,
-  "questions": [
-    {
-      "id": 1,
-      "questionId": 1,
-      "questionText": "Ürünümüzden memnun musunuz?",
-      "orderIndex": 0,
-      "answerTemplate": {
-        "id": 1,
-        "name": "Evet/Hayır",
-        "isActive": true,
-        "options": [
-          { "id": 1, "text": "Evet", "orderIndex": 0 },
-          { "id": 2, "text": "Hayır", "orderIndex": 1 }
-        ]
-      }
-    }
-  ],
-  "assignedUserIds": [2, 3, 4]
-}
-```
-
----
-
-#### `POST /api/surveys`
-Yeni anket oluşturur.
-
-**Request Body:**
-```json
-{
-  "title": "Çalışan Memnuniyet Anketi",
-  "description": "Yıllık değerlendirme",
-  "startDate": "2024-06-01T00:00:00",
-  "endDate": "2024-06-30T00:00:00",
-  "isActive": true,
   "questionIds": [1, 2, 3],
-  "userIds": [2, 3]
+  "userIds": [2, 3, 4]
 }
 ```
 
-**Response `201 Created`:** Oluşturulan anket detay nesnesi
-
 ---
 
-#### `PUT /api/surveys/{id}`
-Anket günceller. `questionIds` ve `userIds` tamamen yenisiyle değiştirilir.
+### Reports *(Admin only)*
 
-**Request Body:** `POST /api/surveys` ile aynı yapı  
-**Response `200 OK`:** Güncellenmiş anket detayı  
-**Response `404 Not Found`**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/reports` | List all surveys with completion stats |
+| `GET` | `/api/reports/{surveyId}` | Full report: who completed, who hasn't, all answers |
 
----
-
-#### `DELETE /api/surveys/{id}`
-Anket siler. İlişkili sorular ve atamalar da silinir.
-
-**Response `204 No Content`**  
-**Response `404 Not Found`**
-
----
-
-### 📊 Reports — Sadece Admin
-
-#### `GET /api/reports`
-Tüm anketleri istatistiklerle listeler (`GET /api/surveys` ile aynı yapı).
-
-**Response `200 OK`:** Anket listesi (assignedUserCount, responseCount dahil)
-
----
-
-#### `GET /api/reports/{surveyId}`
-Belirli anketin detaylı raporunu getirir.
-
-**Response `200 OK`:**
+**Report response `200 OK`**
 ```json
 {
   "surveyId": 1,
-  "title": "Müşteri Memnuniyet Anketi",
+  "title": "Q4 Employee Satisfaction",
   "totalAssigned": 10,
   "totalCompleted": 7,
   "totalPending": 3,
   "completedResponses": [
     {
       "userId": 2,
-      "userName": "Ahmet Yılmaz",
-      "userEmail": "ahmet@example.com",
-      "submittedAt": "2024-06-15T10:30:00",
+      "userName": "Jane Doe",
+      "userEmail": "jane@example.com",
+      "submittedAt": "2024-12-15T10:30:00",
       "answers": [
-        {
-          "questionId": 1,
-          "questionText": "Ürünümüzden memnun musunuz?",
-          "answerText": "Evet"
-        }
+        { "questionId": 1, "questionText": "How satisfied are you?", "answerText": "Agree" }
       ]
     }
   ],
   "pendingUsers": [
-    {
-      "id": 3,
-      "email": "mehmet@example.com",
-      "fullName": "Mehmet Kaya",
-      "role": "User",
-      "isActive": true
-    }
+    { "id": 3, "fullName": "John Smith", "email": "john@example.com", "role": "User", "isActive": true }
   ]
 }
 ```
 
-**Response `404 Not Found`**
-
 ---
 
-### 📌 My Surveys — Sadece User
+### My Surveys *(User only)*
 
-#### `GET /api/my-surveys`
-Kullanıcıya atanan tüm anketleri listeler (tamamlananlar dahil).
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/my-surveys` | List all assigned surveys (with questions and options) |
+| `GET` | `/api/my-surveys/{surveyId}` | Get survey detail for filling (active and in-date only) |
+| `POST` | `/api/my-surveys/{surveyId}/submit` | Submit answers |
 
-**Response `200 OK`:**
-```json
-[
-  {
-    "id": 1,
-    "title": "Müşteri Memnuniyet Anketi",
-    "description": "2024 yılı değerlendirmesi",
-    "startDate": "2024-01-01T00:00:00",
-    "endDate": "2024-12-31T00:00:00",
-    "isCompleted": false
-  }
-]
-```
-
----
-
-#### `GET /api/my-surveys/{surveyId}`
-Anketi sorular ve seçenekleriyle getirir.  
-Sadece aktif ve geçerli tarih aralığındaki anketleri döner.
-
-**Response `200 OK`:** Anket detay nesnesi (`GET /api/surveys/{id}` ile aynı yapı)  
-**Response `404 Not Found`:** Anket bulunamadı, atanmamış, tarihi geçmiş veya pasif ise
-
----
-
-#### `POST /api/my-surveys/{surveyId}/submit`
-Anketi yanıtlarıyla birlikte gönderir.
-
-**Request Body:**
+**Submit body**
 ```json
 {
   "surveyId": 1,
   "answers": [
-    { "questionId": 1, "answerOptionId": 1 },
-    { "questionId": 2, "answerOptionId": 4 }
+    { "questionId": 1, "answerOptionId": 2 },
+    { "questionId": 2, "answerOptionId": 5 }
   ]
 }
 ```
 
-**Response `200 OK`:**
-```json
-{ "message": "Survey submitted successfully" }
-```
-
-**Response `400 Bad Request`:**
+**Response `400 Bad Request`** (already submitted or survey unavailable)
 ```json
 { "message": "Survey already completed or not available" }
 ```
 
 ---
 
-## 🚀 Kurulum (Windows)
+## Getting Started
 
-### Gereksinimler
+### Prerequisites
 
-| Araç | Versiyon | İndirme |
-|------|----------|---------|
-| .NET SDK | 8.0 | [dotnet.microsoft.com/en-us/download/dotnet/8.0](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) |
-| Node.js | 18+ LTS | [nodejs.org/en/download](https://nodejs.org/en/download) |
+| Tool | Version | Download |
+|------|---------|----------|
+| .NET SDK | 8.0 | [dotnet.microsoft.com](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) |
+| Node.js | 18+ LTS | [nodejs.org](https://nodejs.org/en/download) |
 
-Kurulumu doğrulamak için:
-```cmd
-dotnet --version
-node --version
+Verify installations:
+```sh
+dotnet --version   # 8.x.x
+node --version     # v18+
 npm --version
 ```
 
 ---
 
-### 1. Repoyu Klonlayın
+### 1. Clone the Repository
 
-```cmd
-git clone https://github.com/kullanici-adi/surveyapp.git
-cd surveyapp
+```sh
+git clone https://github.com/ferhattufekci/SurveyApp.git
+cd SurveyApp
 ```
 
 ---
 
-### 2. Backend
+### 2. Run the Backend
 
-```cmd
-cd Backend\SurveyApp.API
+```sh
+cd Backend/SurveyApp.API
 ```
 
-EF Core aracını kurun (bir kez yapılır):
-```cmd
+Install the EF Core CLI tool (one-time):
+```sh
 dotnet tool install --global dotnet-ef
 ```
 
-Paketleri yükleyin:
-```cmd
+Restore dependencies and create the database:
+```sh
 dotnet restore
-```
-
-Veritabanını oluşturun:
-```cmd
 dotnet ef migrations add InitialCreate --project ..\SurveyApp.Infrastructure --startup-project .
 dotnet ef database update --project ..\SurveyApp.Infrastructure --startup-project .
-```
-
-Başlatın:
-```cmd
 dotnet run
 ```
 
-> ✅ API: http://localhost:5000  
-> ✅ Swagger: http://localhost:5000/swagger
+> API: http://localhost:5000  
+> Swagger: http://localhost:5000/swagger
 
 ---
 
-### 3. Frontend
+### 3. Run the Frontend
 
-**Yeni bir terminal açın** (backend'i kapatmayın):
+Open a **new terminal** (keep the backend running):
 
-```cmd
-cd Frontend\survey-app
+```sh
+cd Frontend/survey-app
 npm install
 npm run dev
 ```
 
-> ✅ Uygulama: http://localhost:3000
+> App: http://localhost:3000
 
 ---
 
-## 🔑 Varsayılan Giriş
+## Default Credentials
 
-| Rol | E-posta | Şifre |
-|-----|---------|-------|
+| Role | Email | Password |
+|------|-------|----------|
 | Admin | admin@surveyapp.com | Admin123! |
 
-Yeni kullanıcılar Admin Paneli → Kullanıcılar ekranından oluşturulabilir.
+Additional users can be created from **Admin Panel → Users**.
 
 ---
 
-## 🔄 Farklı Veritabanına Geçiş
+## Switching Databases
 
-**PostgreSQL için `SurveyApp.Infrastructure.csproj`:**
+The default SQLite database can be replaced with any EF Core-compatible provider.
+
+**PostgreSQL example**
+
+`SurveyApp.Infrastructure.csproj`:
 ```xml
 <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.0" />
 ```
 
-**`Program.cs`:**
+`Program.cs`:
 ```csharp
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 ```
 
-**`appsettings.json`:**
+`appsettings.json`:
 ```json
 "ConnectionStrings": {
-  "DefaultConnection": "Host=localhost;Database=surveyapp;Username=postgres;Password=sifre"
+  "DefaultConnection": "Host=localhost;Database=surveyapp;Username=postgres;Password=yourpassword"
 }
 ```
 
 ---
 
-## 📄 Lisans
+## License
 
-MIT License
+[MIT](LICENSE)
