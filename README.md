@@ -105,6 +105,7 @@ The backend API is designed around REST constraints, ensuring a predictable and 
 | **Stateless communication** | Each request carries its own JWT token; no server-side session is maintained |
 | **Uniform interface** | All request and response bodies use `application/json`; errors follow a consistent `{ message }` envelope |
 | **Layered system** | Controllers delegate to the Application layer via interfaces; infrastructure details are never exposed to clients |
+| **Pagination** | List endpoints support client-driven pagination via `page` and `pageSize` parameters, keeping response payloads predictable and network-efficient |
 
 ---
 
@@ -560,6 +561,7 @@ Backend API, tahmin edilebilir ve birlikte çalışabilir bir arayüz sağlamak 
 | **Stateless iletişim** | Her istek kendi JWT token'ını taşır; sunucuda oturum tutulmaz |
 | **Tekdüze arayüz** | Tüm istek ve yanıt gövdeleri `application/json` kullanır; hatalar tutarlı `{ message }` zarfıyla döner |
 | **Katmanlı sistem** | Controller'lar iş mantığını arayüzler üzerinden Application katmanına devreder; altyapı detayları istemciye hiçbir zaman açılmaz |
+| **Sayfalama (Pagination)** | Liste endpoint'leri `page` ve `pageSize` parametreleriyle istemci güdümlü sayfalamayı destekler; yanıt boyutları öngörülür ve ağ verimliliği korunur |
 
 ---
 
