@@ -149,11 +149,15 @@ export default function QuestionsPage() {
     }, [show]);
 
     return (
-      <span ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+      <span ref={ref} style={{ position: 'relative', display: 'inline-block' }}
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}>
         <button
-          disabled
-          onMouseEnter={() => setShow(true)}
-          style={{ opacity: 0.55, cursor: 'not-allowed' }}
+          style={{
+            opacity: 0.45,
+            pointerEvents: 'none',
+            cursor: 'not-allowed',
+          }}
           className="btn btn-sm btn-danger"
         >Sil</button>
 
