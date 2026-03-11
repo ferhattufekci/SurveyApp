@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { answerTemplatesApi } from '../../api';
 import type { AnswerTemplate } from '../../types';
 
@@ -14,6 +14,8 @@ export default function AnswerTemplatesPage() {
   const [form, setForm] = useState({ name: '', options: ['', ''], isActive: true });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [errorType, setErrorType] = useState<'duplicate' | 'general' | ''>('');
+  const [shake, setShake] = useState(false);
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
   const [page, setPage] = useState(1);
@@ -37,8 +39,9 @@ export default function AnswerTemplatesPage() {
 
   const handleSave = async () => {
     setError('');
-    if (!form.name.trim()) { setError('Şablon adı zorunludur.'); return; }
-    if (form.options.some(o => !o.trim())) { setError('Tüm seçenekler doldurulmalıdır.'); return; }
+    setErrorType('');
+    if (!form.name.trim()) { setError('Şablon adı zorunludur.'); setErrorType('general'); return; }
+    if (form.options.some(o => !o.trim())) { setError('Tüm seçenekler doldurulmalıdır.'); setErrorType('general'); return; }
     setSaving(true);
     try {
       if (editItem) {
@@ -52,7 +55,13 @@ export default function AnswerTemplatesPage() {
       }
       setShowModal(false); load();
     } catch (e: any) {
-      setError(e.response?.data?.message || 'Bir hata oluştu.');
+      const msg = e.response?.data?.message || 'Bir hata oluştu.';
+      const isDuplicate = msg.toLowerCase().includes('zaten mevcut');
+      setError(msg);
+      setErrorType(isDuplicate ? 'duplicate' : 'general');
+      // Shake animasyonu tetikle
+      setShake(true);
+      setTimeout(() => setShake(false), 600);
     } finally { setSaving(false); }
   };
 
@@ -192,43 +201,85 @@ export default function AnswerTemplatesPage() {
       </div>
 
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>{editItem ? 'Şablonu Düzenle' : 'Yeni Şablon'}</h3>
-              <button className="modal-close" onClick={() => setShowModal(false)}>×</button>
-            </div>
-            <div className="modal-body">
-              {error && <div className="alert alert-error">{error}</div>}
-              <div className="form-group">
-                <label>Şablon Adı</label>
-                <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Örn: Evet/Hayır" />
+        <>
+          <style>{`
+            @keyframes shake {
+              0%, 100% { transform: translateX(0); }
+              15%       { transform: translateX(-8px); }
+              30%       { transform: translateX(8px); }
+              45%       { transform: translateX(-6px); }
+              60%       { transform: translateX(6px); }
+              75%       { transform: translateX(-3px); }
+              90%       { transform: translateX(3px); }
+            }
+            .modal-shake { animation: shake 0.6s ease; }
+          `}</style>
+          <div className="modal-overlay" onClick={() => { setShowModal(false); setError(''); setErrorType(''); }}>
+            <div className={`modal${shake ? ' modal-shake' : ''}`} onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3>{editItem ? 'Şablonu Düzenle' : 'Yeni Şablon'}</h3>
+                <button className="modal-close" onClick={() => { setShowModal(false); setError(''); setErrorType(''); }}>×</button>
               </div>
-              <div className="form-group">
-                <label>Durum</label>
-                <select value={form.isActive ? 'true' : 'false'} onChange={e => setForm(f => ({ ...f, isActive: e.target.value === 'true' }))}>
-                  <option value="true">Aktif</option>
-                  <option value="false">Pasif</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Seçenekler ({form.options.length}/4)</label>
-                {form.options.map((opt, i) => (
-                  <div key={i} className="option-row">
-                    <span className="option-num">{i + 1}.</span>
-                    <input value={opt} onChange={e => updateOption(i, e.target.value)} placeholder={`Seçenek ${i + 1}`} />
-                    {form.options.length > 2 && <button className="btn btn-sm btn-danger" onClick={() => removeOption(i)}>×</button>}
+              <div className="modal-body">
+                {error && (
+                  <div style={{
+                    display: 'flex', alignItems: 'flex-start', gap: '10px',
+                    background: errorType === 'duplicate' ? '#fff7ed' : '#fef2f2',
+                    border: `1px solid ${errorType === 'duplicate' ? '#fed7aa' : '#fecaca'}`,
+                    borderLeft: `4px solid ${errorType === 'duplicate' ? '#f97316' : '#ef4444'}`,
+                    borderRadius: '8px', padding: '12px 14px', marginBottom: '16px'
+                  }}>
+                    <span style={{ fontSize: '18px', lineHeight: 1 }}>
+                      {errorType === 'duplicate' ? '⚠️' : '❌'}
+                    </span>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: '13px', color: errorType === 'duplicate' ? '#c2410c' : '#dc2626', marginBottom: '2px' }}>
+                        {errorType === 'duplicate' ? 'Yinelenen Şablon Adı' : 'Hata'}
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#374151' }}>{error}</div>
+                      {errorType === 'duplicate' && (
+                        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                          Şablon adını değiştirerek tekrar deneyebilirsiniz.
+                        </div>
+                      )}
+                    </div>
                   </div>
-                ))}
-                {form.options.length < 4 && <button className="btn btn-sm btn-outline mt-2" onClick={addOption}>+ Seçenek Ekle</button>}
+                )}
+                <div className="form-group">
+                  <label>Şablon Adı</label>
+                  <input
+                    value={form.name}
+                    onChange={e => { setForm(f => ({ ...f, name: e.target.value })); if (errorType === 'duplicate') { setError(''); setErrorType(''); } }}
+                    placeholder="Örn: Evet/Hayır"
+                    style={errorType === 'duplicate' ? { borderColor: '#f97316', boxShadow: '0 0 0 3px #fed7aa66' } : {}}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Durum</label>
+                  <select value={form.isActive ? 'true' : 'false'} onChange={e => setForm(f => ({ ...f, isActive: e.target.value === 'true' }))}>
+                    <option value="true">Aktif</option>
+                    <option value="false">Pasif</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Seçenekler ({form.options.length}/4)</label>
+                  {form.options.map((opt, i) => (
+                    <div key={i} className="option-row">
+                      <span className="option-num">{i + 1}.</span>
+                      <input value={opt} onChange={e => updateOption(i, e.target.value)} placeholder={`Seçenek ${i + 1}`} />
+                      {form.options.length > 2 && <button className="btn btn-sm btn-danger" onClick={() => removeOption(i)}>×</button>}
+                    </div>
+                  ))}
+                  {form.options.length < 4 && <button className="btn btn-sm btn-outline mt-2" onClick={addOption}>+ Seçenek Ekle</button>}
+                </div>
               </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-outline" onClick={() => setShowModal(false)}>İptal</button>
-              <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Kaydediliyor...' : 'Kaydet'}</button>
+              <div className="modal-footer">
+                <button className="btn btn-outline" onClick={() => { setShowModal(false); setError(''); setErrorType(''); }}>İptal</button>
+                <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Kaydediliyor...' : 'Kaydet'}</button>
+              </div>
             </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

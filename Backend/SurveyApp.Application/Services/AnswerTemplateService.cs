@@ -28,6 +28,10 @@ public class AnswerTemplateService : IAnswerTemplateService
         if (request.Options.Count < 2 || request.Options.Count > 4)
             throw new ArgumentException("Option count must be between 2 and 4.");
 
+        var existing = await _uow.AnswerTemplates.GetAllWithOptionsAsync();
+        if (existing.Any(t => t.Name.Trim().ToLower() == request.Name.Trim().ToLower()))
+            throw new ArgumentException($"'{request.Name}' adında bir şablon zaten mevcut. Farklı bir ad giriniz.");
+
         var template = new AnswerTemplate
         {
             Name = request.Name,
@@ -53,6 +57,10 @@ public class AnswerTemplateService : IAnswerTemplateService
 
         if (request.Options.Count < 2 || request.Options.Count > 4)
             throw new ArgumentException("Option count must be between 2 and 4.");
+
+        var existing = await _uow.AnswerTemplates.GetAllWithOptionsAsync();
+        if (existing.Any(t => t.Id != id && t.Name.Trim().ToLower() == request.Name.Trim().ToLower()))
+            throw new ArgumentException($"'{request.Name}' adında bir şablon zaten mevcut. Farklı bir ad giriniz.");
 
         template.Name = request.Name;
         template.IsActive = request.IsActive;
