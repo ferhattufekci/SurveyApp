@@ -18,6 +18,7 @@ export default function AnswerTemplatesPage() {
   const [shake, setShake] = useState(false);
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
+  const [deleteError, setDeleteError] = useState<{ id: number; count: number; detail: string } | null>(null);
   const [page, setPage] = useState(1);
 
   const load = () => answerTemplatesApi.getAll().then(setTemplates).finally(() => setLoading(false));
@@ -66,8 +67,22 @@ export default function AnswerTemplatesPage() {
   };
 
   const handleDelete = async (id: number) => {
+    setDeleteError(null);
     if (!confirm('Bu şablonu silmek istediğinize emin misiniz?')) return;
-    await answerTemplatesApi.delete(id); load();
+    try {
+      await answerTemplatesApi.delete(id);
+      load();
+    } catch (e: any) {
+      const msg: string = e.response?.data?.message || '';
+      const parts = msg.split('|');
+      if (parts.length === 3) {
+        setDeleteError({ id, count: parseInt(parts[1]), detail: parts[2] });
+      } else {
+        setDeleteError({ id, count: 0, detail: msg });
+      }
+      // 8 sn sonra otomatik kapat
+      setTimeout(() => setDeleteError(null), 8000);
+    }
   };
 
   const handleFilterClick = (key: FilterKey) => {
@@ -152,18 +167,55 @@ export default function AnswerTemplatesPage() {
             </thead>
             <tbody>
               {paginated.map(t => (
-                <tr key={t.id}>
-                  <td><span className={`badge ${t.isActive ? 'badge-success' : 'badge-secondary'}`}>{t.isActive ? 'Aktif' : 'Pasif'}</span></td>
-                  <td><strong>{t.name}</strong></td>
-                  <td>{t.options.length}</td>
-                  <td><div className="option-pills">{t.options.map(o => <span key={o.id} className="pill">{o.text}</span>)}</div></td>
-                  <td>
-                    <div className="action-btns">
-                      <button className="btn btn-sm btn-outline" onClick={() => openEdit(t)}>Düzenle</button>
-                      <button className="btn btn-sm btn-danger" onClick={() => handleDelete(t.id)}>Sil</button>
-                    </div>
-                  </td>
-                </tr>
+                <>
+                  <tr key={t.id}>
+                    <td><span className={`badge ${t.isActive ? 'badge-success' : 'badge-secondary'}`}>{t.isActive ? 'Aktif' : 'Pasif'}</span></td>
+                    <td><strong>{t.name}</strong></td>
+                    <td>{t.options.length}</td>
+                    <td><div className="option-pills">{t.options.map(o => <span key={o.id} className="pill">{o.text}</span>)}</div></td>
+                    <td>
+                      <div className="action-btns">
+                        <button className="btn btn-sm btn-outline" onClick={() => openEdit(t)}>Düzenle</button>
+                        <button className="btn btn-sm btn-danger" onClick={() => handleDelete(t.id)}>Sil</button>
+                      </div>
+                    </td>
+                  </tr>
+                  {deleteError?.id === t.id && (
+                    <tr key={`err-${t.id}`}>
+                      <td colSpan={5} style={{ padding: 0, border: 'none' }}>
+                        <div style={{
+                          display: 'flex', alignItems: 'flex-start', gap: '12px',
+                          background: '#fff7ed',
+                          borderLeft: '4px solid #f97316',
+                          borderBottom: '1px solid #fed7aa',
+                          padding: '12px 16px',
+                          animation: 'slideDown 0.2s ease'
+                        }}>
+                          <span style={{ fontSize: '20px', lineHeight: 1, marginTop: '1px' }}>🔒</span>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 600, color: '#c2410c', fontSize: '13px', marginBottom: '3px' }}>
+                              Şablon Silinemez — Kullanımda
+                            </div>
+                            <div style={{ fontSize: '13px', color: '#374151', marginBottom: '4px' }}>
+                              <strong>"{t.name}"</strong> şablonu <strong>{deleteError.count} soruda</strong> kullanılmaktadır.
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                              {deleteError.detail}
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '6px' }}>
+                              💡 Silmek için önce bu şablonu kullanan soruları farklı bir şablonla güncelleyin.
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => setDeleteError(null)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '18px', lineHeight: 1, padding: '0 4px' }}
+                            title="Kapat"
+                          >×</button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </>
               ))}
             </tbody>
           </table>
@@ -213,6 +265,10 @@ export default function AnswerTemplatesPage() {
               90%       { transform: translateX(3px); }
             }
             .modal-shake { animation: shake 0.6s ease; }
+            @keyframes slideDown {
+              from { opacity: 0; transform: translateY(-6px); }
+              to   { opacity: 1; transform: translateY(0); }
+            }
           `}</style>
           <div className="modal-overlay" onClick={() => { setShowModal(false); setError(''); setErrorType(''); }}>
             <div className={`modal${shake ? ' modal-shake' : ''}`} onClick={e => e.stopPropagation()}>

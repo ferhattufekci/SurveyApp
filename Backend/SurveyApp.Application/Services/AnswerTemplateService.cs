@@ -87,6 +87,19 @@ public class AnswerTemplateService : IAnswerTemplateService
         var template = await _uow.AnswerTemplates.GetByIdAsync(id);
         if (template == null) return false;
 
+        // Kullanımda olan şablon silinemez
+        var questions = await _uow.Questions.GetAllWithTemplatesAsync();
+        var usedInQuestions = questions.Where(q => q.AnswerTemplateId == id).ToList();
+        if (usedInQuestions.Any())
+        {
+            var names = string.Join(", ", usedInQuestions.Take(3).Select(q =>
+                $"\"{q.Text.Substring(0, Math.Min(40, q.Text.Length))}{(q.Text.Length > 40 ? "..." : "")}\""));
+            var more = usedInQuestions.Count > 3 ? $" ve {usedInQuestions.Count - 3} soru daha" : "";
+            throw new InvalidOperationException(
+                $"Bu şablon {usedInQuestions.Count} soruda kullanılmaktadır ve silinemez.|{usedInQuestions.Count}|{names}{more}"
+            );
+        }
+
         await _uow.AnswerTemplates.DeleteAsync(template);
         await _uow.SaveChangesAsync();
         return true;
