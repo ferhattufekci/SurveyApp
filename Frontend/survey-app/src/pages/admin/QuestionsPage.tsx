@@ -84,7 +84,7 @@ export default function QuestionsPage() {
     setDeleteError(null);
     if (!confirm(`${rowNum} numaralı soruyu silmek istediğinize emin misiniz?`)) return;
     try {
-      await questionsApi.delete(id); load();
+      await questionsApi.delete(id); load(); showSuccess(`${rowNum} numaralı soru başarıyla silindi.`);
     } catch (e: any) {
       const msg: string = e.response?.data?.message || '';
       const parts = msg.split('|');

@@ -130,7 +130,7 @@ export default function SurveysPage() {
 
   const handleDelete = async (id: number, rowNum: number) => {
     if (!confirm(`${rowNum} numaralı anketi silmek istediğinize emin misiniz?`)) return;
-    await surveysApi.delete(id); load();
+    await surveysApi.delete(id); load(); showSuccess(`${rowNum} numaralı anket başarıyla silindi.`);
   };
 
   const handleFilterClick = (key: FilterKey) => { setActiveFilter(prev => prev === key ? 'all' : key); setSearch(''); setPage(1); };

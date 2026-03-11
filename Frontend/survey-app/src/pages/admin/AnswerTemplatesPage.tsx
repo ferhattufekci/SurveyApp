@@ -85,7 +85,7 @@ export default function AnswerTemplatesPage() {
     if (!confirm(`${rowNum} numaralı şablonu silmek istediğinize emin misiniz?`)) return;
     try {
       await answerTemplatesApi.delete(id);
-      load();
+      load(); showSuccess(`${rowNum} numaralı şablon başarıyla silindi.`);
     } catch (e: any) {
       const msg: string = e.response?.data?.message || '';
       const parts = msg.split('|');

@@ -112,7 +112,7 @@ export default function UsersPage() {
     const confirmMsg = `${rowNum} numaralı ${u.role === 'Admin' ? 'Admin' : ''} kullanıcıyı silmek istediğinize emin misiniz?`;
     if (!confirm(confirmMsg)) return;
     try {
-      await usersApi.delete(u.id); load();
+      await usersApi.delete(u.id); load(); showSuccess(`${rowNum} numaralı kullanıcı başarıyla silindi.`);
     } catch (e: any) {
       alert(e.response?.data?.message || 'Silme işlemi başarısız.');
     }
