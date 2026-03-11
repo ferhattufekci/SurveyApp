@@ -1,5 +1,11 @@
 # SurveyApp
 
+**[English](#english) · [Türkçe](#türkçe)**
+
+---
+
+<a name="english"></a>
+
 A full-stack survey management system built with **.NET 8** (Clean Architecture) and **React TypeScript**. Admins create answer templates, questions, and surveys, assign them to users, and track completion through detailed reports. Users fill in assigned surveys and view their history.
 
 [![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=flat-square&logo=dotnet&logoColor=white)](https://dotnet.microsoft.com)
@@ -325,11 +331,6 @@ Protected endpoints require `Authorization: Bearer <token>`.
 }
 ```
 
-**Response `400 Bad Request`** (already submitted or survey unavailable)
-```json
-{ "message": "Survey already completed or not available" }
-```
-
 ---
 
 ## Getting Started
@@ -348,16 +349,12 @@ node --version     # v18+
 npm --version
 ```
 
----
-
 ### 1. Clone the Repository
 
 ```sh
 git clone https://github.com/ferhattufekci/SurveyApp.git
 cd SurveyApp
 ```
-
----
 
 ### 2. Run the Backend
 
@@ -380,8 +377,6 @@ dotnet run
 
 > API: http://localhost:5000  
 > Swagger: http://localhost:5000/swagger
-
----
 
 ### 3. Run the Frontend
 
@@ -434,5 +429,432 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 ---
 
 ## License
+
+[MIT](LICENSE)
+
+---
+---
+
+<a name="türkçe"></a>
+
+# SurveyApp — Türkçe
+
+**.NET 8** (Clean Architecture) ve **React TypeScript** ile geliştirilmiş tam yığın anket yönetim sistemi. Adminler cevap şablonları, sorular ve anketler oluşturur, bunları kullanıcılara atar ve tamamlanma durumlarını detaylı raporlar aracılığıyla takip eder. Kullanıcılar kendilerine atanan anketleri doldurur ve geçmişlerini görüntüler.
+
+---
+
+## İçindekiler
+
+- [Özellikler](#özellikler)
+- [Mimari](#mimari)
+- [Teknoloji Yığını](#teknoloji-yığını)
+- [Veritabanı Şeması](#veritabanı-şeması)
+- [API Referansı](#api-referansı)
+- [Kurulum](#kurulum)
+- [Varsayılan Giriş Bilgileri](#varsayılan-giriş-bilgileri)
+- [Farklı Veritabanına Geçiş](#farklı-veritabanına-geçiş)
+
+---
+
+## Özellikler
+
+### Admin Paneli
+| Ekran | Açıklama |
+|-------|----------|
+| **Dashboard** | Genel istatistikler, aktif/süresi geçen anket dağılımı ve son anketler tablosu |
+| **Cevap Şablonları** | Sorularda kullanılmak üzere 2–4 seçenekli yeniden kullanılabilir şablonlar |
+| **Sorular** | Cevap şablonlarına bağlı soru yönetimi; seçenek sayısı görüntüleme |
+| **Anketler** | Tarih aralıklı anket oluşturma, soru ve kullanıcı atama |
+| **Kullanıcılar** | Kullanıcı oluşturma, güncelleme, silme ve rol atama |
+| **Raporlar** | İlerleme çubuğuyla tamamlanma oranları ve yanıt detayı görüntüleme |
+
+### Kullanıcı Paneli
+| Özellik | Açıklama |
+|---------|----------|
+| **Anketlerim** | Sekmeli liste: Aktif, Tamamlanan, Yaklaşan, Süresi Geçen |
+| **Anket Doldur** | Tüm soruları cevapla ve anketi bir kez gönder |
+| **Soru Önizleme** | Listede her sorunun şablon adını ve seçeneklerini göster |
+| **Arama** | Başlık, açıklama, soru metni, şablon adı veya seçenek metnine göre filtrele |
+
+### Temel İş Kuralları
+- Yanıt alınmış anketler düzenlenemez veya silinemez
+- Pasif kullanıcılar ankete atanamaz ve anket gönderemez
+- Anketlerde kullanılan sorular, anketlerden çıkarılmadan silinemez
+- Sorularda kullanılan şablonlar, yeniden atanmadan silinemez
+- Son aktif admin silinemez
+- JWT token geçerliliği her sayfa yüklemesinde kontrol edilir
+
+---
+
+## Mimari
+
+### Backend — Clean Architecture
+
+Bağımlılıklar yalnızca içe doğru akar. Domain katmanının hiçbir dış bağımlılığı yoktur.
+
+```
+SurveyApp/
+├── Backend/
+│   ├── SurveyApp.Domain/           # Entity'ler, repository arayüzleri
+│   ├── SurveyApp.Application/      # Use case'ler, DTO'lar, servis arayüzleri
+│   ├── SurveyApp.Infrastructure/   # EF Core, repository'ler, Unit of Work
+│   └── SurveyApp.API/              # Controller'lar, JWT middleware, Swagger
+│
+└── Frontend/
+    └── survey-app/src/
+        ├── api/                    # Axios HTTP istemcisi
+        ├── store/                  # Zustand kimlik doğrulama store'u
+        ├── pages/admin/            # Admin sayfaları
+        ├── pages/user/             # Kullanıcı sayfaları
+        ├── components/             # Paylaşılan UI bileşenleri
+        ├── types/                  # TypeScript arayüzleri
+        └── styles/                 # Global CSS
+```
+
+**Bağımlılık yönü:** `API → Application → Domain ← Infrastructure`
+
+### Frontend — Bileşen Mimarisi
+
+- **Zustand** kimlik doğrulama durumunu (token, rol, kullanıcı bilgisi) yönetir
+- **React Router v6** rol tabanlı korumalarla istemci tarafı yönlendirmeyi yönetir
+- **Axios interceptor'ları** her isteğe Bearer token ekler ve 401'de login'e yönlendirir
+- **URL search param'ları** admin sayfaları arasında paylaşılabilir filtrelenmiş görünümler sağlar
+
+---
+
+## Teknoloji Yığını
+
+### Backend
+| Teknoloji | Kullanım |
+|-----------|----------|
+| .NET 8 | Web API framework |
+| Entity Framework Core 8 | ORM |
+| SQLite | Gömülü veritabanı (değiştirilebilir — bkz. [Farklı Veritabanına Geçiş](#farklı-veritabanına-geçiş)) |
+| JWT Bearer | Stateless kimlik doğrulama |
+| BCrypt.Net | Şifre hashleme |
+| Swagger / OpenAPI | Etkileşimli API dokümantasyonu |
+
+### Frontend
+| Teknoloji | Kullanım |
+|-----------|----------|
+| React 18 | UI framework |
+| TypeScript | Statik tipleme |
+| Zustand | Hafif global state yönetimi |
+| React Router v6 | İstemci tarafı yönlendirme |
+| Axios | HTTP istemcisi |
+| Vite | Build aracı ve geliştirme sunucusu |
+
+---
+
+## Veritabanı Şeması
+
+```
+Users
+  Id · Email (unique) · PasswordHash · FullName · Role (Admin|User) · IsActive · CreatedAt
+
+AnswerTemplates
+  Id · Name · IsActive · CreatedAt · UpdatedAt
+
+AnswerOptions
+  Id · AnswerTemplateId (FK) · Text · OrderIndex
+
+Questions
+  Id · Text · AnswerTemplateId (FK) · IsActive · CreatedAt · UpdatedAt
+
+Surveys
+  Id · Title · Description · StartDate · EndDate · IsActive · CreatedAt · UpdatedAt
+
+SurveyQuestions
+  Id · SurveyId (FK) · QuestionId (FK) · OrderIndex
+
+SurveyAssignments
+  Id · SurveyId (FK) · UserId (FK) · AssignedAt
+  UNIQUE (SurveyId, UserId)
+
+SurveyResponses
+  Id · SurveyId (FK) · UserId (FK) · SubmittedAt
+  UNIQUE (SurveyId, UserId)
+
+SurveyAnswers
+  Id · SurveyResponseId (FK) · QuestionId (FK) · AnswerOptionId (FK)
+```
+
+---
+
+## API Referansı
+
+Tüm endpoint'ler `Content-Type: application/json` gerektirir.  
+Korumalı endpoint'ler `Authorization: Bearer <token>` gerektirir.
+
+---
+
+### Kimlik Doğrulama
+
+#### `POST /api/auth/login`
+
+**İstek**
+```json
+{ "email": "admin@surveyapp.com", "password": "Admin123!" }
+```
+
+**Yanıt `200 OK`**
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIs...",
+  "email": "admin@surveyapp.com",
+  "fullName": "System Admin",
+  "role": "Admin",
+  "isActive": true
+}
+```
+
+**Yanıt `401 Unauthorized`**
+```json
+{ "message": "Invalid credentials" }
+```
+
+---
+
+### Kullanıcılar *(Yalnızca Admin)*
+
+| Metod | Endpoint | Açıklama |
+|-------|----------|----------|
+| `GET` | `/api/users` | Tüm kullanıcıları listele |
+| `GET` | `/api/users/{id}` | ID ile kullanıcı getir |
+| `POST` | `/api/users` | Kullanıcı oluştur |
+| `PUT` | `/api/users/{id}` | Kullanıcı güncelle |
+| `DELETE` | `/api/users/{id}` | Kullanıcı sil |
+
+**Oluşturma / Güncelleme gövdesi**
+```json
+{
+  "email": "user@example.com",
+  "password": "Secret123!",
+  "fullName": "Ahmet Yılmaz",
+  "role": "User",
+  "isActive": true
+}
+```
+
+---
+
+### Cevap Şablonları *(Yalnızca Admin)*
+
+| Metod | Endpoint | Açıklama |
+|-------|----------|----------|
+| `GET` | `/api/answertemplates` | Seçenekleriyle tüm şablonları listele |
+| `GET` | `/api/answertemplates/{id}` | ID ile şablon getir |
+| `POST` | `/api/answertemplates` | Şablon oluştur (2–4 seçenek zorunlu) |
+| `PUT` | `/api/answertemplates/{id}` | Şablon güncelle |
+| `DELETE` | `/api/answertemplates/{id}` | Şablon sil (sorularda kullanılıyorsa engellenir) |
+
+**Oluşturma gövdesi**
+```json
+{
+  "name": "Katılım Düzeyi",
+  "isActive": true,
+  "options": ["Kesinlikle Katılıyorum", "Katılıyorum", "Katılmıyorum", "Kesinlikle Katılmıyorum"]
+}
+```
+
+---
+
+### Sorular *(Yalnızca Admin)*
+
+| Metod | Endpoint | Açıklama |
+|-------|----------|----------|
+| `GET` | `/api/questions` | Şablon bilgisiyle tüm soruları listele |
+| `GET` | `/api/questions/{id}` | Tam şablon ve seçenekleriyle soru getir |
+| `POST` | `/api/questions` | Soru oluştur |
+| `PUT` | `/api/questions/{id}` | Soru güncelle |
+| `DELETE` | `/api/questions/{id}` | Soru sil (anketlerde kullanılıyorsa engellenir) |
+
+**Oluşturma gövdesi**
+```json
+{
+  "text": "Hizmetimizden memnun musunuz?",
+  "answerTemplateId": 1,
+  "isActive": true
+}
+```
+
+---
+
+### Anketler *(Yalnızca Admin)*
+
+| Metod | Endpoint | Açıklama |
+|-------|----------|----------|
+| `GET` | `/api/surveys` | Atanan/yanıtlayan sayısıyla tüm anketleri listele |
+| `GET` | `/api/surveys/{id}` | Sorular ve atanan kullanıcı ID'leriyle anket getir |
+| `POST` | `/api/surveys` | Anket oluştur |
+| `PUT` | `/api/surveys/{id}` | Anket güncelle (yanıt varsa engellenir) |
+| `DELETE` | `/api/surveys/{id}` | Anket sil (yanıt varsa engellenir) |
+
+**Oluşturma gövdesi**
+```json
+{
+  "title": "Çalışan Memnuniyet Anketi",
+  "description": "Yıl sonu değerlendirmesi",
+  "startDate": "2024-12-01T00:00:00",
+  "endDate": "2024-12-31T00:00:00",
+  "isActive": true,
+  "questionIds": [1, 2, 3],
+  "userIds": [2, 3, 4]
+}
+```
+
+---
+
+### Raporlar *(Yalnızca Admin)*
+
+| Metod | Endpoint | Açıklama |
+|-------|----------|----------|
+| `GET` | `/api/reports` | Tamamlanma istatistikleriyle tüm anketleri listele |
+| `GET` | `/api/reports/{surveyId}` | Tam rapor: kim doldurdu, kim doldurmadı, tüm yanıtlar |
+
+**Rapor yanıtı `200 OK`**
+```json
+{
+  "surveyId": 1,
+  "title": "Çalışan Memnuniyet Anketi",
+  "totalAssigned": 10,
+  "totalCompleted": 7,
+  "totalPending": 3,
+  "completedResponses": [
+    {
+      "userId": 2,
+      "userName": "Ahmet Yılmaz",
+      "userEmail": "ahmet@example.com",
+      "submittedAt": "2024-12-15T10:30:00",
+      "answers": [
+        { "questionId": 1, "questionText": "Hizmetimizden memnun musunuz?", "answerText": "Katılıyorum" }
+      ]
+    }
+  ],
+  "pendingUsers": [
+    { "id": 3, "fullName": "Mehmet Kaya", "email": "mehmet@example.com", "role": "User", "isActive": true }
+  ]
+}
+```
+
+---
+
+### Anketlerim *(Yalnızca User)*
+
+| Metod | Endpoint | Açıklama |
+|-------|----------|----------|
+| `GET` | `/api/my-surveys` | Atanan tüm anketleri listele (sorular ve seçeneklerle) |
+| `GET` | `/api/my-surveys/{surveyId}` | Doldurmak için anket detayı getir (yalnızca aktif ve tarih aralığında olanlar) |
+| `POST` | `/api/my-surveys/{surveyId}/submit` | Yanıtları gönder |
+
+**Gönderme gövdesi**
+```json
+{
+  "surveyId": 1,
+  "answers": [
+    { "questionId": 1, "answerOptionId": 2 },
+    { "questionId": 2, "answerOptionId": 5 }
+  ]
+}
+```
+
+---
+
+## Kurulum
+
+### Gereksinimler
+
+| Araç | Versiyon | İndirme |
+|------|----------|---------|
+| .NET SDK | 8.0 | [dotnet.microsoft.com](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) |
+| Node.js | 18+ LTS | [nodejs.org](https://nodejs.org/en/download) |
+
+Kurulumu doğrulayın:
+```sh
+dotnet --version   # 8.x.x
+node --version     # v18+
+npm --version
+```
+
+### 1. Repoyu Klonlayın
+
+```sh
+git clone https://github.com/ferhattufekci/SurveyApp.git
+cd SurveyApp
+```
+
+### 2. Backend'i Başlatın
+
+```sh
+cd Backend/SurveyApp.API
+```
+
+EF Core CLI aracını kurun (bir kez yapılır):
+```sh
+dotnet tool install --global dotnet-ef
+```
+
+Bağımlılıkları yükleyin ve veritabanını oluşturun:
+```sh
+dotnet restore
+dotnet ef migrations add InitialCreate --project ..\SurveyApp.Infrastructure --startup-project .
+dotnet ef database update --project ..\SurveyApp.Infrastructure --startup-project .
+dotnet run
+```
+
+> API: http://localhost:5000  
+> Swagger: http://localhost:5000/swagger
+
+### 3. Frontend'i Başlatın
+
+**Yeni bir terminal açın** (backend'i kapatmayın):
+
+```sh
+cd Frontend/survey-app
+npm install
+npm run dev
+```
+
+> Uygulama: http://localhost:3000
+
+---
+
+## Varsayılan Giriş Bilgileri
+
+| Rol | E-posta | Şifre |
+|-----|---------|-------|
+| Admin | admin@surveyapp.com | Admin123! |
+
+Ek kullanıcılar **Admin Paneli → Kullanıcılar** ekranından oluşturulabilir.
+
+---
+
+## Farklı Veritabanına Geçiş
+
+Varsayılan SQLite veritabanı, EF Core uyumlu herhangi bir sağlayıcıyla değiştirilebilir.
+
+**PostgreSQL örneği**
+
+`SurveyApp.Infrastructure.csproj`:
+```xml
+<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.0" />
+```
+
+`Program.cs`:
+```csharp
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+```
+
+`appsettings.json`:
+```json
+"ConnectionStrings": {
+  "DefaultConnection": "Host=localhost;Database=surveyapp;Username=postgres;Password=sifreniz"
+}
+```
+
+---
+
+## Lisans
 
 [MIT](LICENSE)
