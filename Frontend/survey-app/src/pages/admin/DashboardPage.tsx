@@ -162,7 +162,7 @@ export default function DashboardPage() {
                     <td className="text-muted" style={{ fontWeight: 600 }}>{(activePage - 1) * PAGE_SIZE + i + 1}</td>
                     <td><span className="badge badge-success">Aktif</span></td>
                     <td>
-                      <Link to="/admin/surveys" style={{ fontWeight: 600, color: '#4b5563', textDecoration: 'none' }}
+                      <Link to={`/admin/reports/${s.id}`} style={{ fontWeight: 600, color: '#4b5563', textDecoration: 'none' }}
                         onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#6366f1'}
                         onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = '#4b5563'}>
                         {s.title.length > 30 ? s.title.substring(0, 30) + '…' : s.title}
@@ -202,7 +202,7 @@ export default function DashboardPage() {
                     <td className="text-muted" style={{ fontWeight: 600 }}>{(expiredPage - 1) * PAGE_SIZE + i + 1}</td>
                     <td><span className="badge badge-warning">Süresi Geçti</span></td>
                     <td>
-                      <Link to="/admin/surveys" style={{ fontWeight: 600, color: '#4b5563', textDecoration: 'none' }}
+                      <Link to={`/admin/reports/${s.id}`} style={{ fontWeight: 600, color: '#4b5563', textDecoration: 'none' }}
                         onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#6366f1'}
                         onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = '#4b5563'}>
                         {s.title.length > 30 ? s.title.substring(0, 30) + '…' : s.title}
