@@ -22,6 +22,7 @@ export interface AnswerTemplate {
   name: string;
   isActive: boolean;
   options: AnswerOption[];
+  usedInQuestionsCount: number;
 }
 
 export interface QuestionListItem {
@@ -30,6 +31,7 @@ export interface QuestionListItem {
   isActive: boolean;
   answerTemplateId: number;
   answerTemplateName: string;
+  usedInSurveysCount: number;
 }
 
 export interface Question {
@@ -113,11 +115,13 @@ export interface CreateUserRequest {
 export interface CreateAnswerTemplateRequest {
   name: string;
   options: string[];
+  isActive?: boolean;
 }
 
 export interface CreateQuestionRequest {
   text: string;
   answerTemplateId: number;
+  isActive?: boolean;
 }
 
 export interface CreateSurveyRequest {

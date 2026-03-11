@@ -13,7 +13,13 @@ public class QuestionService : IQuestionService
     public async Task<List<QuestionListDto>> GetAllAsync()
     {
         var questions = await _uow.Questions.GetAllWithTemplatesAsync();
-        return questions.Select(q => new QuestionListDto(q.Id, q.Text, q.IsActive, q.AnswerTemplateId, q.AnswerTemplate.Name)).ToList();
+        var surveys = await _uow.Surveys.GetAllWithDetailsAsync();
+        var usageCounts = surveys
+            .SelectMany(s => s.SurveyQuestions.Select(sq => sq.QuestionId))
+            .GroupBy(qId => qId)
+            .ToDictionary(g => g.Key, g => g.Count());
+        return questions.Select(q => new QuestionListDto(q.Id, q.Text, q.IsActive, q.AnswerTemplateId, q.AnswerTemplate.Name,
+            usageCounts.GetValueOrDefault(q.Id, 0))).ToList();
     }
 
     public async Task<QuestionDto?> GetByIdAsync(int id)
@@ -307,6 +313,10 @@ public class UserSurveyService : IUserSurveyService
 
     public async Task<bool> SubmitSurveyAsync(int userId, SubmitSurveyRequest request)
     {
+        // Pasif kullanıcı anket dolduramaz
+        var user = await _uow.Users.GetByIdAsync(userId);
+        if (user == null || !user.IsActive) return false;
+
         // Tekrar doldurma engeli
         var alreadyCompleted = await _uow.Surveys.HasUserCompletedSurveyAsync(request.SurveyId, userId);
         if (alreadyCompleted) return false;

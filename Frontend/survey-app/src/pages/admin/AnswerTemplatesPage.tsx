@@ -23,6 +23,9 @@ export default function AnswerTemplatesPage() {
   const [deleteError, setDeleteError] = useState<{ id: number; count: number; detail: string } | null>(null);
   const [editRowNum, setEditRowNum]   = useState(0);
   const [page, setPage] = useState(1);
+  const [successMsg, setSuccessMsg] = useState('');
+
+  const showSuccess = (msg: string) => { setSuccessMsg(msg); setTimeout(() => setSuccessMsg(''), 3000); };
 
   const load = () => answerTemplatesApi.getAll().then(setTemplates).finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
@@ -56,7 +59,9 @@ export default function AnswerTemplatesPage() {
       } else {
         await answerTemplatesApi.create({ name: form.name, options: form.options, isActive: form.isActive });
       }
-      setShowModal(false); load();
+      setShowModal(false);
+      showSuccess(editItem ? 'Şablon başarıyla güncellendi.' : 'Şablon başarıyla oluşturuldu.');
+      load();
     } catch (e: any) {
       const msg = e.response?.data?.message || 'Bir hata oluştu.';
       const parts = msg.split('|');
@@ -125,8 +130,46 @@ export default function AnswerTemplatesPage() {
 
   if (loading) return <div className="loading-container"><div className="spinner-large"></div></div>;
 
+  function Tooltip({ text, children }: { text: string; children: React.ReactNode }) {
+    const [show, setShow] = useState(false);
+    return (
+      <span style={{ position: 'relative', display: 'inline-block' }}
+        onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
+        {children}
+        {show && (
+          <span style={{
+            position: 'absolute', bottom: 'calc(100% + 6px)', left: '50%',
+            transform: 'translateX(-50%)', whiteSpace: 'nowrap',
+            background: '#1f2937', color: '#fff', fontSize: '12px',
+            padding: '5px 10px', borderRadius: '6px', zIndex: 999,
+            boxShadow: '0 2px 8px rgba(0,0,0,.25)', pointerEvents: 'none',
+          }}>
+            {text}
+            <span style={{
+              position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)',
+              borderWidth: '5px', borderStyle: 'solid',
+              borderColor: '#1f2937 transparent transparent transparent',
+            }} />
+          </span>
+        )}
+      </span>
+    );
+  }
+
   return (
     <div className="page">
+      <style>{`@keyframes shake{0%,100%{transform:translateX(0)}15%{transform:translateX(-8px)}30%{transform:translateX(8px)}45%{transform:translateX(-6px)}60%{transform:translateX(6px)}75%{transform:translateX(-3px)}90%{transform:translateX(3px)}}.modal-shake{animation:shake 0.6s ease;}`}</style>
+
+      {successMsg && (
+        <div style={{
+          position: 'fixed', top: '20px', right: '24px', zIndex: 9999,
+          background: '#10b981', color: '#fff', padding: '12px 20px',
+          borderRadius: '10px', fontWeight: 600, fontSize: '14px',
+          boxShadow: '0 4px 16px rgba(16,185,129,.35)',
+          display: 'flex', alignItems: 'center', gap: '8px',
+        }}>✅ {successMsg}</div>
+      )}
+
       <div className="page-header">
         <div><h1>Cevap Şablonları</h1><p>Sorular için cevap seçenek şablonlarını yönetin</p></div>
         <button className="btn btn-primary" onClick={openCreate}>+ Yeni Şablon</button>
@@ -186,7 +229,13 @@ export default function AnswerTemplatesPage() {
                     <td>
                       <div className="action-btns">
                         <button className="btn btn-sm btn-outline" onClick={() => openEdit(t, rowNum)}>Düzenle</button>
-                        <button className="btn btn-sm btn-danger" onClick={() => handleDelete(t.id, rowNum)}>Sil</button>
+                        {t.usedInQuestionsCount > 0 ? (
+                          <Tooltip text={`${t.usedInQuestionsCount} soruda kullanılıyor — silinemez`}>
+                            <button className="btn btn-sm btn-danger" disabled style={{ opacity: 0.45, cursor: 'not-allowed' }}>Sil</button>
+                          </Tooltip>
+                        ) : (
+                          <button className="btn btn-sm btn-danger" onClick={() => handleDelete(t.id, rowNum)}>Sil</button>
+                        )}
                       </div>
                     </td>
                   </tr>

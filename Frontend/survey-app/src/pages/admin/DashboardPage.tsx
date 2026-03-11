@@ -1,25 +1,52 @@
 import { useEffect, useState } from 'react';
 import { surveysApi, questionsApi, usersApi, answerTemplatesApi } from '../../api';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 const PAGE_SIZE = 5;
 
-function MiniPagination({
-  total, page, onPage,
-}: { total: number; page: number; onPage: (p: number) => void }) {
+/* ── Mini SVG Pie Chart ── */
+function PieChart({ slices }: { slices: { value: number; color: string; label: string }[] }) {
+  const total = slices.reduce((s, x) => s + x.value, 0);
+  if (total === 0) return <div style={{ width: 120, height: 120, borderRadius: '50%', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: '#9ca3af' }}>Veri yok</div>;
+
+  let cumulative = 0;
+  const paths = slices.map(slice => {
+    if (slice.value === 0) return null;
+    const startAngle = (cumulative / total) * 2 * Math.PI - Math.PI / 2;
+    cumulative += slice.value;
+    const endAngle = (cumulative / total) * 2 * Math.PI - Math.PI / 2;
+    const r = 54;
+    const x1 = 60 + r * Math.cos(startAngle);
+    const y1 = 60 + r * Math.sin(startAngle);
+    const x2 = 60 + r * Math.cos(endAngle);
+    const y2 = 60 + r * Math.sin(endAngle);
+    const largeArc = slice.value / total > 0.5 ? 1 : 0;
+    const d = `M 60 60 L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+    return <path key={slice.label} d={d} fill={slice.color} stroke="#fff" strokeWidth="2" />;
+  });
+
+  return (
+    <svg width="120" height="120" viewBox="0 0 120 120">
+      {paths}
+      <circle cx="60" cy="60" r="30" fill="white" />
+      <text x="60" y="56" textAnchor="middle" fontSize="13" fontWeight="800" fill="#374151">{total}</text>
+      <text x="60" y="70" textAnchor="middle" fontSize="9" fill="#9ca3af">Anket</text>
+    </svg>
+  );
+}
+
+function MiniPagination({ total, page, onPage }: { total: number; page: number; onPage: (p: number) => void }) {
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   if (pages <= 1) return null;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '10px 16px', borderTop: '1px solid #e5e7eb' }}>
-      <button
-        onClick={() => onPage(Math.max(1, page - 1))} disabled={page === 1}
+      <button onClick={() => onPage(Math.max(1, page - 1))} disabled={page === 1}
         style={{ padding: '3px 9px', fontSize: '13px', borderRadius: '6px', border: '1px solid #d1d5db', background: page === 1 ? '#f9fafb' : '#fff', cursor: page === 1 ? 'default' : 'pointer', color: '#374151' }}>‹</button>
       {Array.from({ length: pages }, (_, i) => i + 1).map(p => (
         <button key={p} onClick={() => onPage(p)}
           style={{ padding: '3px 9px', fontSize: '13px', borderRadius: '6px', border: '1px solid #d1d5db', background: p === page ? '#6366f1' : '#fff', color: p === page ? '#fff' : '#374151', cursor: 'pointer', fontWeight: p === page ? 700 : 400 }}>{p}</button>
       ))}
-      <button
-        onClick={() => onPage(Math.min(pages, page + 1))} disabled={page === pages}
+      <button onClick={() => onPage(Math.min(pages, page + 1))} disabled={page === pages}
         style={{ padding: '3px 9px', fontSize: '13px', borderRadius: '6px', border: '1px solid #d1d5db', background: page === pages ? '#f9fafb' : '#fff', cursor: page === pages ? 'default' : 'pointer', color: '#374151' }}>›</button>
       <span style={{ marginLeft: '8px', fontSize: '12px', color: '#9ca3af' }}>{total} kayıt</span>
     </div>
@@ -27,6 +54,7 @@ function MiniPagination({
 }
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
   const [allData, setAllData] = useState<{ surveys: any[]; questions: any[]; users: any[]; templates: any[] }>({
     surveys: [], questions: [], users: [], templates: [],
   });
@@ -40,9 +68,8 @@ export default function DashboardPage() {
       questionsApi.getAll(),
       usersApi.getAll(),
       answerTemplatesApi.getAll(),
-    ]).then(([s, q, u, t]) => {
-      setAllData({ surveys: s, questions: q, users: u, templates: t });
-    }).finally(() => setLoading(false));
+    ]).then(([s, q, u, t]) => setAllData({ surveys: s, questions: q, users: u, templates: t }))
+      .finally(() => setLoading(false));
   }, []);
 
   if (loading) return <div className="loading-container"><div className="spinner-large"></div></div>;
@@ -50,47 +77,24 @@ export default function DashboardPage() {
   const { surveys, questions, users, templates } = allData;
   const now = new Date();
 
-  /* ── Anket kümeleri ── */
   const activeSurveys  = surveys.filter(s => s.isActive && new Date(s.endDate) >= now);
   const expiredSurveys = surveys.filter(s => s.isActive && new Date(s.endDate) < now);
   const passiveSurveys = surveys.filter(s => !s.isActive);
+  const completedSurveys = surveys.filter(s => s.responseCount > 0);
 
-  /* ── Stat sayıları ── */
-  const sq = { total: surveys.length,   active: activeSurveys.length, passive: passiveSurveys.length, expired: expiredSurveys.length };
+  const sq = { total: surveys.length, active: activeSurveys.length, passive: passiveSurveys.length, expired: expiredSurveys.length };
   const qq = { total: questions.length, active: questions.filter((q: any) => q.isActive).length, passive: questions.filter((q: any) => !q.isActive).length };
-  const uu = { total: users.length,     active: users.filter((u: any) => u.isActive).length,     passive: users.filter((u: any) => !u.isActive).length };
+  const uu = { total: users.length, active: users.filter((u: any) => u.isActive).length, passive: users.filter((u: any) => !u.isActive).length };
   const tt = { total: templates.length, active: templates.filter((t: any) => t.isActive).length, passive: templates.filter((t: any) => !t.isActive).length };
 
-  /* ── Pagination ── */
-  const activeSlice  = activeSurveys.slice((activePage - 1) * PAGE_SIZE,  activePage * PAGE_SIZE);
+  const activeSlice  = activeSurveys.slice((activePage - 1) * PAGE_SIZE, activePage * PAGE_SIZE);
   const expiredSlice = expiredSurveys.slice((expiredPage - 1) * PAGE_SIZE, expiredPage * PAGE_SIZE);
 
-  /* ── Yardımcı: stat pill ── */
   const statCards = [
-    {
-      label: 'Anketler', icon: '📝', total: sq.total,
-      active: sq.active, passive: sq.passive, extra: sq.expired,
-      extraLabel: 'Süresi Geçmiş', link: '/admin/surveys',
-      bg: '#eef2ff', border: '#6366f122', accent: '#6366f1',
-    },
-    {
-      label: 'Sorular', icon: '❓', total: qq.total,
-      active: qq.active, passive: qq.passive, extra: null,
-      extraLabel: '', link: '/admin/questions',
-      bg: '#f0fdf4', border: '#10b98122', accent: '#10b981',
-    },
-    {
-      label: 'Kullanıcılar', icon: '👥', total: uu.total,
-      active: uu.active, passive: uu.passive, extra: null,
-      extraLabel: '', link: '/admin/users',
-      bg: '#faf5ff', border: '#8b5cf622', accent: '#8b5cf6',
-    },
-    {
-      label: 'Cevap Şablonları', icon: '📋', total: tt.total,
-      active: tt.active, passive: tt.passive, extra: null,
-      extraLabel: '', link: '/admin/answer-templates',
-      bg: '#fffbeb', border: '#f59e0b22', accent: '#f59e0b',
-    },
+    { label: 'Anketler', icon: '📝', total: sq.total, active: sq.active, passive: sq.passive, extra: sq.expired, extraLabel: 'Süresi Geçmiş', link: '/admin/surveys', bg: '#eef2ff', border: '#6366f122', accent: '#6366f1' },
+    { label: 'Sorular', icon: '❓', total: qq.total, active: qq.active, passive: qq.passive, extra: null, extraLabel: '', link: '/admin/questions', bg: '#f0fdf4', border: '#10b98122', accent: '#10b981' },
+    { label: 'Kullanıcılar', icon: '👥', total: uu.total, active: uu.active, passive: uu.passive, extra: null, extraLabel: '', link: '/admin/users', bg: '#faf5ff', border: '#8b5cf622', accent: '#8b5cf6' },
+    { label: 'Cevap Şablonları', icon: '📋', total: tt.total, active: tt.active, passive: tt.passive, extra: null, extraLabel: '', link: '/admin/answer-templates', bg: '#fffbeb', border: '#f59e0b22', accent: '#f59e0b' },
   ];
 
   const pillBase: React.CSSProperties = {
@@ -98,81 +102,108 @@ export default function DashboardPage() {
     fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px',
   };
 
+  const goToSurveys = (title: string) =>
+    navigate(`/admin/surveys?search=${encodeURIComponent(title)}`);
+
+  const renderSurveyRow = (s: any, rowNum: number) => (
+    <>
+      <td className="text-muted" style={{ fontWeight: 600 }}>{rowNum}</td>
+      <td>
+        <span className={`badge ${s.isActive && new Date(s.endDate) >= now ? 'badge-success' : 'badge-warning'}`}>
+          {s.isActive && new Date(s.endDate) >= now ? 'Aktif' : 'Süresi Geçti'}
+        </span>
+      </td>
+      <td>
+        <button onClick={() => goToSurveys(s.title)}
+          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontWeight: 600, color: '#4b5563', fontSize: '13px', textAlign: 'left', textDecoration: 'underline', textDecorationColor: 'transparent', transition: 'color 0.15s' }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#6366f1'; (e.currentTarget as HTMLElement).style.textDecorationColor = '#6366f1'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#4b5563'; (e.currentTarget as HTMLElement).style.textDecorationColor = 'transparent'; }}
+          title="Anketler sayfasında filtrele">
+          {s.title.length > 28 ? s.title.substring(0, 28) + '…' : s.title}
+        </button>
+      </td>
+      <td style={{ fontSize: '13px', color: '#6b7280' }}>{new Date(s.endDate).toLocaleDateString('tr-TR')}</td>
+      <td><span className="badge badge-info">{s.assignedUserCount}</span></td>
+      <td><span className="badge badge-success">{s.responseCount}</span></td>
+    </>
+  );
+
   return (
     <div className="page">
       <div className="page-header">
-        <div>
-          <h1>Dashboard</h1>
-          <p>Anket yönetim sistemine hoş geldiniz</p>
-        </div>
+        <h1>Dashboard</h1>
       </div>
 
       {/* ── Stat kartları ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginBottom: '24px' }}>
         {statCards.map(c => (
-          <Link key={c.label} to={c.link} style={{
+          <a key={c.label} href={c.link} style={{
             background: c.bg, border: `1px solid ${c.border}`, borderLeft: `4px solid ${c.accent}`,
             borderRadius: '12px', padding: '16px 18px', textDecoration: 'none', color: 'inherit',
             transition: 'transform 0.15s, box-shadow 0.15s', display: 'block',
           }}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 16px rgba(0,0,0,.1)'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.boxShadow = ''; }}
-          >
-            {/* Başlık satırı */}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = ''; (e.currentTarget as HTMLElement).style.boxShadow = ''; }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
               <span style={{ fontSize: '20px' }}>{c.icon}</span>
               <span style={{ fontWeight: 600, color: '#4b5563', fontSize: '14px' }}>{c.label}</span>
               <span style={{ marginLeft: 'auto', fontSize: '30px', fontWeight: 800, color: c.accent, lineHeight: 1 }}>{c.total}</span>
             </div>
-            {/* Pill'ler */}
             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
               <span style={{ ...pillBase, background: '#dcfce7', color: '#15803d' }}>✅ {c.active} Aktif</span>
               <span style={{ ...pillBase, background: '#f3f4f6', color: '#6b7280' }}>⏸ {c.passive} Pasif</span>
-              {c.extra !== null && (
-                <span style={{ ...pillBase, background: '#fef3c7', color: '#b45309' }}>⚠️ {c.extra} {c.extraLabel}</span>
-              )}
+              {c.extra !== null && <span style={{ ...pillBase, background: '#fef3c7', color: '#b45309' }}>⚠️ {c.extra} {c.extraLabel}</span>}
             </div>
-          </Link>
+          </a>
         ))}
       </div>
 
-      {/* ── İki sütun: Devam Eden + Süresi Geçen ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+      {/* ── Orta bölüm: Pie + 2 tablo ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr 1fr', gap: '16px', marginBottom: '16px', alignItems: 'start' }}>
+
+        {/* Pasta grafik */}
+        <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '16px', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+          <div style={{ fontWeight: 700, fontSize: '13px', color: '#374151', marginBottom: '12px' }}>Anket Durumları</div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '14px' }}>
+            <PieChart slices={[
+              { value: activeSurveys.length,  color: '#10b981', label: 'Devam Eden' },
+              { value: expiredSurveys.length, color: '#f59e0b', label: 'Süresi Geçen' },
+              { value: passiveSurveys.length, color: '#d1d5db', label: 'Pasif' },
+            ]} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {[
+              { label: 'Devam Eden', value: activeSurveys.length, color: '#10b981' },
+              { label: 'Süresi Geçen', value: expiredSurveys.length, color: '#f59e0b' },
+              { label: 'Pasif', value: passiveSurveys.length, color: '#d1d5db' },
+            ].map(item => (
+              <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
+                <span style={{ width: '10px', height: '10px', borderRadius: '3px', background: item.color, flexShrink: 0 }} />
+                <span style={{ color: '#6b7280', flex: 1 }}>{item.label}</span>
+                <span style={{ fontWeight: 700, color: '#374151' }}>{item.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
 
         {/* Devam Eden Anketler */}
         <div className="card" style={{ margin: 0 }}>
           <div className="card-header">
-            <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
-              Devam Eden Anketler
-              <span style={{ fontSize: '14px', fontWeight: 400, color: '#6b7280', marginLeft: '4px' }}>({activeSurveys.length})</span>
+            <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px' }}>
+              <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
+              Devam Eden
+              <span style={{ fontSize: '13px', fontWeight: 400, color: '#6b7280' }}>({activeSurveys.length})</span>
             </h2>
-            <Link to="/admin/surveys" className="btn btn-sm btn-outline">Tümünü Gör</Link>
+            <a href="/admin/surveys" className="btn btn-sm btn-outline">Tümünü Gör</a>
           </div>
           <div className="table-container">
             <table className="table">
-              <thead>
-                <tr><th>#</th><th>Durum</th><th>Başlık</th><th>Bitiş</th><th>Atanan</th><th>Yanıt</th></tr>
-              </thead>
+              <thead><tr><th>#</th><th>Durum</th><th>Başlık</th><th>Bitiş</th><th>Atanan</th><th>Yanıt</th></tr></thead>
               <tbody>
-                {activeSlice.length === 0 ? (
-                  <tr><td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: '#9ca3af' }}>Devam eden anket yok</td></tr>
-                ) : activeSlice.map((s: any, i: number) => (
-                  <tr key={s.id}>
-                    <td className="text-muted" style={{ fontWeight: 600 }}>{(activePage - 1) * PAGE_SIZE + i + 1}</td>
-                    <td><span className="badge badge-success">Aktif</span></td>
-                    <td>
-                      <Link to={`/admin/reports/${s.id}`} style={{ fontWeight: 600, color: '#4b5563', textDecoration: 'none' }}
-                        onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#6366f1'}
-                        onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = '#4b5563'}>
-                        {s.title.length > 30 ? s.title.substring(0, 30) + '…' : s.title}
-                      </Link>
-                    </td>
-                    <td style={{ fontSize: '13px', color: '#6b7280' }}>{new Date(s.endDate).toLocaleDateString('tr-TR')}</td>
-                    <td><span className="badge badge-info">{s.assignedUserCount}</span></td>
-                    <td><span className="badge badge-success">{s.responseCount}</span></td>
-                  </tr>
-                ))}
+                {activeSlice.length === 0
+                  ? <tr><td colSpan={6} style={{ textAlign: 'center', padding: '20px', color: '#9ca3af' }}>Devam eden anket yok</td></tr>
+                  : activeSlice.map((s: any, i: number) => <tr key={s.id}>{renderSurveyRow(s, (activePage - 1) * PAGE_SIZE + i + 1)}</tr>)
+                }
               </tbody>
             </table>
           </div>
@@ -182,37 +213,21 @@ export default function DashboardPage() {
         {/* Süresi Geçen Anketler */}
         <div className="card" style={{ margin: 0 }}>
           <div className="card-header">
-            <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#f59e0b', display: 'inline-block' }} />
-              Süresi Geçen Anketler
-              <span style={{ fontSize: '14px', fontWeight: 400, color: '#6b7280', marginLeft: '4px' }}>({expiredSurveys.length})</span>
+            <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px' }}>
+              <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: '#f59e0b', display: 'inline-block' }} />
+              Süresi Geçen
+              <span style={{ fontSize: '13px', fontWeight: 400, color: '#6b7280' }}>({expiredSurveys.length})</span>
             </h2>
-            <Link to="/admin/surveys" className="btn btn-sm btn-outline">Tümünü Gör</Link>
+            <a href="/admin/surveys" className="btn btn-sm btn-outline">Tümünü Gör</a>
           </div>
           <div className="table-container">
             <table className="table">
-              <thead>
-                <tr><th>#</th><th>Durum</th><th>Başlık</th><th>Bitiş</th><th>Atanan</th><th>Yanıt</th></tr>
-              </thead>
+              <thead><tr><th>#</th><th>Durum</th><th>Başlık</th><th>Bitiş</th><th>Atanan</th><th>Yanıt</th></tr></thead>
               <tbody>
-                {expiredSlice.length === 0 ? (
-                  <tr><td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: '#9ca3af' }}>Süresi geçen anket yok</td></tr>
-                ) : expiredSlice.map((s: any, i: number) => (
-                  <tr key={s.id}>
-                    <td className="text-muted" style={{ fontWeight: 600 }}>{(expiredPage - 1) * PAGE_SIZE + i + 1}</td>
-                    <td><span className="badge badge-warning">Süresi Geçti</span></td>
-                    <td>
-                      <Link to={`/admin/reports/${s.id}`} style={{ fontWeight: 600, color: '#4b5563', textDecoration: 'none' }}
-                        onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#6366f1'}
-                        onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = '#4b5563'}>
-                        {s.title.length > 30 ? s.title.substring(0, 30) + '…' : s.title}
-                      </Link>
-                    </td>
-                    <td style={{ fontSize: '13px', color: '#6b7280' }}>{new Date(s.endDate).toLocaleDateString('tr-TR')}</td>
-                    <td><span className="badge badge-info">{s.assignedUserCount}</span></td>
-                    <td><span className="badge badge-success">{s.responseCount}</span></td>
-                  </tr>
-                ))}
+                {expiredSlice.length === 0
+                  ? <tr><td colSpan={6} style={{ textAlign: 'center', padding: '20px', color: '#9ca3af' }}>Süresi geçen anket yok</td></tr>
+                  : expiredSlice.map((s: any, i: number) => <tr key={s.id}>{renderSurveyRow(s, (expiredPage - 1) * PAGE_SIZE + i + 1)}</tr>)
+                }
               </tbody>
             </table>
           </div>
@@ -227,8 +242,8 @@ export default function DashboardPage() {
       }}>
         {[
           { icon: '🔒', title: 'Silme Kuralları', lines: ['Ankete atanan kullanıcılar silinemez', 'Ankette kullanılan sorular silinemez', 'Sorularda kullanılan şablonlar silinemez'] },
-          { icon: '✏️', title: 'Düzenleme Kuralları', lines: ['Yanıt alınan anketler düzenlenemez', 'Süresi geçmiş anketler düzenlenemez', 'Aktif ankete atanmış kullanıcı pasife alınamaz'] },
-          { icon: '⚠️', title: 'Pasife Alma Kuralları', lines: ['Aktif sorularda kullanılan şablon pasife alınamaz', 'Aktif ankette kullanılan soru pasife alınamaz', 'Pasif kullanıcı ve soru ankete eklenemez'] },
+          { icon: '✏️', title: 'Düzenleme Kuralları', lines: ['Yanıt alınan anketler düzenlenemez', 'Süresi geçmiş anketler düzenlenemez', 'Pasif kullanıcı ve pasif soru ankete eklenemez'] },
+          { icon: '⚠️', title: 'Pasife Alma Kuralları', lines: ['Aktif sorularda kullanılan şablon pasife alınamaz', 'Aktif ankette kullanılan soru pasife alınamaz', 'Aktif ankete atanmış kullanıcı pasife alınamaz'] },
           { icon: '💡', title: 'Genel Bilgi', lines: [`${uu.active} aktif / ${uu.passive} pasif kullanıcı`, `${qq.active} aktif / ${qq.passive} pasif soru`, `${tt.active} aktif / ${tt.passive} pasif şablon`] },
         ].map(card => (
           <div key={card.title}>

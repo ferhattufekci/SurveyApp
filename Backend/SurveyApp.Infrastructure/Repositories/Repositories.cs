@@ -84,6 +84,7 @@ public class SurveyRepository : Repository<Survey>, ISurveyRepository
         await _db.Surveys
             .Include(s => s.SurveyAssignments)
             .Include(s => s.SurveyResponses)
+            .Include(s => s.SurveyQuestions)
             .ToListAsync();
 
     public async Task<IEnumerable<Survey>> GetAssignedSurveysForUserAsync(int userId) =>

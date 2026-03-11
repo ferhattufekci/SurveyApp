@@ -2,7 +2,7 @@ namespace SurveyApp.Application.DTOs;
 
 // Auth DTOs
 public record LoginRequest(string Email, string Password);
-public record LoginResponse(string Token, string Email, string FullName, string Role);
+public record LoginResponse(string Token, string Email, string FullName, string Role, bool IsActive = true);
 
 // User DTOs
 public record UserDto(int Id, string Email, string FullName, string Role, bool IsActive);
@@ -11,14 +11,14 @@ public record UpdateUserRequest(string FullName, bool IsActive);
 
 // AnswerTemplate DTOs
 public record AnswerOptionDto(int Id, string Text, int OrderIndex);
-public record AnswerTemplateDto(int Id, string Name, bool IsActive, List<AnswerOptionDto> Options);
+public record AnswerTemplateDto(int Id, string Name, bool IsActive, List<AnswerOptionDto> Options, int UsedInQuestionsCount = 0);
 public record CreateAnswerTemplateRequest(string Name, List<string> Options, bool IsActive = true);
 public record UpdateAnswerTemplateRequest(string Name, bool IsActive, List<AnswerOptionUpdateDto> Options);
 public record AnswerOptionUpdateDto(int? Id, string Text, int OrderIndex);
 
 // Question DTOs
 public record QuestionDto(int Id, string Text, bool IsActive, AnswerTemplateDto AnswerTemplate);
-public record QuestionListDto(int Id, string Text, bool IsActive, int AnswerTemplateId, string AnswerTemplateName);
+public record QuestionListDto(int Id, string Text, bool IsActive, int AnswerTemplateId, string AnswerTemplateName, int UsedInSurveysCount = 0);
 public record CreateQuestionRequest(string Text, int AnswerTemplateId, bool IsActive = true);
 public record UpdateQuestionRequest(string Text, int AnswerTemplateId, bool IsActive);
 

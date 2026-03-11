@@ -14,7 +14,9 @@ public class AnswerTemplateService : IAnswerTemplateService
     public async Task<List<AnswerTemplateDto>> GetAllAsync()
     {
         var templates = await _uow.AnswerTemplates.GetAllWithOptionsAsync();
-        return templates.Select(MapToDto).ToList();
+        var questions = await _uow.Questions.GetAllWithTemplatesAsync();
+        var usageCounts = questions.GroupBy(q => q.AnswerTemplateId).ToDictionary(g => g.Key, g => g.Count());
+        return templates.Select(t => MapToDtoWithCount(t, usageCounts.GetValueOrDefault(t.Id, 0))).ToList();
     }
 
     public async Task<AnswerTemplateDto?> GetByIdAsync(int id)
@@ -124,4 +126,9 @@ public class AnswerTemplateService : IAnswerTemplateService
     private static AnswerTemplateDto MapToDto(AnswerTemplate t) =>
         new(t.Id, t.Name, t.IsActive,
             t.Options.OrderBy(o => o.OrderIndex).Select(o => new AnswerOptionDto(o.Id, o.Text, o.OrderIndex)).ToList());
+
+    private static AnswerTemplateDto MapToDtoWithCount(AnswerTemplate t, int usedInQuestionsCount) =>
+        new(t.Id, t.Name, t.IsActive,
+            t.Options.OrderBy(o => o.OrderIndex).Select(o => new AnswerOptionDto(o.Id, o.Text, o.OrderIndex)).ToList(),
+            usedInQuestionsCount);
 }

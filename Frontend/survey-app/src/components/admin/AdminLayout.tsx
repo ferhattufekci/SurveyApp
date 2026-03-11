@@ -60,7 +60,21 @@ export default function AdminLayout() {
               </div>
             )}
           </div>
-          <button className="logout-btn" onClick={handleLogout} title="Çıkış">🚪</button>
+          <button
+            onClick={handleLogout}
+            title="Çıkış Yap"
+            style={{
+              display: 'flex', alignItems: 'center', gap: '6px',
+              background: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca',
+              borderRadius: '8px', padding: '6px 12px', cursor: 'pointer',
+              fontSize: '13px', fontWeight: 600, transition: 'all 0.15s',
+              whiteSpace: 'nowrap',
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#dc2626'; (e.currentTarget as HTMLElement).style.color = '#fff'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '#fee2e2'; (e.currentTarget as HTMLElement).style.color = '#dc2626'; }}
+          >
+            {sidebarOpen ? '🚪 Çıkış' : '🚪'}
+          </button>
         </div>
       </aside>
 

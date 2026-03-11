@@ -1,6 +1,6 @@
 import SearchInput from '../../components/admin/SearchInput';
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { surveysApi, questionsApi, usersApi } from '../../api';
 import type { SurveyListItem, QuestionListItem, User } from '../../types';
 
@@ -34,6 +34,7 @@ function Tooltip({ text, children }: { text: string; children: React.ReactNode }
 }
 
 export default function SurveysPage() {
+  const location = useLocation();
   const [surveys, setSurveys]     = useState<SurveyListItem[]>([]);
   const [questions, setQuestions] = useState<QuestionListItem[]>([]);
   const [users, setUsers]         = useState<User[]>([]);
@@ -50,9 +51,18 @@ export default function SurveysPage() {
   const [errorType, setErrorType] = useState<'duplicate' | 'responded' | 'general' | ''>('');
   const [errorDetail, setErrorDetail] = useState('');
   const [shake, setShake]         = useState(false);
-  const [search, setSearch]       = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
+  const [search, setSearch]       = useState(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get('search') || '';
+  });
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
   const [page, setPage]           = useState(1);
+
+  const showSuccess = (msg: string) => {
+    setSuccessMsg(msg);
+    setTimeout(() => setSuccessMsg(''), 3000);
+  };
 
   const load = () =>
     Promise.all([surveysApi.getAll(), questionsApi.getAll(), usersApi.getAll()])
@@ -96,7 +106,9 @@ export default function SurveysPage() {
       const payload = { ...form, startDate: new Date(form.startDate).toISOString(), endDate: new Date(form.endDate).toISOString() };
       if (editItem) await surveysApi.update(editItem.id, payload);
       else await surveysApi.create(payload);
-      closeModal(); load();
+      closeModal();
+      showSuccess(editItem ? 'Anket başarıyla güncellendi.' : 'Anket başarıyla oluşturuldu.');
+      load();
     } catch (e: any) {
       const msg: string = e.response?.data?.message || 'Bir hata oluştu.';
       const parts = msg.split('|');
@@ -172,6 +184,16 @@ export default function SurveysPage() {
         }
         .modal-shake { animation: shake 0.6s ease; }
       `}</style>
+
+      {successMsg && (
+        <div style={{
+          position: 'fixed', top: '20px', right: '24px', zIndex: 9999,
+          background: '#10b981', color: '#fff', padding: '12px 20px',
+          borderRadius: '10px', fontWeight: 600, fontSize: '14px',
+          boxShadow: '0 4px 16px rgba(16,185,129,.35)',
+          display: 'flex', alignItems: 'center', gap: '8px',
+        }}>✅ {successMsg}</div>
+      )}
 
       <div className="page-header">
         <div><h1>Anketler</h1><p>Anketleri oluşturun ve yönetin</p></div>

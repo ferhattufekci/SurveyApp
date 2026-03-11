@@ -26,10 +26,9 @@ public class AuthService : IAuthService
         if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
             return null;
 
-        if (!user.IsActive) return null;
-
+        // Pasif kullanıcılar giriş yapabilir ama anket dolduramaz
         var token = GenerateToken(user.Id, user.Email, user.Role);
-        return new LoginResponse(token, user.Email, user.FullName, user.Role);
+        return new LoginResponse(token, user.Email, user.FullName, user.Role, user.IsActive);
     }
 
     public string GenerateToken(int userId, string email, string role)

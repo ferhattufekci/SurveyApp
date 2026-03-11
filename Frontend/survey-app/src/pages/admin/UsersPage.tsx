@@ -47,6 +47,8 @@ export default function UsersPage() {
   const [errorType, setErrorType] = useState<'passive_conflict' | 'general' | ''>('');
   const [errorDetail, setErrorDetail] = useState('');
   const [shake, setShake]     = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
+  const showSuccess = (msg: string) => { setSuccessMsg(msg); setTimeout(() => setSuccessMsg(''), 3000); };
   const [search, setSearch]   = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
   const [page, setPage]       = useState(1);
@@ -85,7 +87,9 @@ export default function UsersPage() {
       } else {
         await usersApi.create({ email: form.email, password: form.password, fullName: form.fullName, role: form.role, isActive: form.isActive });
       }
-      closeModal(); load();
+      closeModal();
+      showSuccess(editItem ? 'Kullanıcı başarıyla güncellendi.' : 'Kullanıcı başarıyla oluşturuldu.');
+      load();
     } catch (e: any) {
       const msg: string = e.response?.data?.message || 'Bir hata oluştu.';
       const parts = msg.split('|');
@@ -200,6 +204,16 @@ export default function UsersPage() {
         }
         .modal-shake { animation: shake 0.6s ease; }
       `}</style>
+
+      {successMsg && (
+        <div style={{
+          position: 'fixed', top: '20px', right: '24px', zIndex: 9999,
+          background: '#10b981', color: '#fff', padding: '12px 20px',
+          borderRadius: '10px', fontWeight: 600, fontSize: '14px',
+          boxShadow: '0 4px 16px rgba(16,185,129,.35)',
+          display: 'flex', alignItems: 'center', gap: '8px',
+        }}>✅ {successMsg}</div>
+      )}
 
       <div className="page-header">
         <div><h1>Kullanıcılar</h1><p>Sistem kullanıcılarını yönetin</p></div>

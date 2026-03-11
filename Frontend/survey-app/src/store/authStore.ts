@@ -5,6 +5,7 @@ interface AuthUser {
   email: string;
   fullName: string;
   role: string;
+  isActive: boolean;
 }
 
 interface AuthStore {
@@ -53,8 +54,8 @@ export const useAuthStore = create<AuthStore>((set) => ({
   login: async (email, password) => {
     const data = await authApi.login(email, password);
     localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify({ email: data.email, fullName: data.fullName, role: data.role }));
-    set({ token: data.token, user: { email: data.email, fullName: data.fullName, role: data.role }, isAuthenticated: true });
+    localStorage.setItem('user', JSON.stringify({ email: data.email, fullName: data.fullName, role: data.role, isActive: data.isActive ?? true }));
+    set({ token: data.token, user: { email: data.email, fullName: data.fullName, role: data.role, isActive: data.isActive ?? true }, isAuthenticated: true });
   },
 
   logout: () => {
