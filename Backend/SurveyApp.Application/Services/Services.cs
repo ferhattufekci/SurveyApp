@@ -135,6 +135,18 @@ public class SurveyService : ISurveyService
         if (allSurveys.Any(s => s.Title.Trim().ToLower() == request.Title.Trim().ToLower()))
             throw new ArgumentException($"'{request.Title}' başlıklı bir anket zaten mevcut. Farklı bir başlık giriniz.");
 
+        // Pasif kullanıcı atanamaz
+        if (request.UserIds.Any())
+        {
+            var allUsers = await _uow.Users.GetAllAsync();
+            var passiveAssigned = allUsers.Where(u => request.UserIds.Contains(u.Id) && !u.IsActive).ToList();
+            if (passiveAssigned.Any())
+            {
+                var names = string.Join(", ", passiveAssigned.Select(u => $"\"{u.FullName}\""));
+                throw new ArgumentException($"Pasif kullanıcılar ankete atanamaz: {names}");
+            }
+        }
+
         var survey = new Survey
         {
             Title = request.Title,
@@ -175,6 +187,18 @@ public class SurveyService : ISurveyService
         var allSurveys = await _uow.Surveys.GetAllWithDetailsAsync();
         if (allSurveys.Any(s => s.Id != id && s.Title.Trim().ToLower() == request.Title.Trim().ToLower()))
             throw new ArgumentException($"'{request.Title}' başlıklı bir anket zaten mevcut. Farklı bir başlık giriniz.");
+
+        // Pasif kullanıcı atanamaz
+        if (request.UserIds.Any())
+        {
+            var allUsers = await _uow.Users.GetAllAsync();
+            var passiveAssigned = allUsers.Where(u => request.UserIds.Contains(u.Id) && !u.IsActive).ToList();
+            if (passiveAssigned.Any())
+            {
+                var names = string.Join(", ", passiveAssigned.Select(u => $"\"{u.FullName}\""));
+                throw new ArgumentException($"Pasif kullanıcılar ankete atanamaz: {names}");
+            }
+        }
 
         survey.Title = request.Title;
         survey.Description = request.Description;
