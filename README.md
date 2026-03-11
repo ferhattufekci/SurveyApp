@@ -24,6 +24,7 @@ A full-stack survey management system built with **.NET 8** (Clean Architecture)
 - [Database Schema](#database-schema)
 - [API Reference](#api-reference)
 - [Getting Started](#getting-started)
+- [Deployment](#deployment)
 - [Default Credentials](#default-credentials)
 - [Switching Databases](#switching-databases)
 
@@ -418,6 +419,86 @@ npm run dev
 | Admin | admin@surveyapp.com | Admin123! |
 
 Additional users can be created from **Admin Panel → Users**.
+
+---
+
+## Deployment
+
+The project ships with configuration files for a **free-tier** production deployment: **.NET backend on Railway, React frontend on Vercel**.
+
+```
+Browser → surveyapp.vercel.app (React / Vercel)
+                ↓ HTTPS API calls
+   surveyapp-api.up.railway.app (.NET 8 / Railway)
+                ↓
+          SQLite on Railway volume
+```
+
+> **Note:** For long-running production use, replacing SQLite with PostgreSQL (Railway add-on, free tier available) is strongly recommended to avoid data loss on container restarts. See [Switching Databases](#switching-databases).
+
+---
+
+### Step 1 — Deploy the Backend to Railway
+
+**Prerequisites:** [railway.app](https://railway.app) account (free, sign in with GitHub)
+
+1. Go to [railway.app](https://railway.app) → **New Project** → **Deploy from GitHub repo**
+2. Select the **SurveyApp** repository
+3. When asked for the root directory, enter **`Backend`**
+4. Railway will auto-detect `Dockerfile` and begin building
+5. Once deployed, go to **Settings → Networking → Generate Domain**
+6. Copy the generated URL (e.g. `https://surveyapp-api.up.railway.app`)
+
+**Set environment variables in Railway (Settings → Variables):**
+
+| Variable | Value |
+|----------|-------|
+| `ASPNETCORE_ENVIRONMENT` | `Production` |
+| `FRONTEND_URL` | your Vercel URL — fill in after Step 2 |
+| `Jwt__Key` | a long random secret string (32+ chars) |
+| `Jwt__Issuer` | `SurveyApp` |
+| `Jwt__Audience` | `SurveyAppUsers` |
+
+---
+
+### Step 2 — Deploy the Frontend to Vercel
+
+**Prerequisites:** [vercel.com](https://vercel.com) account (free, sign in with GitHub)
+
+1. Go to [vercel.com](https://vercel.com) → **New Project** → import **SurveyApp** repository
+2. Set **Root Directory** to **`Frontend/survey-app`**
+3. Framework will be auto-detected as **Vite**
+4. Under **Environment Variables**, add:
+
+| Variable | Value |
+|----------|-------|
+| `VITE_API_URL` | `https://your-railway-url.up.railway.app/api` |
+
+5. Click **Deploy** — Vercel will give you a URL (e.g. `https://surveyapp.vercel.app`)
+
+---
+
+### Step 3 — Connect Frontend URL to Backend CORS
+
+Go back to Railway → **Variables** and set:
+
+| Variable | Value |
+|----------|-------|
+| `FRONTEND_URL` | `https://surveyapp.vercel.app` |
+
+Railway will automatically redeploy the backend with the updated CORS origin.
+
+---
+
+### Deployment Files Reference
+
+| File | Purpose |
+|------|---------|
+| `Backend/Dockerfile` | Multi-stage Docker build for Railway |
+| `Backend/railway.json` | Railway build and restart configuration |
+| `Backend/SurveyApp.API/appsettings.Production.json` | Production settings template (SQLite path, log level) |
+| `Frontend/survey-app/vercel.json` | SPA rewrite rule so React Router handles all routes |
+| `Frontend/survey-app/.env.example` | Environment variable template for local development |
 
 ---
 
@@ -891,6 +972,86 @@ npm run dev
 | Admin | admin@surveyapp.com | Admin123! |
 
 Ek kullanıcılar **Admin Paneli → Kullanıcılar** ekranından oluşturulabilir.
+
+---
+
+## Deployment
+
+Proje, **ücretsiz tier** için hazır deployment dosyalarıyla birlikte gelir: **.NET backend Railway'de, React frontend Vercel'de**.
+
+```
+Tarayıcı → surveyapp.vercel.app (React / Vercel)
+                ↓ HTTPS API istekleri
+   surveyapp-api.up.railway.app (.NET 8 / Railway)
+                ↓
+        SQLite (Railway volume)
+```
+
+> **Not:** Uzun süreli üretim kullanımı için SQLite yerine PostgreSQL'e geçilmesi önerilir (Railway ücretsiz add-on sunar). Container yeniden başlatmalarında veri kaybını önler. Bkz. [Farklı Veritabanına Geçiş](#farklı-veritabanına-geçiş).
+
+---
+
+### Adım 1 — Backend'i Railway'e Deploy Et
+
+**Gereksinim:** [railway.app](https://railway.app) hesabı (ücretsiz, GitHub ile giriş)
+
+1. [railway.app](https://railway.app) → **New Project** → **Deploy from GitHub repo**
+2. **SurveyApp** reposunu seç
+3. Root directory sorulduğunda **`Backend`** yaz
+4. Railway `Dockerfile`'ı otomatik algılar ve build başlar
+5. Deploy tamamlandıktan sonra **Settings → Networking → Generate Domain**
+6. Oluşan URL'yi kopyala (örn. `https://surveyapp-api.up.railway.app`)
+
+**Railway'de environment variable'ları ayarla (Settings → Variables):**
+
+| Değişken | Değer |
+|----------|-------|
+| `ASPNETCORE_ENVIRONMENT` | `Production` |
+| `FRONTEND_URL` | Vercel URL'in — Adım 2 sonrası doldur |
+| `Jwt__Key` | Uzun rastgele bir string (32+ karakter) |
+| `Jwt__Issuer` | `SurveyApp` |
+| `Jwt__Audience` | `SurveyAppUsers` |
+
+---
+
+### Adım 2 — Frontend'i Vercel'e Deploy Et
+
+**Gereksinim:** [vercel.com](https://vercel.com) hesabı (ücretsiz, GitHub ile giriş)
+
+1. [vercel.com](https://vercel.com) → **New Project** → **SurveyApp** reposunu içe aktar
+2. **Root Directory** olarak **`Frontend/survey-app`** yaz
+3. Framework **Vite** olarak otomatik algılanır
+4. **Environment Variables** altına ekle:
+
+| Değişken | Değer |
+|----------|-------|
+| `VITE_API_URL` | `https://your-railway-url.up.railway.app/api` |
+
+5. **Deploy** — Vercel sana bir URL verir (örn. `https://surveyapp.vercel.app`)
+
+---
+
+### Adım 3 — Frontend URL'ini Backend CORS'una Tanıt
+
+Railway → **Variables** sekmesine dön ve güncelle:
+
+| Değişken | Değer |
+|----------|-------|
+| `FRONTEND_URL` | `https://surveyapp.vercel.app` |
+
+Railway backend'i otomatik olarak yeniden deploy eder.
+
+---
+
+### Deployment Dosyaları
+
+| Dosya | Amacı |
+|-------|-------|
+| `Backend/Dockerfile` | Railway için çok aşamalı Docker build |
+| `Backend/railway.json` | Railway build ve restart yapılandırması |
+| `Backend/SurveyApp.API/appsettings.Production.json` | Üretim ayarları şablonu (SQLite path, log seviyesi) |
+| `Frontend/survey-app/vercel.json` | React Router'ın tüm rotaları yönetmesi için SPA rewrite kuralı |
+| `Frontend/survey-app/.env.example` | Yerel geliştirme için environment variable şablonu |
 
 ---
 
