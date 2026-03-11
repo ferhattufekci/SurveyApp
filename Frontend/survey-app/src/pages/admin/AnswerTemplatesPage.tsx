@@ -20,6 +20,7 @@ export default function AnswerTemplatesPage() {
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
   const [deleteError, setDeleteError] = useState<{ id: number; count: number; detail: string } | null>(null);
+  const [editRowNum, setEditRowNum]   = useState(0);
   const [page, setPage] = useState(1);
 
   const load = () => answerTemplatesApi.getAll().then(setTemplates).finally(() => setLoading(false));
@@ -30,8 +31,8 @@ export default function AnswerTemplatesPage() {
     setForm({ name: '', options: ['', ''], isActive: true });
     setError(''); setShowModal(true);
   };
-  const openEdit = (t: AnswerTemplate) => {
-    setEditItem(t);
+  const openEdit = (t: AnswerTemplate, rowNum: number) => {
+    setEditItem(t); setEditRowNum(rowNum);
     setForm({ name: t.name, options: t.options.map(o => o.text), isActive: t.isActive });
     setError(''); setShowModal(true);
   };
@@ -67,9 +68,9 @@ export default function AnswerTemplatesPage() {
     } finally { setSaving(false); }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: number, rowNum: number) => {
     setDeleteError(null);
-    if (!confirm('Bu şablonu silmek istediğinize emin misiniz?')) return;
+    if (!confirm(`${rowNum} numaralı şablonu silmek istediğinize emin misiniz?`)) return;
     try {
       await answerTemplatesApi.delete(id);
       load();
@@ -167,26 +168,29 @@ export default function AnswerTemplatesPage() {
         <div className="table-container">
           <table className="table">
             <thead>
-              <tr><th>Durum</th><th>Ad</th><th>Seçenek Sayısı</th><th>Seçenekler</th><th>İşlemler</th></tr>
+              <tr><th>#</th><th>Durum</th><th>Ad</th><th>Seçenek Sayısı</th><th>Seçenekler</th><th>İşlemler</th></tr>
             </thead>
             <tbody>
-              {paginated.map(t => (
+              {paginated.map((t, i) => {
+                const rowNum = (safePage - 1) * PAGE_SIZE + i + 1;
+                return (
                 <>
                   <tr key={t.id}>
+                    <td className="text-muted" style={{ fontWeight: 600 }}>{rowNum}</td>
                     <td><span className={`badge ${t.isActive ? 'badge-success' : 'badge-secondary'}`}>{t.isActive ? 'Aktif' : 'Pasif'}</span></td>
                     <td><strong>{t.name}</strong></td>
                     <td>{t.options.length}</td>
                     <td><div className="option-pills">{t.options.map(o => <span key={o.id} className="pill">{o.text}</span>)}</div></td>
                     <td>
                       <div className="action-btns">
-                        <button className="btn btn-sm btn-outline" onClick={() => openEdit(t)}>Düzenle</button>
-                        <button className="btn btn-sm btn-danger" onClick={() => handleDelete(t.id)}>Sil</button>
+                        <button className="btn btn-sm btn-outline" onClick={() => openEdit(t, rowNum)}>Düzenle</button>
+                        <button className="btn btn-sm btn-danger" onClick={() => handleDelete(t.id, rowNum)}>Sil</button>
                       </div>
                     </td>
                   </tr>
                   {deleteError?.id === t.id && (
                     <tr key={`err-${t.id}`}>
-                      <td colSpan={5} style={{ padding: 0, border: 'none' }}>
+                      <td colSpan={6} style={{ padding: 0, border: 'none' }}>
                         <div style={{
                           display: 'flex', alignItems: 'flex-start', gap: '12px',
                           background: '#fff7ed',
@@ -220,7 +224,8 @@ export default function AnswerTemplatesPage() {
                     </tr>
                   )}
                 </>
-              ))}
+                );
+              })}
             </tbody>
           </table>
           {filtered.length === 0 && <div className="empty-state">Şablon bulunamadı.</div>}
@@ -277,7 +282,7 @@ export default function AnswerTemplatesPage() {
           <div className="modal-overlay" onClick={() => { setShowModal(false); setError(''); setErrorType(''); }}>
             <div className={`modal${shake ? ' modal-shake' : ''}`} onClick={e => e.stopPropagation()}>
               <div className="modal-header">
-                <h3>{editItem ? 'Şablonu Düzenle' : 'Yeni Şablon'}</h3>
+                <h3>{editItem ? `#${editRowNum} Şablonu Düzenle` : 'Yeni Şablon'}</h3>
                 <button className="modal-close" onClick={() => { setShowModal(false); setError(''); setErrorType(''); }}>×</button>
               </div>
               <div className="modal-body">

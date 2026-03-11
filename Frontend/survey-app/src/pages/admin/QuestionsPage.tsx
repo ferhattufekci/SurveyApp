@@ -21,6 +21,7 @@ export default function QuestionsPage() {
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
   const [page, setPage]             = useState(1);
   const [deleteError, setDeleteError] = useState<{ id: number; count: number; detail: string } | null>(null);
+  const [editRowNum, setEditRowNum]   = useState(0);
 
   const load = () =>
     Promise.all([questionsApi.getAll(), answerTemplatesApi.getAll()])
@@ -36,8 +37,8 @@ export default function QuestionsPage() {
     setError(''); setErrorType(''); setShowModal(true);
   };
 
-  const openEdit = (q: QuestionListItem) => {
-    setEditItem(q);
+  const openEdit = (q: QuestionListItem, rowNum: number) => {
+    setEditItem(q); setEditRowNum(rowNum);
     setForm({ text: q.text, answerTemplateId: q.answerTemplateId, isActive: q.isActive });
     setError(''); setErrorType(''); setShowModal(true);
   };
@@ -64,9 +65,9 @@ export default function QuestionsPage() {
     } finally { setSaving(false); }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: number, rowNum: number) => {
     setDeleteError(null);
-    if (!confirm('Bu soruyu silmek istediğinize emin misiniz?')) return;
+    if (!confirm(`${rowNum} numaralı soruyu silmek istediğinize emin misiniz?`)) return;
     try {
       await questionsApi.delete(id); load();
     } catch (e: any) {
@@ -161,7 +162,7 @@ export default function QuestionsPage() {
         <div className="card-toolbar">
           <SearchInput
             value={search}
-            placeholder="Soru metni, şablon adı veya durum ara..."
+            placeholder="Soru metni, cevap şablonu adı veya durum ara..."
             onChange={v => { setSearch(v); setActiveFilter('all'); setPage(1); }}
           />
           {activeFilter !== 'all' && (
@@ -172,20 +173,22 @@ export default function QuestionsPage() {
         <div className="table-container">
           <table className="table">
             <thead>
-              <tr><th>Durum</th><th>#</th><th>Soru Metni</th><th>Cevap Şablonu</th><th>İşlemler</th></tr>
+              <tr><th>#</th><th>Durum</th><th>Soru Metni</th><th>Cevap Şablonu</th><th>İşlemler</th></tr>
             </thead>
             <tbody>
-              {paginated.map((q, i) => (
+              {paginated.map((q, i) => {
+                const rowNum = (safePage - 1) * PAGE_SIZE + i + 1;
+                return (
                 <>
                   <tr key={q.id}>
+                    <td className="text-muted" style={{ fontWeight: 600 }}>{rowNum}</td>
                     <td><span className={`badge ${q.isActive ? 'badge-success' : 'badge-secondary'}`}>{q.isActive ? 'Aktif' : 'Pasif'}</span></td>
-                    <td className="text-muted">{(safePage - 1) * PAGE_SIZE + i + 1}</td>
                     <td>{q.text}</td>
                     <td><span className="pill">{q.answerTemplateName}</span></td>
                     <td>
                       <div className="action-btns">
-                        <button className="btn btn-sm btn-outline" onClick={() => openEdit(q)}>Düzenle</button>
-                        <button className="btn btn-sm btn-danger" onClick={() => handleDelete(q.id)}>Sil</button>
+                        <button className="btn btn-sm btn-outline" onClick={() => openEdit(q, rowNum)}>Düzenle</button>
+                        <button className="btn btn-sm btn-danger" onClick={() => handleDelete(q.id, rowNum)}>Sil</button>
                       </div>
                     </td>
                   </tr>
@@ -219,7 +222,8 @@ export default function QuestionsPage() {
                     </tr>
                   )}
                 </>
-              ))}
+                );
+              })}
             </tbody>
           </table>
           {filtered.length === 0 && <div className="empty-state">Soru bulunamadı.</div>}
@@ -265,7 +269,7 @@ export default function QuestionsPage() {
           <div className="modal-overlay" onClick={closeModal}>
             <div className={`modal${shake ? ' modal-shake' : ''}`} onClick={e => e.stopPropagation()}>
               <div className="modal-header">
-                <h3>{editItem ? 'Soruyu Düzenle' : 'Yeni Soru'}</h3>
+                <h3>{editItem ? `#${editRowNum} Soruyu Düzenle` : 'Yeni Soru'}</h3>
                 <button className="modal-close" onClick={closeModal}>×</button>
               </div>
               <div className="modal-body">
