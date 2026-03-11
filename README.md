@@ -14,6 +14,11 @@ A full-stack survey management system built with **.NET 8** (Clean Architecture)
 [![SQLite](https://img.shields.io/badge/SQLite-EF_Core-003B57?style=flat-square&logo=sqlite&logoColor=white)](https://sqlite.org)
 [![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 
+## Live Demo
+
+- **Application:** [https://sor-bakalim.vercel.app/](https://sor-bakalim.vercel.app/)
+- **Admin Login:** `admin@surveyapp.com` / `Admin123!`
+
 ---
 
 ## Table of Contents
@@ -33,24 +38,27 @@ A full-stack survey management system built with **.NET 8** (Clean Architecture)
 ## Features
 
 ### Admin Panel
-| Page | Description |
-|------|-------------|
-| **Dashboard** | Overview stats, active/expired survey breakdown, and recent survey table |
-| **Answer Templates** | Create reusable option sets (2–4 choices) used across questions |
-| **Questions** | Manage questions linked to answer templates; view option counts |
-| **Surveys** | Create surveys with date ranges, assign questions and users |
-| **Users** | Create, update, and delete user accounts; assign roles |
-| **Reports** | Completion rates with progress bars, response detail drill-down |
+
+| Page                 | Description                                                              |
+| -------------------- | ------------------------------------------------------------------------ |
+| **Dashboard**        | Overview stats, active/expired survey breakdown, and recent survey table |
+| **Answer Templates** | Create reusable option sets (2–4 choices) used across questions          |
+| **Questions**        | Manage questions linked to answer templates; view option counts          |
+| **Surveys**          | Create surveys with date ranges, assign questions and users              |
+| **Users**            | Create, update, and delete user accounts; assign roles                   |
+| **Reports**          | Completion rates with progress bars, response detail drill-down          |
 
 ### User Panel
-| Feature | Description |
-|---------|-------------|
-| **My Surveys** | Tabbed list: Active, Completed, Upcoming, Expired |
-| **Fill Survey** | Answer all questions, submit once per survey |
-| **Question Preview** | See answer template name and options per question in the list |
-| **Search** | Filter by title, description, question text, template name, or option text |
+
+| Feature              | Description                                                                |
+| -------------------- | -------------------------------------------------------------------------- |
+| **My Surveys**       | Tabbed list: Active, Completed, Upcoming, Expired                          |
+| **Fill Survey**      | Answer all questions, submit once per survey                               |
+| **Question Preview** | See answer template name and options per question in the list              |
+| **Search**           | Filter by title, description, question text, template name, or option text |
 
 ### Core Business Rules
+
 - Surveys with received responses cannot be edited or deleted
 - Passive users cannot be assigned to surveys or submit responses
 - Questions used in surveys cannot be deleted until removed from all surveys
@@ -98,39 +106,41 @@ SurveyApp/
 
 The backend API is designed around REST constraints, ensuring a predictable and interoperable interface:
 
-| Principle | Implementation |
-|-----------|----------------|
-| **Resource-based URLs** | Nouns over verbs — `/api/surveys`, `/api/questions`, `/api/users` |
-| **HTTP method semantics** | `GET` read · `POST` create · `PUT` full update · `DELETE` remove |
-| **Standard status codes** | `200 OK` · `201 Created` · `204 No Content` · `400 Bad Request` · `401 Unauthorized` · `404 Not Found` |
-| **Stateless communication** | Each request carries its own JWT token; no server-side session is maintained |
-| **Uniform interface** | All request and response bodies use `application/json`; errors follow a consistent `{ message }` envelope |
-| **Layered system** | Controllers delegate to the Application layer via interfaces; infrastructure details are never exposed to clients |
-| **Pagination** | List endpoints support client-driven pagination via `page` and `pageSize` parameters, keeping response payloads predictable and network-efficient |
+| Principle                   | Implementation                                                                                                                                    |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Resource-based URLs**     | Nouns over verbs — `/api/surveys`, `/api/questions`, `/api/users`                                                                                 |
+| **HTTP method semantics**   | `GET` read · `POST` create · `PUT` full update · `DELETE` remove                                                                                  |
+| **Standard status codes**   | `200 OK` · `201 Created` · `204 No Content` · `400 Bad Request` · `401 Unauthorized` · `404 Not Found`                                            |
+| **Stateless communication** | Each request carries its own JWT token; no server-side session is maintained                                                                      |
+| **Uniform interface**       | All request and response bodies use `application/json`; errors follow a consistent `{ message }` envelope                                         |
+| **Layered system**          | Controllers delegate to the Application layer via interfaces; infrastructure details are never exposed to clients                                 |
+| **Pagination**              | List endpoints support client-driven pagination via `page` and `pageSize` parameters, keeping response payloads predictable and network-efficient |
 
 ---
 
 ## Tech Stack
 
 ### Backend
-| Technology | Purpose |
-|------------|---------|
-| .NET 8 | Web API framework |
-| Entity Framework Core 8 | ORM |
-| SQLite | Embedded database (swappable — see [Switching Databases](#switching-databases)) |
-| JWT Bearer | Stateless authentication |
-| BCrypt.Net | Password hashing |
-| Swagger / OpenAPI | Interactive API documentation |
+
+| Technology              | Purpose                                                                         |
+| ----------------------- | ------------------------------------------------------------------------------- |
+| .NET 8                  | Web API framework                                                               |
+| Entity Framework Core 8 | ORM                                                                             |
+| SQLite                  | Embedded database (swappable — see [Switching Databases](#switching-databases)) |
+| JWT Bearer              | Stateless authentication                                                        |
+| BCrypt.Net              | Password hashing                                                                |
+| Swagger / OpenAPI       | Interactive API documentation                                                   |
 
 ### Frontend
-| Technology | Purpose |
-|------------|---------|
-| React 18 | UI framework |
-| TypeScript | Static typing |
-| Zustand | Lightweight global state |
-| React Router v6 | Client-side routing |
-| Axios | HTTP client |
-| Vite | Build tool and dev server |
+
+| Technology      | Purpose                   |
+| --------------- | ------------------------- |
+| React 18        | UI framework              |
+| TypeScript      | Static typing             |
+| Zustand         | Lightweight global state  |
+| React Router v6 | Client-side routing       |
+| Axios           | HTTP client               |
+| Vite            | Build tool and dev server |
 
 ---
 
@@ -181,11 +191,13 @@ Protected endpoints require `Authorization: Bearer <token>`.
 #### `POST /api/auth/login`
 
 **Request**
+
 ```json
 { "email": "admin@surveyapp.com", "password": "Admin123!" }
 ```
 
 **Response `200 OK`**
+
 ```json
 {
   "token": "eyJhbGciOiJIUzI1NiIs...",
@@ -197,23 +209,25 @@ Protected endpoints require `Authorization: Bearer <token>`.
 ```
 
 **Response `401 Unauthorized`**
+
 ```json
 { "message": "Invalid credentials" }
 ```
 
 ---
 
-### Users *(Admin only)*
+### Users _(Admin only)_
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/users` | List all users |
-| `GET` | `/api/users/{id}` | Get user by ID |
-| `POST` | `/api/users` | Create user |
-| `PUT` | `/api/users/{id}` | Update user |
-| `DELETE` | `/api/users/{id}` | Delete user |
+| Method   | Endpoint          | Description    |
+| -------- | ----------------- | -------------- |
+| `GET`    | `/api/users`      | List all users |
+| `GET`    | `/api/users/{id}` | Get user by ID |
+| `POST`   | `/api/users`      | Create user    |
+| `PUT`    | `/api/users/{id}` | Update user    |
+| `DELETE` | `/api/users/{id}` | Delete user    |
 
 **Create / Update body**
+
 ```json
 {
   "email": "user@example.com",
@@ -226,17 +240,18 @@ Protected endpoints require `Authorization: Bearer <token>`.
 
 ---
 
-### Answer Templates *(Admin only)*
+### Answer Templates _(Admin only)_
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/answertemplates` | List all templates with options |
-| `GET` | `/api/answertemplates/{id}` | Get template by ID |
-| `POST` | `/api/answertemplates` | Create template (2–4 options required) |
-| `PUT` | `/api/answertemplates/{id}` | Update template |
+| Method   | Endpoint                    | Description                                    |
+| -------- | --------------------------- | ---------------------------------------------- |
+| `GET`    | `/api/answertemplates`      | List all templates with options                |
+| `GET`    | `/api/answertemplates/{id}` | Get template by ID                             |
+| `POST`   | `/api/answertemplates`      | Create template (2–4 options required)         |
+| `PUT`    | `/api/answertemplates/{id}` | Update template                                |
 | `DELETE` | `/api/answertemplates/{id}` | Delete template (blocked if used in questions) |
 
 **Create body**
+
 ```json
 {
   "name": "Agreement Scale",
@@ -247,17 +262,18 @@ Protected endpoints require `Authorization: Bearer <token>`.
 
 ---
 
-### Questions *(Admin only)*
+### Questions _(Admin only)_
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/questions` | List all questions with template info |
-| `GET` | `/api/questions/{id}` | Get question with full template and options |
-| `POST` | `/api/questions` | Create question |
-| `PUT` | `/api/questions/{id}` | Update question |
+| Method   | Endpoint              | Description                                  |
+| -------- | --------------------- | -------------------------------------------- |
+| `GET`    | `/api/questions`      | List all questions with template info        |
+| `GET`    | `/api/questions/{id}` | Get question with full template and options  |
+| `POST`   | `/api/questions`      | Create question                              |
+| `PUT`    | `/api/questions/{id}` | Update question                              |
 | `DELETE` | `/api/questions/{id}` | Delete question (blocked if used in surveys) |
 
 **Create body**
+
 ```json
 {
   "text": "How satisfied are you with our service?",
@@ -268,17 +284,18 @@ Protected endpoints require `Authorization: Bearer <token>`.
 
 ---
 
-### Surveys *(Admin only)*
+### Surveys _(Admin only)_
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/surveys` | List all surveys with assigned/response counts |
-| `GET` | `/api/surveys/{id}` | Get survey with questions and assigned user IDs |
-| `POST` | `/api/surveys` | Create survey |
-| `PUT` | `/api/surveys/{id}` | Update survey (blocked if responses exist) |
-| `DELETE` | `/api/surveys/{id}` | Delete survey (blocked if responses exist) |
+| Method   | Endpoint            | Description                                     |
+| -------- | ------------------- | ----------------------------------------------- |
+| `GET`    | `/api/surveys`      | List all surveys with assigned/response counts  |
+| `GET`    | `/api/surveys/{id}` | Get survey with questions and assigned user IDs |
+| `POST`   | `/api/surveys`      | Create survey                                   |
+| `PUT`    | `/api/surveys/{id}` | Update survey (blocked if responses exist)      |
+| `DELETE` | `/api/surveys/{id}` | Delete survey (blocked if responses exist)      |
 
 **Create body**
+
 ```json
 {
   "title": "Q4 Employee Satisfaction",
@@ -293,14 +310,15 @@ Protected endpoints require `Authorization: Bearer <token>`.
 
 ---
 
-### Reports *(Admin only)*
+### Reports _(Admin only)_
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/reports` | List all surveys with completion stats |
-| `GET` | `/api/reports/{surveyId}` | Full report: who completed, who hasn't, all answers |
+| Method | Endpoint                  | Description                                         |
+| ------ | ------------------------- | --------------------------------------------------- |
+| `GET`  | `/api/reports`            | List all surveys with completion stats              |
+| `GET`  | `/api/reports/{surveyId}` | Full report: who completed, who hasn't, all answers |
 
 **Report response `200 OK`**
+
 ```json
 {
   "surveyId": 1,
@@ -315,27 +333,38 @@ Protected endpoints require `Authorization: Bearer <token>`.
       "userEmail": "jane@example.com",
       "submittedAt": "2024-12-15T10:30:00",
       "answers": [
-        { "questionId": 1, "questionText": "How satisfied are you?", "answerText": "Agree" }
+        {
+          "questionId": 1,
+          "questionText": "How satisfied are you?",
+          "answerText": "Agree"
+        }
       ]
     }
   ],
   "pendingUsers": [
-    { "id": 3, "fullName": "John Smith", "email": "john@example.com", "role": "User", "isActive": true }
+    {
+      "id": 3,
+      "fullName": "John Smith",
+      "email": "john@example.com",
+      "role": "User",
+      "isActive": true
+    }
   ]
 }
 ```
 
 ---
 
-### My Surveys *(User only)*
+### My Surveys _(User only)_
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/my-surveys` | List all assigned surveys (with questions and options) |
-| `GET` | `/api/my-surveys/{surveyId}` | Get survey detail for filling (active and in-date only) |
-| `POST` | `/api/my-surveys/{surveyId}/submit` | Submit answers |
+| Method | Endpoint                            | Description                                             |
+| ------ | ----------------------------------- | ------------------------------------------------------- |
+| `GET`  | `/api/my-surveys`                   | List all assigned surveys (with questions and options)  |
+| `GET`  | `/api/my-surveys/{surveyId}`        | Get survey detail for filling (active and in-date only) |
+| `POST` | `/api/my-surveys/{surveyId}/submit` | Submit answers                                          |
 
 **Submit body**
+
 ```json
 {
   "surveyId": 1,
@@ -352,12 +381,13 @@ Protected endpoints require `Authorization: Bearer <token>`.
 
 ### Prerequisites
 
-| Tool | Version | Download |
-|------|---------|----------|
-| .NET SDK | 8.0 | [dotnet.microsoft.com](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) |
-| Node.js | 18+ LTS | [nodejs.org](https://nodejs.org/en/download) |
+| Tool     | Version | Download                                                                       |
+| -------- | ------- | ------------------------------------------------------------------------------ |
+| .NET SDK | 8.0     | [dotnet.microsoft.com](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) |
+| Node.js  | 18+ LTS | [nodejs.org](https://nodejs.org/en/download)                                   |
 
 Verify installations:
+
 ```sh
 dotnet --version
 node --version
@@ -368,34 +398,46 @@ npm --version
 
 ```sh
 git clone https://github.com/ferhattufekci/SurveyApp.git
+```
+
+```sh
 cd SurveyApp
 ```
 
 ### 2. Run the Backend
 
 Install the EF Core CLI tool (one-time):
+
 ```sh
 dotnet tool install --global dotnet-ef
 ```
 
 Navigate to the API project:
+
 ```sh
 cd Backend/SurveyApp.API
 ```
 
 Restore dependencies and apply migrations:
+
 ```sh
 dotnet restore
+```
+
+```sh
 dotnet ef migrations add InitialCreate --project ..\SurveyApp.Infrastructure --startup-project .
+```
+
+```sh
 dotnet ef database update --project ..\SurveyApp.Infrastructure --startup-project .
 ```
 
 Start the backend:
+
 ```sh
 dotnet run
 ```
 
-> API: http://localhost:5000  
 > Swagger: http://localhost:5000/swagger
 
 ### 3. Run the Frontend
@@ -404,7 +446,13 @@ Open a **new terminal** (keep the backend running):
 
 ```sh
 cd Frontend/survey-app
+```
+
+```sh
 npm install
+```
+
+```sh
 npm run dev
 ```
 
@@ -414,8 +462,8 @@ npm run dev
 
 ## Default Credentials
 
-| Role | Email | Password |
-|------|-------|----------|
+| Role  | Email               | Password  |
+| ----- | ------------------- | --------- |
 | Admin | admin@surveyapp.com | Admin123! |
 
 Additional users can be created from **Admin Panel → Users**.
@@ -451,13 +499,13 @@ Browser → surveyapp.vercel.app (React / Vercel)
 
 **Set environment variables in Railway (Settings → Variables):**
 
-| Variable | Value |
-|----------|-------|
-| `ASPNETCORE_ENVIRONMENT` | `Production` |
-| `FRONTEND_URL` | your Vercel URL — fill in after Step 2 |
-| `Jwt__Key` | a long random secret string (32+ chars) |
-| `Jwt__Issuer` | `SurveyApp` |
-| `Jwt__Audience` | `SurveyAppUsers` |
+| Variable                 | Value                                   |
+| ------------------------ | --------------------------------------- |
+| `ASPNETCORE_ENVIRONMENT` | `Production`                            |
+| `FRONTEND_URL`           | your Vercel URL — fill in after Step 2  |
+| `Jwt__Key`               | a long random secret string (32+ chars) |
+| `Jwt__Issuer`            | `SurveyApp`                             |
+| `Jwt__Audience`          | `SurveyAppUsers`                        |
 
 ---
 
@@ -470,8 +518,8 @@ Browser → surveyapp.vercel.app (React / Vercel)
 3. Framework will be auto-detected as **Vite**
 4. Under **Environment Variables**, add:
 
-| Variable | Value |
-|----------|-------|
+| Variable       | Value                                         |
+| -------------- | --------------------------------------------- |
 | `VITE_API_URL` | `https://your-railway-url.up.railway.app/api` |
 
 5. Click **Deploy** — Vercel will give you a URL (e.g. `https://surveyapp.vercel.app`)
@@ -482,8 +530,8 @@ Browser → surveyapp.vercel.app (React / Vercel)
 
 Go back to Railway → **Variables** and set:
 
-| Variable | Value |
-|----------|-------|
+| Variable       | Value                          |
+| -------------- | ------------------------------ |
 | `FRONTEND_URL` | `https://surveyapp.vercel.app` |
 
 Railway will automatically redeploy the backend with the updated CORS origin.
@@ -492,13 +540,13 @@ Railway will automatically redeploy the backend with the updated CORS origin.
 
 ### Deployment Files Reference
 
-| File | Purpose |
-|------|---------|
-| `Backend/Dockerfile` | Multi-stage Docker build for Railway |
-| `Backend/railway.json` | Railway build and restart configuration |
+| File                                                | Purpose                                               |
+| --------------------------------------------------- | ----------------------------------------------------- |
+| `Backend/Dockerfile`                                | Multi-stage Docker build for Railway                  |
+| `Backend/railway.json`                              | Railway build and restart configuration               |
 | `Backend/SurveyApp.API/appsettings.Production.json` | Production settings template (SQLite path, log level) |
-| `Frontend/survey-app/vercel.json` | SPA rewrite rule so React Router handles all routes |
-| `Frontend/survey-app/.env.example` | Environment variable template for local development |
+| `Frontend/survey-app/vercel.json`                   | SPA rewrite rule so React Router handles all routes   |
+| `Frontend/survey-app/.env.example`                  | Environment variable template for local development   |
 
 ---
 
@@ -509,28 +557,25 @@ The default SQLite database can be replaced with any EF Core-compatible provider
 **PostgreSQL example**
 
 `SurveyApp.Infrastructure.csproj`:
+
 ```xml
 <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.0" />
 ```
 
 `Program.cs`:
+
 ```csharp
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 ```
 
 `appsettings.json`:
+
 ```json
 "ConnectionStrings": {
   "DefaultConnection": "Host=localhost;Database=surveyapp;Username=postgres;Password=yourpassword"
 }
 ```
-
----
-
-## License
-
-[MIT](LICENSE)
 
 ---
 
@@ -560,6 +605,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 <h3 align="center">Let's Connect — I'm Always Open to Collaborate and Share Ideas!</h3>
 
 ---
+
 ---
 
 <a name="türkçe"></a>
@@ -567,6 +613,17 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 # SurveyApp — Türkçe
 
 **.NET 8** (Clean Architecture) ve **React TypeScript** ile geliştirilmiş tam yığın anket yönetim sistemi. Adminler cevap şablonları, sorular ve anketler oluşturur, bunları kullanıcılara atar ve tamamlanma durumlarını detaylı raporlar aracılığıyla takip eder. Kullanıcılar kendilerine atanan anketleri doldurur ve geçmişlerini görüntüler.
+
+[![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=flat-square&logo=dotnet&logoColor=white)](https://dotnet.microsoft.com)
+[![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![SQLite](https://img.shields.io/badge/SQLite-EF_Core-003B57?style=flat-square&logo=sqlite&logoColor=white)](https://sqlite.org)
+[![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
+
+## Canlı Demo
+
+- **Uygulama Adresi:** [https://sor-bakalim.vercel.app/](https://sor-bakalim.vercel.app/)
+- **Admin Giriş Bilgileri:** `admin@surveyapp.com` / `Admin123!`
 
 ---
 
@@ -586,24 +643,27 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 ## Özellikler
 
 ### Admin Paneli
-| Ekran | Açıklama |
-|-------|----------|
-| **Dashboard** | Genel istatistikler, aktif/süresi geçen anket dağılımı ve son anketler tablosu |
-| **Cevap Şablonları** | Sorularda kullanılmak üzere 2–4 seçenekli yeniden kullanılabilir şablonlar |
-| **Sorular** | Cevap şablonlarına bağlı soru yönetimi; seçenek sayısı görüntüleme |
-| **Anketler** | Tarih aralıklı anket oluşturma, soru ve kullanıcı atama |
-| **Kullanıcılar** | Kullanıcı oluşturma, güncelleme, silme ve rol atama |
-| **Raporlar** | İlerleme çubuğuyla tamamlanma oranları ve yanıt detayı görüntüleme |
+
+| Ekran                | Açıklama                                                                       |
+| -------------------- | ------------------------------------------------------------------------------ |
+| **Dashboard**        | Genel istatistikler, aktif/süresi geçen anket dağılımı ve son anketler tablosu |
+| **Cevap Şablonları** | Sorularda kullanılmak üzere 2–4 seçenekli yeniden kullanılabilir şablonlar     |
+| **Sorular**          | Cevap şablonlarına bağlı soru yönetimi; seçenek sayısı görüntüleme             |
+| **Anketler**         | Tarih aralıklı anket oluşturma, soru ve kullanıcı atama                        |
+| **Kullanıcılar**     | Kullanıcı oluşturma, güncelleme, silme ve rol atama                            |
+| **Raporlar**         | İlerleme çubuğuyla tamamlanma oranları ve yanıt detayı görüntüleme             |
 
 ### Kullanıcı Paneli
-| Özellik | Açıklama |
-|---------|----------|
-| **Anketlerim** | Sekmeli liste: Aktif, Tamamlanan, Yaklaşan, Süresi Geçen |
-| **Anket Doldur** | Tüm soruları cevapla ve anketi bir kez gönder |
-| **Soru Önizleme** | Listede her sorunun şablon adını ve seçeneklerini göster |
-| **Arama** | Başlık, açıklama, soru metni, şablon adı veya seçenek metnine göre filtrele |
+
+| Özellik           | Açıklama                                                                    |
+| ----------------- | --------------------------------------------------------------------------- |
+| **Anketlerim**    | Sekmeli liste: Aktif, Tamamlanan, Yaklaşan, Süresi Geçen                    |
+| **Anket Doldur**  | Tüm soruları cevapla ve anketi bir kez gönder                               |
+| **Soru Önizleme** | Listede her sorunun şablon adını ve seçeneklerini göster                    |
+| **Arama**         | Başlık, açıklama, soru metni, şablon adı veya seçenek metnine göre filtrele |
 
 ### Temel İş Kuralları
+
 - Yanıt alınmış anketler düzenlenemez veya silinemez
 - Pasif kullanıcılar ankete atanamaz ve anket gönderemez
 - Anketlerde kullanılan sorular, anketlerden çıkarılmadan silinemez
@@ -651,14 +711,14 @@ SurveyApp/
 
 Backend API, tahmin edilebilir ve birlikte çalışabilir bir arayüz sağlamak amacıyla REST kısıtlamaları temel alınarak tasarlanmıştır:
 
-| Prensip | Uygulama |
-|---------|----------|
-| **Kaynak tabanlı URL'ler** | Fiil değil isim — `/api/surveys`, `/api/questions`, `/api/users` |
-| **HTTP metod semantiği** | `GET` okuma · `POST` oluşturma · `PUT` güncelleme · `DELETE` silme |
-| **Standart durum kodları** | `200 OK` · `201 Created` · `204 No Content` · `400 Bad Request` · `401 Unauthorized` · `404 Not Found` |
-| **Stateless iletişim** | Her istek kendi JWT token'ını taşır; sunucuda oturum tutulmaz |
-| **Tekdüze arayüz** | Tüm istek ve yanıt gövdeleri `application/json` kullanır; hatalar tutarlı `{ message }` zarfıyla döner |
-| **Katmanlı sistem** | Controller'lar iş mantığını arayüzler üzerinden Application katmanına devreder; altyapı detayları istemciye hiçbir zaman açılmaz |
+| Prensip                    | Uygulama                                                                                                                                             |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Kaynak tabanlı URL'ler** | Fiil değil isim — `/api/surveys`, `/api/questions`, `/api/users`                                                                                     |
+| **HTTP metod semantiği**   | `GET` okuma · `POST` oluşturma · `PUT` güncelleme · `DELETE` silme                                                                                   |
+| **Standart durum kodları** | `200 OK` · `201 Created` · `204 No Content` · `400 Bad Request` · `401 Unauthorized` · `404 Not Found`                                               |
+| **Stateless iletişim**     | Her istek kendi JWT token'ını taşır; sunucuda oturum tutulmaz                                                                                        |
+| **Tekdüze arayüz**         | Tüm istek ve yanıt gövdeleri `application/json` kullanır; hatalar tutarlı `{ message }` zarfıyla döner                                               |
+| **Katmanlı sistem**        | Controller'lar iş mantığını arayüzler üzerinden Application katmanına devreder; altyapı detayları istemciye hiçbir zaman açılmaz                     |
 | **Sayfalama (Pagination)** | Liste endpoint'leri `page` ve `pageSize` parametreleriyle istemci güdümlü sayfalamayı destekler; yanıt boyutları öngörülür ve ağ verimliliği korunur |
 
 ---
@@ -666,24 +726,26 @@ Backend API, tahmin edilebilir ve birlikte çalışabilir bir arayüz sağlamak 
 ## Teknoloji Yığını
 
 ### Backend
-| Teknoloji | Kullanım |
-|-----------|----------|
-| .NET 8 | Web API framework |
-| Entity Framework Core 8 | ORM |
-| SQLite | Gömülü veritabanı (değiştirilebilir — bkz. [Farklı Veritabanına Geçiş](#farklı-veritabanına-geçiş)) |
-| JWT Bearer | Stateless kimlik doğrulama |
-| BCrypt.Net | Şifre hashleme |
-| Swagger / OpenAPI | Etkileşimli API dokümantasyonu |
+
+| Teknoloji               | Kullanım                                                                                            |
+| ----------------------- | --------------------------------------------------------------------------------------------------- |
+| .NET 8                  | Web API framework                                                                                   |
+| Entity Framework Core 8 | ORM                                                                                                 |
+| SQLite                  | Gömülü veritabanı (değiştirilebilir — bkz. [Farklı Veritabanına Geçiş](#farklı-veritabanına-geçiş)) |
+| JWT Bearer              | Stateless kimlik doğrulama                                                                          |
+| BCrypt.Net              | Şifre hashleme                                                                                      |
+| Swagger / OpenAPI       | Etkileşimli API dokümantasyonu                                                                      |
 
 ### Frontend
-| Teknoloji | Kullanım |
-|-----------|----------|
-| React 18 | UI framework |
-| TypeScript | Statik tipleme |
-| Zustand | Hafif global state yönetimi |
-| React Router v6 | İstemci tarafı yönlendirme |
-| Axios | HTTP istemcisi |
-| Vite | Build aracı ve geliştirme sunucusu |
+
+| Teknoloji       | Kullanım                           |
+| --------------- | ---------------------------------- |
+| React 18        | UI framework                       |
+| TypeScript      | Statik tipleme                     |
+| Zustand         | Hafif global state yönetimi        |
+| React Router v6 | İstemci tarafı yönlendirme         |
+| Axios           | HTTP istemcisi                     |
+| Vite            | Build aracı ve geliştirme sunucusu |
 
 ---
 
@@ -734,11 +796,13 @@ Korumalı endpoint'ler `Authorization: Bearer <token>` gerektirir.
 #### `POST /api/auth/login`
 
 **İstek**
+
 ```json
 { "email": "admin@surveyapp.com", "password": "Admin123!" }
 ```
 
 **Yanıt `200 OK`**
+
 ```json
 {
   "token": "eyJhbGciOiJIUzI1NiIs...",
@@ -750,23 +814,25 @@ Korumalı endpoint'ler `Authorization: Bearer <token>` gerektirir.
 ```
 
 **Yanıt `401 Unauthorized`**
+
 ```json
 { "message": "Invalid credentials" }
 ```
 
 ---
 
-### Kullanıcılar *(Yalnızca Admin)*
+### Kullanıcılar _(Yalnızca Admin)_
 
-| Metod | Endpoint | Açıklama |
-|-------|----------|----------|
-| `GET` | `/api/users` | Tüm kullanıcıları listele |
-| `GET` | `/api/users/{id}` | ID ile kullanıcı getir |
-| `POST` | `/api/users` | Kullanıcı oluştur |
-| `PUT` | `/api/users/{id}` | Kullanıcı güncelle |
-| `DELETE` | `/api/users/{id}` | Kullanıcı sil |
+| Metod    | Endpoint          | Açıklama                  |
+| -------- | ----------------- | ------------------------- |
+| `GET`    | `/api/users`      | Tüm kullanıcıları listele |
+| `GET`    | `/api/users/{id}` | ID ile kullanıcı getir    |
+| `POST`   | `/api/users`      | Kullanıcı oluştur         |
+| `PUT`    | `/api/users/{id}` | Kullanıcı güncelle        |
+| `DELETE` | `/api/users/{id}` | Kullanıcı sil             |
 
 **Oluşturma / Güncelleme gövdesi**
+
 ```json
 {
   "email": "user@example.com",
@@ -779,38 +845,45 @@ Korumalı endpoint'ler `Authorization: Bearer <token>` gerektirir.
 
 ---
 
-### Cevap Şablonları *(Yalnızca Admin)*
+### Cevap Şablonları _(Yalnızca Admin)_
 
-| Metod | Endpoint | Açıklama |
-|-------|----------|----------|
-| `GET` | `/api/answertemplates` | Seçenekleriyle tüm şablonları listele |
-| `GET` | `/api/answertemplates/{id}` | ID ile şablon getir |
-| `POST` | `/api/answertemplates` | Şablon oluştur (2–4 seçenek zorunlu) |
-| `PUT` | `/api/answertemplates/{id}` | Şablon güncelle |
+| Metod    | Endpoint                    | Açıklama                                         |
+| -------- | --------------------------- | ------------------------------------------------ |
+| `GET`    | `/api/answertemplates`      | Seçenekleriyle tüm şablonları listele            |
+| `GET`    | `/api/answertemplates/{id}` | ID ile şablon getir                              |
+| `POST`   | `/api/answertemplates`      | Şablon oluştur (2–4 seçenek zorunlu)             |
+| `PUT`    | `/api/answertemplates/{id}` | Şablon güncelle                                  |
 | `DELETE` | `/api/answertemplates/{id}` | Şablon sil (sorularda kullanılıyorsa engellenir) |
 
 **Oluşturma gövdesi**
+
 ```json
 {
   "name": "Katılım Düzeyi",
   "isActive": true,
-  "options": ["Kesinlikle Katılıyorum", "Katılıyorum", "Katılmıyorum", "Kesinlikle Katılmıyorum"]
+  "options": [
+    "Kesinlikle Katılıyorum",
+    "Katılıyorum",
+    "Katılmıyorum",
+    "Kesinlikle Katılmıyorum"
+  ]
 }
 ```
 
 ---
 
-### Sorular *(Yalnızca Admin)*
+### Sorular _(Yalnızca Admin)_
 
-| Metod | Endpoint | Açıklama |
-|-------|----------|----------|
-| `GET` | `/api/questions` | Şablon bilgisiyle tüm soruları listele |
-| `GET` | `/api/questions/{id}` | Tam şablon ve seçenekleriyle soru getir |
-| `POST` | `/api/questions` | Soru oluştur |
-| `PUT` | `/api/questions/{id}` | Soru güncelle |
+| Metod    | Endpoint              | Açıklama                                        |
+| -------- | --------------------- | ----------------------------------------------- |
+| `GET`    | `/api/questions`      | Şablon bilgisiyle tüm soruları listele          |
+| `GET`    | `/api/questions/{id}` | Tam şablon ve seçenekleriyle soru getir         |
+| `POST`   | `/api/questions`      | Soru oluştur                                    |
+| `PUT`    | `/api/questions/{id}` | Soru güncelle                                   |
 | `DELETE` | `/api/questions/{id}` | Soru sil (anketlerde kullanılıyorsa engellenir) |
 
 **Oluşturma gövdesi**
+
 ```json
 {
   "text": "Hizmetimizden memnun musunuz?",
@@ -821,17 +894,18 @@ Korumalı endpoint'ler `Authorization: Bearer <token>` gerektirir.
 
 ---
 
-### Anketler *(Yalnızca Admin)*
+### Anketler _(Yalnızca Admin)_
 
-| Metod | Endpoint | Açıklama |
-|-------|----------|----------|
-| `GET` | `/api/surveys` | Atanan/yanıtlayan sayısıyla tüm anketleri listele |
-| `GET` | `/api/surveys/{id}` | Sorular ve atanan kullanıcı ID'leriyle anket getir |
-| `POST` | `/api/surveys` | Anket oluştur |
-| `PUT` | `/api/surveys/{id}` | Anket güncelle (yanıt varsa engellenir) |
-| `DELETE` | `/api/surveys/{id}` | Anket sil (yanıt varsa engellenir) |
+| Metod    | Endpoint            | Açıklama                                           |
+| -------- | ------------------- | -------------------------------------------------- |
+| `GET`    | `/api/surveys`      | Atanan/yanıtlayan sayısıyla tüm anketleri listele  |
+| `GET`    | `/api/surveys/{id}` | Sorular ve atanan kullanıcı ID'leriyle anket getir |
+| `POST`   | `/api/surveys`      | Anket oluştur                                      |
+| `PUT`    | `/api/surveys/{id}` | Anket güncelle (yanıt varsa engellenir)            |
+| `DELETE` | `/api/surveys/{id}` | Anket sil (yanıt varsa engellenir)                 |
 
 **Oluşturma gövdesi**
+
 ```json
 {
   "title": "Çalışan Memnuniyet Anketi",
@@ -846,14 +920,15 @@ Korumalı endpoint'ler `Authorization: Bearer <token>` gerektirir.
 
 ---
 
-### Raporlar *(Yalnızca Admin)*
+### Raporlar _(Yalnızca Admin)_
 
-| Metod | Endpoint | Açıklama |
-|-------|----------|----------|
-| `GET` | `/api/reports` | Tamamlanma istatistikleriyle tüm anketleri listele |
+| Metod | Endpoint                  | Açıklama                                              |
+| ----- | ------------------------- | ----------------------------------------------------- |
+| `GET` | `/api/reports`            | Tamamlanma istatistikleriyle tüm anketleri listele    |
 | `GET` | `/api/reports/{surveyId}` | Tam rapor: kim doldurdu, kim doldurmadı, tüm yanıtlar |
 
 **Rapor yanıtı `200 OK`**
+
 ```json
 {
   "surveyId": 1,
@@ -868,27 +943,38 @@ Korumalı endpoint'ler `Authorization: Bearer <token>` gerektirir.
       "userEmail": "ahmet@example.com",
       "submittedAt": "2024-12-15T10:30:00",
       "answers": [
-        { "questionId": 1, "questionText": "Hizmetimizden memnun musunuz?", "answerText": "Katılıyorum" }
+        {
+          "questionId": 1,
+          "questionText": "Hizmetimizden memnun musunuz?",
+          "answerText": "Katılıyorum"
+        }
       ]
     }
   ],
   "pendingUsers": [
-    { "id": 3, "fullName": "Mehmet Kaya", "email": "mehmet@example.com", "role": "User", "isActive": true }
+    {
+      "id": 3,
+      "fullName": "Mehmet Kaya",
+      "email": "mehmet@example.com",
+      "role": "User",
+      "isActive": true
+    }
   ]
 }
 ```
 
 ---
 
-### Anketlerim *(Yalnızca User)*
+### Anketlerim _(Yalnızca User)_
 
-| Metod | Endpoint | Açıklama |
-|-------|----------|----------|
-| `GET` | `/api/my-surveys` | Atanan tüm anketleri listele (sorular ve seçeneklerle) |
-| `GET` | `/api/my-surveys/{surveyId}` | Doldurmak için anket detayı getir (yalnızca aktif ve tarih aralığında olanlar) |
-| `POST` | `/api/my-surveys/{surveyId}/submit` | Yanıtları gönder |
+| Metod  | Endpoint                            | Açıklama                                                                       |
+| ------ | ----------------------------------- | ------------------------------------------------------------------------------ |
+| `GET`  | `/api/my-surveys`                   | Atanan tüm anketleri listele (sorular ve seçeneklerle)                         |
+| `GET`  | `/api/my-surveys/{surveyId}`        | Doldurmak için anket detayı getir (yalnızca aktif ve tarih aralığında olanlar) |
+| `POST` | `/api/my-surveys/{surveyId}/submit` | Yanıtları gönder                                                               |
 
 **Gönderme gövdesi**
+
 ```json
 {
   "surveyId": 1,
@@ -905,12 +991,13 @@ Korumalı endpoint'ler `Authorization: Bearer <token>` gerektirir.
 
 ### Gereksinimler
 
-| Araç | Versiyon | İndirme |
-|------|----------|---------|
-| .NET SDK | 8.0 | [dotnet.microsoft.com](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) |
-| Node.js | 18+ LTS | [nodejs.org](https://nodejs.org/en/download) |
+| Araç     | Versiyon | İndirme                                                                        |
+| -------- | -------- | ------------------------------------------------------------------------------ |
+| .NET SDK | 8.0      | [dotnet.microsoft.com](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) |
+| Node.js  | 18+ LTS  | [nodejs.org](https://nodejs.org/en/download)                                   |
 
 Kurulumu doğrulayın:
+
 ```sh
 dotnet --version
 node --version
@@ -921,34 +1008,46 @@ npm --version
 
 ```sh
 git clone https://github.com/ferhattufekci/SurveyApp.git
+```
+
+```sh
 cd SurveyApp
 ```
 
 ### 2. Backend'i Başlatın
 
 EF Core CLI aracını kurun (bir kez yapılır):
+
 ```sh
 dotnet tool install --global dotnet-ef
 ```
 
 API projesine gidin:
+
 ```sh
 cd Backend/SurveyApp.API
 ```
 
 Bağımlılıkları yükleyin ve migration'ları uygulayın:
+
 ```sh
 dotnet restore
+```
+
+```sh
 dotnet ef migrations add InitialCreate --project ..\SurveyApp.Infrastructure --startup-project .
+```
+
+```sh
 dotnet ef database update --project ..\SurveyApp.Infrastructure --startup-project .
 ```
 
 Backend'i başlatın:
+
 ```sh
 dotnet run
 ```
 
-> API: http://localhost:5000  
 > Swagger: http://localhost:5000/swagger
 
 ### 3. Frontend'i Başlatın
@@ -967,8 +1066,8 @@ npm run dev
 
 ## Varsayılan Giriş Bilgileri
 
-| Rol | E-posta | Şifre |
-|-----|---------|-------|
+| Rol   | E-posta             | Şifre     |
+| ----- | ------------------- | --------- |
 | Admin | admin@surveyapp.com | Admin123! |
 
 Ek kullanıcılar **Admin Paneli → Kullanıcılar** ekranından oluşturulabilir.
@@ -1004,13 +1103,13 @@ Tarayıcı → surveyapp.vercel.app (React / Vercel)
 
 **Railway'de environment variable'ları ayarla (Settings → Variables):**
 
-| Değişken | Değer |
-|----------|-------|
-| `ASPNETCORE_ENVIRONMENT` | `Production` |
-| `FRONTEND_URL` | Vercel URL'in — Adım 2 sonrası doldur |
-| `Jwt__Key` | Uzun rastgele bir string (32+ karakter) |
-| `Jwt__Issuer` | `SurveyApp` |
-| `Jwt__Audience` | `SurveyAppUsers` |
+| Değişken                 | Değer                                   |
+| ------------------------ | --------------------------------------- |
+| `ASPNETCORE_ENVIRONMENT` | `Production`                            |
+| `FRONTEND_URL`           | Vercel URL'in — Adım 2 sonrası doldur   |
+| `Jwt__Key`               | Uzun rastgele bir string (32+ karakter) |
+| `Jwt__Issuer`            | `SurveyApp`                             |
+| `Jwt__Audience`          | `SurveyAppUsers`                        |
 
 ---
 
@@ -1023,8 +1122,8 @@ Tarayıcı → surveyapp.vercel.app (React / Vercel)
 3. Framework **Vite** olarak otomatik algılanır
 4. **Environment Variables** altına ekle:
 
-| Değişken | Değer |
-|----------|-------|
+| Değişken       | Değer                                         |
+| -------------- | --------------------------------------------- |
 | `VITE_API_URL` | `https://your-railway-url.up.railway.app/api` |
 
 5. **Deploy** — Vercel sana bir URL verir (örn. `https://surveyapp.vercel.app`)
@@ -1035,8 +1134,8 @@ Tarayıcı → surveyapp.vercel.app (React / Vercel)
 
 Railway → **Variables** sekmesine dön ve güncelle:
 
-| Değişken | Değer |
-|----------|-------|
+| Değişken       | Değer                          |
+| -------------- | ------------------------------ |
 | `FRONTEND_URL` | `https://surveyapp.vercel.app` |
 
 Railway backend'i otomatik olarak yeniden deploy eder.
@@ -1045,13 +1144,13 @@ Railway backend'i otomatik olarak yeniden deploy eder.
 
 ### Deployment Dosyaları
 
-| Dosya | Amacı |
-|-------|-------|
-| `Backend/Dockerfile` | Railway için çok aşamalı Docker build |
-| `Backend/railway.json` | Railway build ve restart yapılandırması |
-| `Backend/SurveyApp.API/appsettings.Production.json` | Üretim ayarları şablonu (SQLite path, log seviyesi) |
-| `Frontend/survey-app/vercel.json` | React Router'ın tüm rotaları yönetmesi için SPA rewrite kuralı |
-| `Frontend/survey-app/.env.example` | Yerel geliştirme için environment variable şablonu |
+| Dosya                                               | Amacı                                                          |
+| --------------------------------------------------- | -------------------------------------------------------------- |
+| `Backend/Dockerfile`                                | Railway için çok aşamalı Docker build                          |
+| `Backend/railway.json`                              | Railway build ve restart yapılandırması                        |
+| `Backend/SurveyApp.API/appsettings.Production.json` | Üretim ayarları şablonu (SQLite path, log seviyesi)            |
+| `Frontend/survey-app/vercel.json`                   | React Router'ın tüm rotaları yönetmesi için SPA rewrite kuralı |
+| `Frontend/survey-app/.env.example`                  | Yerel geliştirme için environment variable şablonu             |
 
 ---
 
@@ -1062,28 +1161,25 @@ Varsayılan SQLite veritabanı, EF Core uyumlu herhangi bir sağlayıcıyla değ
 **PostgreSQL örneği**
 
 `SurveyApp.Infrastructure.csproj`:
+
 ```xml
 <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.0" />
 ```
 
 `Program.cs`:
+
 ```csharp
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 ```
 
 `appsettings.json`:
+
 ```json
 "ConnectionStrings": {
   "DefaultConnection": "Host=localhost;Database=surveyapp;Username=postgres;Password=sifreniz"
 }
 ```
-
----
-
-## Lisans
-
-[MIT](LICENSE)
 
 ---
 
@@ -1093,21 +1189,3 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 [![Contact](https://img.shields.io/badge/contact-linkedin-blue)](https://www.linkedin.com/in/ferhattufekci/)
 
 ---
-
-<h2 align="center">👏 Çalışmalarımı Destekle</h2>
-
-<p align="center">
-  Çalışmalarımı faydalı ya da ilham verici buluyorsan, bir kahve ısmarlayarak destek olabilirsin.
-</p>
-
-<p align="center">
-  <a href="https://www.buymeacoffee.com/ferhattufekci" target="_blank">
-    <img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png"
-         alt="Buy Me A Coffee"
-         style="height: 45px; width: 180px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 8px;">
-  </a>
-</p>
-
----
-
-<h3 align="center">Bağlanalım — İş birliği ve fikir paylaşımına her zaman açığım!</h3>
