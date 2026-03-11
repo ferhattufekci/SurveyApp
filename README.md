@@ -93,6 +93,19 @@ SurveyApp/
 - **Axios interceptors** attach the Bearer token to every request and redirect to login on 401
 - **URL search params** enable shareable filtered views across admin pages
 
+### API Design — RESTful Principles
+
+The backend API is designed around REST constraints, ensuring a predictable and interoperable interface:
+
+| Principle | Implementation |
+|-----------|----------------|
+| **Resource-based URLs** | Nouns over verbs — `/api/surveys`, `/api/questions`, `/api/users` |
+| **HTTP method semantics** | `GET` read · `POST` create · `PUT` full update · `DELETE` remove |
+| **Standard status codes** | `200 OK` · `201 Created` · `204 No Content` · `400 Bad Request` · `401 Unauthorized` · `404 Not Found` |
+| **Stateless communication** | Each request carries its own JWT token; no server-side session is maintained |
+| **Uniform interface** | All request and response bodies use `application/json`; errors follow a consistent `{ message }` envelope |
+| **Layered system** | Controllers delegate to the Application layer via interfaces; infrastructure details are never exposed to clients |
+
 ---
 
 ## Tech Stack
@@ -344,35 +357,25 @@ Protected endpoints require `Authorization: Bearer <token>`.
 
 Verify installations:
 ```sh
-dotnet --version   # 8.x.x
-node --version     # v18+
-npm --version
+dotnet --version && node --version && npm --version
 ```
 
 ### 1. Clone the Repository
 
 ```sh
-git clone https://github.com/ferhattufekci/SurveyApp.git
-cd SurveyApp
+git clone https://github.com/ferhattufekci/SurveyApp.git && cd SurveyApp
 ```
 
 ### 2. Run the Backend
-
-```sh
-cd Backend/SurveyApp.API
-```
 
 Install the EF Core CLI tool (one-time):
 ```sh
 dotnet tool install --global dotnet-ef
 ```
 
-Restore dependencies and create the database:
+Navigate, restore, migrate, and start in one step:
 ```sh
-dotnet restore
-dotnet ef migrations add InitialCreate --project ..\SurveyApp.Infrastructure --startup-project .
-dotnet ef database update --project ..\SurveyApp.Infrastructure --startup-project .
-dotnet run
+cd Backend/SurveyApp.API && dotnet restore && dotnet ef migrations add InitialCreate --project ..\SurveyApp.Infrastructure --startup-project . && dotnet ef database update --project ..\SurveyApp.Infrastructure --startup-project . && dotnet run
 ```
 
 > API: http://localhost:5000  
@@ -383,9 +386,7 @@ dotnet run
 Open a **new terminal** (keep the backend running):
 
 ```sh
-cd Frontend/survey-app
-npm install
-npm run dev
+cd Frontend/survey-app && npm install && npm run dev
 ```
 
 > App: http://localhost:3000
@@ -431,6 +432,33 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 ## License
 
 [MIT](LICENSE)
+
+---
+
+## Author
+
+[![Author](https://img.shields.io/badge/author-ferhattufekci-red)](https://github.com/ferhattufekci)
+[![Contact](https://img.shields.io/badge/contact-linkedin-blue)](https://www.linkedin.com/in/ferhattufekci/)
+
+---
+
+<h2 align="center">👏 Support My Work</h2>
+
+<p align="center">
+  If you find my work helpful or inspiring, consider buying me a coffee to show your support.
+</p>
+
+<p align="center">
+  <a href="https://www.buymeacoffee.com/ferhattufekci" target="_blank">
+    <img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png"
+         alt="Buy Me A Coffee"
+         style="height: 45px; width: 180px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 8px;">
+  </a>
+</p>
+
+---
+
+<h3 align="center">Let's Connect — I'm Always Open to Collaborate and Share Ideas!</h3>
 
 ---
 ---
@@ -519,6 +547,19 @@ SurveyApp/
 - **React Router v6** rol tabanlı korumalarla istemci tarafı yönlendirmeyi yönetir
 - **Axios interceptor'ları** her isteğe Bearer token ekler ve 401'de login'e yönlendirir
 - **URL search param'ları** admin sayfaları arasında paylaşılabilir filtrelenmiş görünümler sağlar
+
+### API Tasarımı — RESTful Prensipler
+
+Backend API, tahmin edilebilir ve birlikte çalışabilir bir arayüz sağlamak amacıyla REST kısıtlamaları temel alınarak tasarlanmıştır:
+
+| Prensip | Uygulama |
+|---------|----------|
+| **Kaynak tabanlı URL'ler** | Fiil değil isim — `/api/surveys`, `/api/questions`, `/api/users` |
+| **HTTP metod semantiği** | `GET` okuma · `POST` oluşturma · `PUT` güncelleme · `DELETE` silme |
+| **Standart durum kodları** | `200 OK` · `201 Created` · `204 No Content` · `400 Bad Request` · `401 Unauthorized` · `404 Not Found` |
+| **Stateless iletişim** | Her istek kendi JWT token'ını taşır; sunucuda oturum tutulmaz |
+| **Tekdüze arayüz** | Tüm istek ve yanıt gövdeleri `application/json` kullanır; hatalar tutarlı `{ message }` zarfıyla döner |
+| **Katmanlı sistem** | Controller'lar iş mantığını arayüzler üzerinden Application katmanına devreder; altyapı detayları istemciye hiçbir zaman açılmaz |
 
 ---
 
@@ -771,35 +812,25 @@ Korumalı endpoint'ler `Authorization: Bearer <token>` gerektirir.
 
 Kurulumu doğrulayın:
 ```sh
-dotnet --version   # 8.x.x
-node --version     # v18+
-npm --version
+dotnet --version && node --version && npm --version
 ```
 
 ### 1. Repoyu Klonlayın
 
 ```sh
-git clone https://github.com/ferhattufekci/SurveyApp.git
-cd SurveyApp
+git clone https://github.com/ferhattufekci/SurveyApp.git && cd SurveyApp
 ```
 
 ### 2. Backend'i Başlatın
-
-```sh
-cd Backend/SurveyApp.API
-```
 
 EF Core CLI aracını kurun (bir kez yapılır):
 ```sh
 dotnet tool install --global dotnet-ef
 ```
 
-Bağımlılıkları yükleyin ve veritabanını oluşturun:
+Klasöre geçin, bağımlılıkları yükleyin, migration uygulayın ve başlatın:
 ```sh
-dotnet restore
-dotnet ef migrations add InitialCreate --project ..\SurveyApp.Infrastructure --startup-project .
-dotnet ef database update --project ..\SurveyApp.Infrastructure --startup-project .
-dotnet run
+cd Backend/SurveyApp.API && dotnet restore && dotnet ef migrations add InitialCreate --project ..\SurveyApp.Infrastructure --startup-project . && dotnet ef database update --project ..\SurveyApp.Infrastructure --startup-project . && dotnet run
 ```
 
 > API: http://localhost:5000  
@@ -810,9 +841,7 @@ dotnet run
 **Yeni bir terminal açın** (backend'i kapatmayın):
 
 ```sh
-cd Frontend/survey-app
-npm install
-npm run dev
+cd Frontend/survey-app && npm install && npm run dev
 ```
 
 > Uygulama: http://localhost:3000
@@ -858,3 +887,30 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 ## Lisans
 
 [MIT](LICENSE)
+
+---
+
+## Yazar
+
+[![Author](https://img.shields.io/badge/author-ferhattufekci-red)](https://github.com/ferhattufekci)
+[![Contact](https://img.shields.io/badge/contact-linkedin-blue)](https://www.linkedin.com/in/ferhattufekci/)
+
+---
+
+<h2 align="center">👏 Çalışmalarımı Destekle</h2>
+
+<p align="center">
+  Çalışmalarımı faydalı ya da ilham verici buluyorsan, bir kahve ısmarlayarak destek olabilirsin.
+</p>
+
+<p align="center">
+  <a href="https://www.buymeacoffee.com/ferhattufekci" target="_blank">
+    <img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png"
+         alt="Buy Me A Coffee"
+         style="height: 45px; width: 180px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 8px;">
+  </a>
+</p>
+
+---
+
+<h3 align="center">Bağlanalım — İş birliği ve fikir paylaşımına her zaman açığım!</h3>
