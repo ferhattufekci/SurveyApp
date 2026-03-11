@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { surveysApi, questionsApi, usersApi, answerTemplatesApi } from '../../api';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 const PAGE_SIZE = 5;
 
@@ -137,7 +137,7 @@ export default function DashboardPage() {
       {/* ── Stat kartları ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginBottom: '24px' }}>
         {statCards.map(c => (
-          <a key={c.label} href={c.link} style={{
+          <Link key={c.label} to={c.link} style={{
             background: c.bg, border: `1px solid ${c.border}`, borderLeft: `4px solid ${c.accent}`,
             borderRadius: '12px', padding: '16px 18px', textDecoration: 'none', color: 'inherit',
             transition: 'transform 0.15s, box-shadow 0.15s', display: 'block',
@@ -154,7 +154,7 @@ export default function DashboardPage() {
               <span style={{ ...pillBase, background: '#f3f4f6', color: '#6b7280' }}>⏸ {c.passive} Pasif</span>
               {c.extra !== null && <span style={{ ...pillBase, background: '#fef3c7', color: '#b45309' }}>⚠️ {c.extra} {c.extraLabel}</span>}
             </div>
-          </a>
+          </Link>
         ))}
       </div>
 
@@ -194,7 +194,7 @@ export default function DashboardPage() {
               Devam Eden
               <span style={{ fontSize: '13px', fontWeight: 400, color: '#6b7280' }}>({activeSurveys.length})</span>
             </h2>
-            <a href="/admin/surveys" className="btn btn-sm btn-outline">Tümünü Gör</a>
+            <Link to="/admin/surveys" className="btn btn-sm btn-outline">Tümünü Gör</Link>
           </div>
           <div className="table-container">
             <table className="table">
@@ -218,7 +218,7 @@ export default function DashboardPage() {
               Süresi Geçen
               <span style={{ fontSize: '13px', fontWeight: 400, color: '#6b7280' }}>({expiredSurveys.length})</span>
             </h2>
-            <a href="/admin/surveys" className="btn btn-sm btn-outline">Tümünü Gör</a>
+            <Link to="/admin/surveys" className="btn btn-sm btn-outline">Tümünü Gör</Link>
           </div>
           <div className="table-container">
             <table className="table">
