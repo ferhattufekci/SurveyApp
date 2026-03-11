@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { answerTemplatesApi } from '../../api';
 import type { AnswerTemplate } from '../../types';
+import SearchInput from '../../components/admin/SearchInput';
 
 type FilterKey = 'all' | 'active' | 'passive';
 
@@ -153,8 +154,11 @@ export default function AnswerTemplatesPage() {
 
       <div className="card">
         <div className="card-toolbar">
-          <input className="search-input" placeholder="Şablon adı, seçenek veya durum ara..." value={search}
-            onChange={e => { setSearch(e.target.value); setActiveFilter('all'); setPage(1); }} />
+          <SearchInput
+            value={search}
+            placeholder="Şablon adı, seçenek veya durum ara..."
+            onChange={v => { setSearch(v); setActiveFilter('all'); setPage(1); }}
+          />
           {activeFilter !== 'all' && (
             <button className="btn btn-sm btn-outline" onClick={() => { setActiveFilter('all'); setPage(1); }}>Filtreyi Temizle ×</button>
           )}

@@ -1,3 +1,4 @@
+import SearchInput from '../../components/admin/SearchInput';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { surveysApi, questionsApi, usersApi } from '../../api';
@@ -137,8 +138,11 @@ export default function SurveysPage() {
 
       <div className="card">
         <div className="card-toolbar">
-          <input className="search-input" placeholder="Anket adı, açıklama veya durum ara..." value={search}
-            onChange={e => { setSearch(e.target.value); setActiveFilter('all'); }} />
+          <SearchInput
+            value={search}
+            placeholder="Anket adı, açıklama veya durum ara..."
+            onChange={v => { setSearch(v); setActiveFilter('all'); }}
+          />
           {activeFilter !== 'all' && (
             <button className="btn btn-sm btn-outline" onClick={() => setActiveFilter('all')}>Filtreyi Temizle ×</button>
           )}

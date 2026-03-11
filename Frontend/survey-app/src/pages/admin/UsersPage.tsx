@@ -1,3 +1,4 @@
+import SearchInput from '../../components/admin/SearchInput';
 import { useEffect, useState } from 'react';
 import { usersApi } from '../../api';
 import { useAuthStore } from '../../store/authStore';
@@ -205,11 +206,10 @@ export default function UsersPage() {
 
       <div className="card">
         <div className="card-toolbar">
-          <input
-            className="search-input"
-            placeholder="Ad, e-posta, rol veya durum ara..."
+          <SearchInput
             value={search}
-            onChange={e => { setSearch(e.target.value); setActiveFilter('all'); }}
+            placeholder="Ad, e-posta, rol veya durum ara..."
+            onChange={v => { setSearch(v); setActiveFilter('all'); }}
           />
           {activeFilter !== 'all' && (
             <button className="btn btn-sm btn-outline" onClick={() => setActiveFilter('all')}>

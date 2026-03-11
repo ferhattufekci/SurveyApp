@@ -1,3 +1,4 @@
+import SearchInput from '../../components/admin/SearchInput';
 import { useEffect, useState } from 'react';
 import { questionsApi, answerTemplatesApi } from '../../api';
 import type { QuestionListItem, AnswerTemplate } from '../../types';
@@ -122,8 +123,11 @@ export default function QuestionsPage() {
 
       <div className="card">
         <div className="card-toolbar">
-          <input className="search-input" placeholder="Soru metni, şablon adı veya durum ara..." value={search}
-            onChange={e => { setSearch(e.target.value); setActiveFilter('all'); }} />
+          <SearchInput
+            value={search}
+            placeholder="Soru metni, şablon adı veya durum ara..."
+            onChange={v => { setSearch(v); setActiveFilter('all'); }}
+          />
           {activeFilter !== 'all' && (
             <button className="btn btn-sm btn-outline" onClick={() => setActiveFilter('all')}>Filtreyi Temizle ×</button>
           )}
