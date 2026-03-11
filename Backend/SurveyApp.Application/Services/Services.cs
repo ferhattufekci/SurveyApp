@@ -130,6 +130,11 @@ public class SurveyService : ISurveyService
 
     public async Task<SurveyDetailDto> CreateAsync(CreateSurveyRequest request)
     {
+        // Duplicate başlık kontrolü
+        var allSurveys = await _uow.Surveys.GetAllWithDetailsAsync();
+        if (allSurveys.Any(s => s.Title.Trim().ToLower() == request.Title.Trim().ToLower()))
+            throw new ArgumentException($"'{request.Title}' başlıklı bir anket zaten mevcut. Farklı bir başlık giriniz.");
+
         var survey = new Survey
         {
             Title = request.Title,
@@ -159,6 +164,17 @@ public class SurveyService : ISurveyService
     {
         var survey = await _uow.Surveys.GetWithDetailsAsync(id);
         if (survey == null) return null;
+
+        // Yanıtlayan varsa düzenleme yapılamaz
+        if (survey.SurveyResponses.Any())
+            throw new InvalidOperationException(
+                $"Bu anket {survey.SurveyResponses.Count} kullanıcı tarafından yanıtlanmıştır ve düzenlenemez.|{survey.SurveyResponses.Count}|Yanıt verilen anketlerin içeriği değiştirilemez."
+            );
+
+        // Duplicate başlık kontrolü (kendi ID'si hariç)
+        var allSurveys = await _uow.Surveys.GetAllWithDetailsAsync();
+        if (allSurveys.Any(s => s.Id != id && s.Title.Trim().ToLower() == request.Title.Trim().ToLower()))
+            throw new ArgumentException($"'{request.Title}' başlıklı bir anket zaten mevcut. Farklı bir başlık giriniz.");
 
         survey.Title = request.Title;
         survey.Description = request.Description;
@@ -191,8 +207,17 @@ public class SurveyService : ISurveyService
 
     public async Task<bool> DeleteAsync(int id)
     {
-        var survey = await _uow.Surveys.GetByIdAsync(id);
+        var survey = await _uow.Surveys.GetWithDetailsAsync(id);
         if (survey == null) return false;
+
+        // Süresi geçmiş anket silinemez
+        if (survey.IsActive && survey.EndDate < DateTime.UtcNow)
+            throw new InvalidOperationException("Süresi geçmiş anketler silinemez.");
+
+        // Yanıt almış anket silinemez
+        if (survey.SurveyResponses.Any())
+            throw new InvalidOperationException($"Bu anket {survey.SurveyResponses.Count} kullanıcı tarafından yanıtlanmıştır ve silinemez.");
+
         await _uow.Surveys.DeleteAsync(survey);
         await _uow.SaveChangesAsync();
         return true;

@@ -203,6 +203,7 @@ public class SurveysController : ControllerBase
             return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
         }
         catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
     }
 
     [HttpPut("{id}")]
@@ -214,13 +215,18 @@ public class SurveysController : ControllerBase
             return result == null ? NotFound() : Ok(result);
         }
         catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {
-        var result = await _service.DeleteAsync(id);
-        return result ? NoContent() : NotFound();
+        try
+        {
+            var result = await _service.DeleteAsync(id);
+            return result ? NoContent() : NotFound();
+        }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
     }
 }
 
