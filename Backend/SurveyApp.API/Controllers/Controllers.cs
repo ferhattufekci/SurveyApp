@@ -273,6 +273,13 @@ public class MySurveysController : ControllerBase
         return result == null ? NotFound() : Ok(result);
     }
 
+    [HttpGet("{surveyId}/my-answers")]
+    public async Task<IActionResult> GetMyAnswers(int surveyId)
+    {
+        var answers = await _service.GetMyAnswersAsync(GetUserId(), surveyId);
+        return Ok(answers);
+    }
+
     [HttpPost("{surveyId}/submit")]
     public async Task<IActionResult> Submit(int surveyId, [FromBody] SubmitSurveyRequest request)
     {

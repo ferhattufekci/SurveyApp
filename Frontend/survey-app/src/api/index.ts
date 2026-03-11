@@ -88,6 +88,8 @@ export const reportsApi = {
 export const mySurveysApi = {
   getAll: (): Promise<UserSurvey[]> => api.get('/my-surveys').then(r => r.data),
   getById: (id: number): Promise<SurveyDetail> => api.get(`/my-surveys/${id}`).then(r => r.data),
+  getMyAnswers: (surveyId: number): Promise<{ questionId: number; answerOptionId: number }[]> =>
+    api.get(`/my-surveys/${surveyId}/my-answers`).then(r => r.data),
   submit: (surveyId: number, data: SubmitSurveyRequest) =>
     api.post(`/my-surveys/${surveyId}/submit`, data).then(r => r.data),
 };

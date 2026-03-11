@@ -57,7 +57,12 @@ export default function SurveysPage() {
     const params = new URLSearchParams(location.search);
     return params.get('search') || '';
   });
-  const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
+  const [activeFilter, setActiveFilter] = useState<FilterKey>(() => {
+    const params = new URLSearchParams(location.search);
+    const f = params.get('filter');
+    if (f === 'active' || f === 'passive' || f === 'expired') return f;
+    return 'all';
+  });
   const [page, setPage]           = useState(1);
 
   const showSuccess = (msg: string) => {
@@ -258,8 +263,7 @@ export default function SurveysPage() {
         <div className="table-container">
           <table className="table">
             <thead>
-              <tr><th>#</th><th>Durum</th><th>Başlık</th><th>Sorular & Şablonlar</th><th>Başlangıç</th><th>Bitiş</th><th>Atanan</th><th>Yanıtlayan</th><th>İşlemler</th></tr>
-            </thead>
+              <tr><th>#</th><th>Durum</th><th>Başlık</th><th>Sorular & Şablonlar</th><th>Başlangıç</th><th>Bitiş</th><th>Atanan</th><th>Yanıtlayan</th><th>İşlemler</th></tr>            </thead>
             <tbody>
               {paginated.map((s, i) => {
                 const rowNum  = (safePage - 1) * PAGE_SIZE + i + 1;
@@ -284,26 +288,37 @@ export default function SurveysPage() {
                       <strong>{s.title}</strong><br />
                       <small className="text-muted">{s.description.substring(0, 50)}{s.description.length > 50 ? '...' : ''}</small>
                     </td>
-                    <td style={{ maxWidth: '240px' }}>
+                    <td style={{ maxWidth: '260px' }}>
                       {(s.questionIds || []).length === 0 ? (
-                        <span className="text-muted" style={{ fontSize: '12px' }}>—</span>
+                        <span className="text-muted" style={{ fontSize: '12px' }}>Soru eklenmemiş</span>
                       ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                          {(s.questionIds || []).map(qId => {
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          {(s.questionIds || []).map((qId, qi) => {
                             const q = questionMap.get(qId);
                             if (!q) return null;
                             const tpl = templateMap.get(q.answerTemplateId);
                             return (
-                              <div key={qId} style={{ fontSize: '12px', lineHeight: 1.3 }}>
-                                <span style={{ color: '#374151', fontWeight: 500 }}>
-                                  {q.text.length > 35 ? q.text.substring(0, 35) + '…' : q.text}
-                                </span>
+                              <div key={qId} style={{
+                                background: '#f8fafc', border: '1px solid #e2e8f0',
+                                borderRadius: '7px', padding: '6px 9px',
+                              }}>
+                                <div style={{ fontSize: '12px', color: '#1e293b', fontWeight: 500, marginBottom: '4px', display: 'flex', gap: '5px' }}>
+                                  <span style={{ color: '#94a3b8', fontWeight: 700, minWidth: '16px' }}>{qi + 1}.</span>
+                                  <span>{q.text.length > 45 ? q.text.substring(0, 45) + '…' : q.text}</span>
+                                </div>
                                 {tpl && (
-                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px', marginTop: '3px' }}>
-                                    <span className="pill" style={{ fontSize: '10px', padding: '1px 6px', background: '#eef2ff', color: '#6366f1' }}>{tpl.name}</span>
-                                    {tpl.options.map(o => (
-                                      <span key={o.id} className="pill" style={{ fontSize: '10px', padding: '1px 6px' }}>{o.text}</span>
-                                    ))}
+                                  <div style={{ paddingLeft: '21px' }}>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px', alignItems: 'center' }}>
+                                      <span style={{ fontSize: '10px', background: '#eef2ff', color: '#6366f1', borderRadius: '4px', padding: '1px 6px', fontWeight: 600 }}>
+                                        {tpl.name}
+                                      </span>
+                                      <span style={{ fontSize: '10px', color: '#94a3b8' }}>→</span>
+                                      {tpl.options.map(o => (
+                                        <span key={o.id} style={{ fontSize: '10px', background: '#f1f5f9', color: '#64748b', borderRadius: '4px', padding: '1px 5px', border: '1px solid #e2e8f0' }}>
+                                          {o.text}
+                                        </span>
+                                      ))}
+                                    </div>
                                   </div>
                                 )}
                               </div>

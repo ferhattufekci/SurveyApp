@@ -6,6 +6,152 @@ import { useAuthStore } from '../../store/authStore';
 
 const PAGE_SIZE = 8;
 
+// Bir ankete ait kullanıcı cevaplarını lazy load eden hook
+function useSurveyAnswers(surveyId: number, enabled: boolean) {
+  const [answers, setAnswers] = useState<Record<number, number>>({}); // questionId -> optionId
+  const [loaded, setLoaded]   = useState(false);
+
+  useEffect(() => {
+    if (!enabled || loaded) return;
+    mySurveysApi.getMyAnswers(surveyId).then(data => {
+      const map: Record<number, number> = {};
+      data.forEach(a => { map[a.questionId] = a.answerOptionId; });
+      setAnswers(map);
+      setLoaded(true);
+    });
+  }, [enabled, surveyId, loaded]);
+
+  return answers;
+}
+
+// Tamamlanan anket kartı — seçilen cevapları yeşil gösterir
+function CompletedSurveyCard({ survey }: { survey: UserSurvey }) {
+  const [expanded, setExpanded] = useState(false);
+  const answers = useSurveyAnswers(survey.id, expanded);
+
+  return (
+    <div>
+      {/* Başlık satırı + açıkla/kapat */}
+      <div style={{ marginBottom: (survey.questions || []).length > 0 ? '8px' : 0 }}>
+        <strong style={{ fontSize: '14px' }}>{survey.title}</strong>
+        {survey.description && (
+          <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>
+            {survey.description.length > 70 ? survey.description.substring(0, 70) + '…' : survey.description}
+          </div>
+        )}
+      </div>
+
+      {(survey.questions || []).length > 0 && (
+        <div>
+          <button
+            onClick={() => setExpanded(e => !e)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '4px',
+              fontSize: '11px', fontWeight: 600, color: '#10b981',
+              background: '#f0fdf4', border: '1px solid #6ee7b7',
+              borderRadius: '6px', padding: '3px 10px', cursor: 'pointer', marginBottom: '6px',
+            }}
+          >
+            {expanded ? '▲ Cevaplarımı Gizle' : '▼ Cevaplarımı Gör'}
+          </button>
+
+          {expanded && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {(survey.questions || []).map((sq, qi) => {
+                const selectedId = answers[sq.questionId];
+                return (
+                  <div key={sq.questionId} style={{
+                    background: '#f8fafc', border: '1px solid #e2e8f0',
+                    borderRadius: '8px', padding: '8px 10px',
+                  }}>
+                    {/* Soru başlığı */}
+                    <div style={{ fontSize: '12px', color: '#1e293b', fontWeight: 600, marginBottom: '6px', display: 'flex', gap: '5px' }}>
+                      <span style={{ color: '#94a3b8', fontWeight: 700, minWidth: '16px' }}>{qi + 1}.</span>
+                      <span>{sq.questionText}</span>
+                    </div>
+                    {/* Şablon adı */}
+                    <div style={{ paddingLeft: '21px', marginBottom: '5px' }}>
+                      <span style={{ fontSize: '10px', background: '#eef2ff', color: '#6366f1', borderRadius: '4px', padding: '1px 7px', fontWeight: 600 }}>
+                        {sq.answerTemplate.name} · {sq.answerTemplate.options.length} seçenek
+                      </span>
+                    </div>
+                    {/* Seçenekler — seçilen yeşil */}
+                    <div style={{ paddingLeft: '21px', display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                      {sq.answerTemplate.options.map(o => {
+                        const isSelected = o.id === selectedId;
+                        return (
+                          <span key={o.id} style={{
+                            fontSize: '12px', padding: '4px 10px', borderRadius: '6px',
+                            background: isSelected ? '#d1fae5' : '#f1f5f9',
+                            color: isSelected ? '#065f46' : '#64748b',
+                            border: `1px solid ${isSelected ? '#6ee7b7' : '#e2e8f0'}`,
+                            fontWeight: isSelected ? 700 : 400,
+                            display: 'inline-flex', alignItems: 'center', gap: '4px',
+                            transition: 'all 0.15s',
+                          }}>
+                            {isSelected && <span style={{ fontSize: '11px' }}>✓</span>}
+                            {o.text}
+                          </span>
+                        );
+                      })}
+                      {!selectedId && (
+                        <span style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>Yükleniyor...</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Aktif/yaklaşan/geçmiş anket için soru+şablon önizleme
+function SurveyQuestionPreview({ survey }: { survey: UserSurvey }) {
+  const qs = survey.questions || [];
+  return (
+    <div>
+      <div style={{ marginBottom: qs.length > 0 ? '8px' : 0 }}>
+        <strong style={{ fontSize: '14px' }}>{survey.title}</strong>
+        {survey.description && (
+          <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>
+            {survey.description.length > 70 ? survey.description.substring(0, 70) + '…' : survey.description}
+          </div>
+        )}
+      </div>
+      {qs.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+          {qs.map((sq, qi) => (
+            <div key={sq.questionId} style={{
+              background: '#f8fafc', border: '1px solid #e2e8f0',
+              borderRadius: '7px', padding: '7px 10px',
+            }}>
+              <div style={{ fontSize: '12px', color: '#1e293b', fontWeight: 500, marginBottom: '4px', display: 'flex', gap: '5px' }}>
+                <span style={{ color: '#94a3b8', fontWeight: 700, minWidth: '16px' }}>{qi + 1}.</span>
+                <span>{sq.questionText}</span>
+              </div>
+              <div style={{ paddingLeft: '21px', display: 'flex', flexWrap: 'wrap', gap: '3px', alignItems: 'center' }}>
+                <span style={{ fontSize: '10px', background: '#eef2ff', color: '#6366f1', borderRadius: '4px', padding: '1px 6px', fontWeight: 600 }}>
+                  {sq.answerTemplate.name}
+                </span>
+                <span style={{ fontSize: '10px', color: '#94a3b8' }}>· {sq.answerTemplate.options.length} seçenek:</span>
+                {sq.answerTemplate.options.map(o => (
+                  <span key={o.id} style={{ fontSize: '10px', background: '#f1f5f9', color: '#64748b', borderRadius: '4px', padding: '1px 5px', border: '1px solid #e2e8f0' }}>
+                    {o.text}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function UserSurveysListPage() {
   const [surveys, setSurveys] = useState<UserSurvey[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,7 +178,6 @@ export function UserSurveysListPage() {
     { key: 'expired',   label: '⏰ Süresi Geçen', count: expired.length },
   ] as const;
 
-  // Tam arama: başlık, açıklama, soru metni, şablon adı, seçenek metni
   const filtered = (grouped[tab] || []).filter(s => {
     if (!search) return true;
     const q = search.toLowerCase();
@@ -77,8 +222,7 @@ export function UserSurveysListPage() {
               borderRadius: '6px', padding: '3px 10px', fontSize: '12px', fontWeight: 600,
             }}>Pasif Hesap</span>
           )}
-          <button
-            onClick={handleLogout}
+          <button onClick={handleLogout}
             style={{
               display: 'flex', alignItems: 'center', gap: '5px',
               background: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca',
@@ -93,10 +237,7 @@ export function UserSurveysListPage() {
 
       <div className="user-content">
         <div className="page-header">
-          <div>
-            <h1>Anketlerim</h1>
-            <p>Size atanan anketleri görüntüleyin ve doldurun</p>
-          </div>
+          <div><h1>Anketlerim</h1><p>Size atanan anketleri görüntüleyin ve doldurun</p></div>
         </div>
 
         {isPassive && (
@@ -113,7 +254,7 @@ export function UserSurveysListPage() {
           </div>
         )}
 
-        {/* Özet sayaçlar */}
+        {/* Tab sayaçlar */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '20px' }}>
           {tabList.map(t => (
             <button key={t.key} onClick={() => { setTab(t.key as any); setPage(1); setSearch(''); }}
@@ -129,7 +270,7 @@ export function UserSurveysListPage() {
           ))}
         </div>
 
-        {/* Arama — tüm alanlarda (madde 7) */}
+        {/* Arama */}
         <div style={{ marginBottom: '12px' }}>
           <input
             value={search}
@@ -149,7 +290,7 @@ export function UserSurveysListPage() {
                 <tr>
                   <th>#</th>
                   <th>Durum</th>
-                  <th>Başlık & Sorular</th>
+                  <th>Anket Adı & Sorular</th>
                   <th>Başlangıç</th>
                   <th>Bitiş</th>
                   <th>İşlem</th>
@@ -163,58 +304,22 @@ export function UserSurveysListPage() {
                 ) : paginated.map((s, i) => {
                   const rowNum = (safePage - 1) * PAGE_SIZE + i + 1;
                   const canFill = !s.isCompleted && !isPassive && new Date(s.startDate) <= now && new Date(s.endDate) >= now;
-                  const qs = s.questions || [];
                   return (
                     <tr key={s.id}>
                       <td className="text-muted" style={{ fontWeight: 600, verticalAlign: 'top', paddingTop: '14px' }}>{rowNum}</td>
                       <td style={{ verticalAlign: 'top', paddingTop: '14px' }}>{statusBadge(s)}</td>
                       <td>
-                        {/* Başlık + açıklama */}
-                        <div style={{ marginBottom: qs.length > 0 ? '10px' : 0 }}>
-                          <strong style={{ fontSize: '14px' }}>{s.title}</strong>
-                          {s.description && (
-                            <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>
-                              {s.description.length > 70 ? s.description.substring(0, 70) + '…' : s.description}
-                            </div>
-                          )}
-                        </div>
-                        {/* Sorular + şablon + seçenekler (madde 6) */}
-                        {qs.length > 0 && (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                            {qs.map((sq, qi) => (
-                              <div key={sq.questionId} style={{
-                                background: '#f8fafc', border: '1px solid #e2e8f0',
-                                borderRadius: '7px', padding: '7px 10px',
-                              }}>
-                                <div style={{ fontSize: '12px', color: '#374151', fontWeight: 500, marginBottom: '4px' }}>
-                                  <span style={{ color: '#9ca3af', marginRight: '4px' }}>{qi + 1}.</span>
-                                  {sq.questionText}
-                                </div>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px', alignItems: 'center' }}>
-                                  <span style={{
-                                    fontSize: '10px', background: '#eef2ff', color: '#6366f1',
-                                    borderRadius: '4px', padding: '1px 6px', fontWeight: 600,
-                                  }}>{sq.answerTemplate.name}</span>
-                                  <span style={{ fontSize: '10px', color: '#9ca3af' }}>·</span>
-                                  {sq.answerTemplate.options.map(o => (
-                                    <span key={o.id} style={{
-                                      fontSize: '10px', background: '#f3f4f6', color: '#6b7280',
-                                      borderRadius: '4px', padding: '1px 6px', border: '1px solid #e5e7eb',
-                                    }}>{o.text}</span>
-                                  ))}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                        {/* Tamamlanan: cevap gösterimi; diğerleri: soru önizleme */}
+                        {s.isCompleted
+                          ? <CompletedSurveyCard survey={s} />
+                          : <SurveyQuestionPreview survey={s} />
+                        }
                       </td>
                       <td style={{ fontSize: '13px', color: '#6b7280', verticalAlign: 'top', paddingTop: '14px' }}>{new Date(s.startDate).toLocaleDateString('tr-TR')}</td>
                       <td style={{ fontSize: '13px', color: '#6b7280', verticalAlign: 'top', paddingTop: '14px' }}>{new Date(s.endDate).toLocaleDateString('tr-TR')}</td>
                       <td style={{ verticalAlign: 'top', paddingTop: '12px' }}>
                         {canFill ? (
-                          <button className="btn btn-sm btn-primary" onClick={() => navigate(`/user/surveys/${s.id}`)}>
-                            Doldur →
-                          </button>
+                          <button className="btn btn-sm btn-primary" onClick={() => navigate(`/user/surveys/${s.id}`)}>Doldur →</button>
                         ) : s.isCompleted ? (
                           <span style={{ fontSize: '13px', color: '#10b981', fontWeight: 600 }}>✓ Tamamlandı</span>
                         ) : isPassive ? (
@@ -268,7 +373,6 @@ export function FillSurveyPage() {
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-
   const isPassive = user && !user.isActive;
 
   useEffect(() => {
@@ -319,10 +423,7 @@ export function FillSurveyPage() {
         </div>
 
         {isPassive && (
-          <div style={{
-            background: '#fffbeb', border: '1px solid #fde047', borderLeft: '4px solid #eab308',
-            borderRadius: '8px', padding: '12px 16px', marginBottom: '16px',
-          }}>
+          <div style={{ background: '#fffbeb', border: '1px solid #fde047', borderLeft: '4px solid #eab308', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px' }}>
             ⚠️ <strong>Pasif hesabınızla anket gönderemezsiniz.</strong> Yöneticinize başvurun.
           </div>
         )}

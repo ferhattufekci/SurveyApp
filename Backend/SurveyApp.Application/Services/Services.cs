@@ -371,6 +371,13 @@ public class UserSurveyService : IUserSurveyService
         await _uow.SaveChangesAsync();
         return true;
     }
+
+    public async Task<List<UserAnswerDto>> GetMyAnswersAsync(int userId, int surveyId)
+    {
+        var response = await _uow.SurveyResponses.GetByUserAndSurveyAsync(userId, surveyId);
+        if (response == null) return new List<UserAnswerDto>();
+        return response.Answers.Select(a => new UserAnswerDto(a.QuestionId, a.AnswerOptionId)).ToList();
+    }
 }
 
 public class ReportService : IReportService

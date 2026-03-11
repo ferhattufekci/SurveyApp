@@ -40,6 +40,7 @@ public interface IUserSurveyService
     Task<List<UserSurveyListDto>> GetAssignedSurveysAsync(int userId);
     Task<SurveyDetailDto?> GetSurveyForUserAsync(int surveyId, int userId);
     Task<bool> SubmitSurveyAsync(int userId, SubmitSurveyRequest request);
+    Task<List<UserAnswerDto>> GetMyAnswersAsync(int userId, int surveyId);
 }
 
 public interface IReportService

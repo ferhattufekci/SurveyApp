@@ -118,7 +118,9 @@ public class SurveyResponseRepository : Repository<SurveyResponse>, ISurveyRespo
             .ToListAsync();
 
     public async Task<SurveyResponse?> GetByUserAndSurveyAsync(int userId, int surveyId) =>
-        await _db.SurveyResponses.FirstOrDefaultAsync(r => r.UserId == userId && r.SurveyId == surveyId);
+        await _db.SurveyResponses
+            .Include(r => r.Answers).ThenInclude(a => a.AnswerOption)
+            .FirstOrDefaultAsync(r => r.UserId == userId && r.SurveyId == surveyId);
 }
 
 public class UnitOfWork : IUnitOfWork

@@ -194,7 +194,7 @@ export default function DashboardPage() {
               Devam Eden
               <span style={{ fontSize: '13px', fontWeight: 400, color: '#6b7280' }}>({activeSurveys.length})</span>
             </h2>
-            <Link to="/admin/surveys" className="btn btn-sm btn-outline">Tümünü Gör</Link>
+            <Link to="/admin/surveys?filter=active" className="btn btn-sm btn-outline">Tümünü Gör</Link>
           </div>
           <div className="table-container">
             <table className="table">
@@ -218,7 +218,7 @@ export default function DashboardPage() {
               Süresi Geçen
               <span style={{ fontSize: '13px', fontWeight: 400, color: '#6b7280' }}>({expiredSurveys.length})</span>
             </h2>
-            <Link to="/admin/surveys" className="btn btn-sm btn-outline">Tümünü Gör</Link>
+            <Link to="/admin/surveys?filter=expired" className="btn btn-sm btn-outline">Tümünü Gör</Link>
           </div>
           <div className="table-container">
             <table className="table">
