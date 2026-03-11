@@ -358,13 +358,16 @@ Protected endpoints require `Authorization: Bearer <token>`.
 
 Verify installations:
 ```sh
-dotnet --version && node --version && npm --version
+dotnet --version
+node --version
+npm --version
 ```
 
 ### 1. Clone the Repository
 
 ```sh
-git clone https://github.com/ferhattufekci/SurveyApp.git && cd SurveyApp
+git clone https://github.com/ferhattufekci/SurveyApp.git
+cd SurveyApp
 ```
 
 ### 2. Run the Backend
@@ -374,9 +377,21 @@ Install the EF Core CLI tool (one-time):
 dotnet tool install --global dotnet-ef
 ```
 
-Navigate, restore, migrate, and start in one step:
+Navigate to the API project:
 ```sh
-cd Backend/SurveyApp.API && dotnet restore && dotnet ef migrations add InitialCreate --project ..\SurveyApp.Infrastructure --startup-project . && dotnet ef database update --project ..\SurveyApp.Infrastructure --startup-project . && dotnet run
+cd Backend/SurveyApp.API
+```
+
+Restore dependencies and apply migrations:
+```sh
+dotnet restore
+dotnet ef migrations add InitialCreate --project ..\SurveyApp.Infrastructure --startup-project .
+dotnet ef database update --project ..\SurveyApp.Infrastructure --startup-project .
+```
+
+Start the backend:
+```sh
+dotnet run
 ```
 
 > API: http://localhost:5000  
@@ -387,7 +402,9 @@ cd Backend/SurveyApp.API && dotnet restore && dotnet ef migrations add InitialCr
 Open a **new terminal** (keep the backend running):
 
 ```sh
-cd Frontend/survey-app && npm install && npm run dev
+cd Frontend/survey-app
+npm install
+npm run dev
 ```
 
 > App: http://localhost:3000
@@ -814,13 +831,16 @@ Korumalı endpoint'ler `Authorization: Bearer <token>` gerektirir.
 
 Kurulumu doğrulayın:
 ```sh
-dotnet --version && node --version && npm --version
+dotnet --version
+node --version
+npm --version
 ```
 
 ### 1. Repoyu Klonlayın
 
 ```sh
-git clone https://github.com/ferhattufekci/SurveyApp.git && cd SurveyApp
+git clone https://github.com/ferhattufekci/SurveyApp.git
+cd SurveyApp
 ```
 
 ### 2. Backend'i Başlatın
@@ -830,9 +850,21 @@ EF Core CLI aracını kurun (bir kez yapılır):
 dotnet tool install --global dotnet-ef
 ```
 
-Klasöre geçin, bağımlılıkları yükleyin, migration uygulayın ve başlatın:
+API projesine gidin:
 ```sh
-cd Backend/SurveyApp.API && dotnet restore && dotnet ef migrations add InitialCreate --project ..\SurveyApp.Infrastructure --startup-project . && dotnet ef database update --project ..\SurveyApp.Infrastructure --startup-project . && dotnet run
+cd Backend/SurveyApp.API
+```
+
+Bağımlılıkları yükleyin ve migration'ları uygulayın:
+```sh
+dotnet restore
+dotnet ef migrations add InitialCreate --project ..\SurveyApp.Infrastructure --startup-project .
+dotnet ef database update --project ..\SurveyApp.Infrastructure --startup-project .
+```
+
+Backend'i başlatın:
+```sh
+dotnet run
 ```
 
 > API: http://localhost:5000  
@@ -843,7 +875,9 @@ cd Backend/SurveyApp.API && dotnet restore && dotnet ef migrations add InitialCr
 **Yeni bir terminal açın** (backend'i kapatmayın):
 
 ```sh
-cd Frontend/survey-app && npm install && npm run dev
+cd Frontend/survey-app
+npm install
+npm run dev
 ```
 
 > Uygulama: http://localhost:3000
