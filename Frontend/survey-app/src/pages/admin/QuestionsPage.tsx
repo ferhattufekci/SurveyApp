@@ -136,38 +136,55 @@ export default function QuestionsPage() {
   if (loading) return <div className="loading-container"><div className="spinner-large"></div></div>;
 
   function DeletePopover({ question, usedSurveys }: { question: QuestionListItem; usedSurveys: SurveyListItem[] }) {
-    const [show, setShow] = useState(false);
-    const ref = useRef<HTMLSpanElement>(null);
+    const [show, setShow]   = useState(false);
+    const [pos, setPos]     = useState({ top: 0, left: 0 });
+    const btnRef            = useRef<HTMLSpanElement>(null);
+    const hideTimer         = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    useEffect(() => {
-      if (!show) return;
-      const handler = (e: MouseEvent) => {
-        if (ref.current && !ref.current.contains(e.target as Node)) setShow(false);
-      };
-      document.addEventListener('mousedown', handler);
-      return () => document.removeEventListener('mousedown', handler);
-    }, [show]);
+    const scheduleHide = () => {
+      hideTimer.current = setTimeout(() => setShow(false), 120);
+    };
+    const cancelHide = () => {
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+    };
+
+    const handleEnter = () => {
+      cancelHide();
+      if (btnRef.current) {
+        const r = btnRef.current.getBoundingClientRect();
+        setPos({ top: r.top + window.scrollY, left: r.right + window.scrollX });
+      }
+      setShow(true);
+    };
 
     return (
-      <span ref={ref} style={{ position: 'relative', display: 'inline-block' }}
-        onMouseEnter={() => setShow(true)}
-        onMouseLeave={() => setShow(false)}>
-        <button
-          style={{
-            opacity: 0.45,
-            pointerEvents: 'none',
-            cursor: 'not-allowed',
-          }}
-          className="btn btn-sm btn-danger"
-        >Sil</button>
+      <>
+        <span ref={btnRef} style={{ display: 'inline-block' }}
+          onMouseEnter={handleEnter}
+          onMouseLeave={scheduleHide}>
+          <button
+            style={{ opacity: 0.45, pointerEvents: 'none', cursor: 'not-allowed' }}
+            className="btn btn-sm btn-danger"
+          >Sil</button>
+        </span>
 
         {show && (
-          <div style={{
-            position: 'absolute', bottom: 'calc(100% + 10px)', right: 0,
-            width: '300px', background: '#fff', borderRadius: '10px', zIndex: 1000,
-            boxShadow: '0 8px 24px rgba(0,0,0,.18)', border: '1px solid #e5e7eb',
-            overflow: 'hidden',
-          }}>
+          <div
+            onMouseEnter={cancelHide}
+            onMouseLeave={scheduleHide}
+            style={{
+              position: 'fixed',
+              top: pos.top - 10,
+              left: pos.left - 310,
+              width: '300px',
+              background: '#fff',
+              borderRadius: '10px',
+              zIndex: 9999,
+              boxShadow: '0 8px 32px rgba(0,0,0,.2)',
+              border: '1px solid #e5e7eb',
+              overflow: 'hidden',
+              transform: 'translateY(-100%)',
+            }}>
             <div style={{ background: '#fff7ed', borderBottom: '1px solid #fed7aa', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '16px' }}>🔒</span>
               <div>
@@ -204,11 +221,9 @@ export default function QuestionsPage() {
                 🔗 Anketleri görüntüle →
               </Link>
             </div>
-
-            <div style={{ position: 'absolute', bottom: '-6px', right: '14px', width: '12px', height: '12px', background: '#f9fafb', border: '1px solid #e5e7eb', borderTop: 'none', borderLeft: 'none', transform: 'rotate(45deg)' }} />
           </div>
         )}
-      </span>
+      </>
     );
   }
 
