@@ -15,7 +15,8 @@ export default function QuestionsPage() {
   const [form, setForm]             = useState({ text: '', answerTemplateId: 0, isActive: true });
   const [saving, setSaving]         = useState(false);
   const [error, setError]           = useState('');
-  const [errorType, setErrorType]   = useState<'duplicate' | 'general' | ''>('');
+  const [errorType, setErrorType]   = useState<'duplicate' | 'passive_conflict' | 'general' | ''>('');
+  const [errorDetail, setErrorDetail] = useState('');
   const [shake, setShake]           = useState(false);
   const [search, setSearch]         = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
@@ -29,7 +30,7 @@ export default function QuestionsPage() {
       .finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
 
-  const closeModal = () => { setShowModal(false); setError(''); setErrorType(''); };
+  const closeModal = () => { setShowModal(false); setError(''); setErrorType(''); setErrorDetail(''); };
 
   const openCreate = () => {
     setEditItem(null);
@@ -44,7 +45,7 @@ export default function QuestionsPage() {
   };
 
   const handleSave = async () => {
-    setError(''); setErrorType('');
+    setError(''); setErrorType(''); setErrorDetail('');
     if (!form.text.trim()) { setError('Soru metni zorunludur.'); setErrorType('general'); return; }
     if (!form.answerTemplateId) { setError('Cevap şablonu seçiniz.'); setErrorType('general'); return; }
     setSaving(true);
@@ -57,9 +58,12 @@ export default function QuestionsPage() {
       closeModal(); load();
     } catch (e: any) {
       const msg = e.response?.data?.message || 'Bir hata oluştu.';
+      const parts = msg.split('|');
       const isDuplicate = msg.toLowerCase().includes('zaten bir soru mevcut');
-      setError(msg);
-      setErrorType(isDuplicate ? 'duplicate' : 'general');
+      const isPassiveConflict = parts.length === 3 && msg.toLowerCase().includes('aktif ankette');
+      setError(isPassiveConflict ? parts[0] : msg);
+      setErrorType(isPassiveConflict ? 'passive_conflict' : isDuplicate ? 'duplicate' : 'general');
+      if (isPassiveConflict) setErrorDetail(parts[2]);
       setShake(true);
       setTimeout(() => setShake(false), 600);
     } finally { setSaving(false); }
@@ -276,17 +280,32 @@ export default function QuestionsPage() {
                 {error && (
                   <div style={{
                     display: 'flex', alignItems: 'flex-start', gap: '10px',
-                    background: errorType === 'duplicate' ? '#fff7ed' : '#fef2f2',
-                    border: `1px solid ${errorType === 'duplicate' ? '#fed7aa' : '#fecaca'}`,
-                    borderLeft: `4px solid ${errorType === 'duplicate' ? '#f97316' : '#ef4444'}`,
+                    background: errorType === 'duplicate' ? '#fff7ed' : errorType === 'passive_conflict' ? '#fefce8' : '#fef2f2',
+                    border: `1px solid ${errorType === 'duplicate' ? '#fed7aa' : errorType === 'passive_conflict' ? '#fde047' : '#fecaca'}`,
+                    borderLeft: `4px solid ${errorType === 'duplicate' ? '#f97316' : errorType === 'passive_conflict' ? '#eab308' : '#ef4444'}`,
                     borderRadius: '8px', padding: '12px 14px', marginBottom: '16px',
                   }}>
-                    <span style={{ fontSize: '18px', lineHeight: 1 }}>{errorType === 'duplicate' ? '⚠️' : '❌'}</span>
+                    <span style={{ fontSize: '18px', lineHeight: 1 }}>
+                      {errorType === 'duplicate' ? '⚠️' : errorType === 'passive_conflict' ? '🔒' : '❌'}
+                    </span>
                     <div>
-                      <div style={{ fontWeight: 600, fontSize: '13px', color: errorType === 'duplicate' ? '#c2410c' : '#dc2626', marginBottom: '2px' }}>
-                        {errorType === 'duplicate' ? 'Yinelenen Soru Metni' : 'Hata'}
+                      <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: '2px',
+                        color: errorType === 'duplicate' ? '#c2410c' : errorType === 'passive_conflict' ? '#854d0e' : '#dc2626' }}>
+                        {errorType === 'duplicate'
+                          ? 'Yinelenen Soru Metni'
+                          : errorType === 'passive_conflict'
+                            ? 'Pasife Alınamaz — Aktif Anketlerde Kullanımda'
+                            : 'Hata'}
                       </div>
                       <div style={{ fontSize: '13px', color: '#374151' }}>{error}</div>
+                      {errorType === 'passive_conflict' && errorDetail && (
+                        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>{errorDetail}</div>
+                      )}
+                      {errorType === 'passive_conflict' && (
+                        <div style={{ fontSize: '12px', color: '#92400e', fontWeight: 500, marginTop: '6px' }}>
+                          💡 Bu anketleri önce pasife alın, ardından soruyu pasife alabilirsiniz.
+                        </div>
+                      )}
                       {errorType === 'duplicate' && (
                         <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
                           Soru metnini değiştirerek tekrar deneyebilirsiniz.

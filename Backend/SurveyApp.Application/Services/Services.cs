@@ -50,6 +50,22 @@ public class QuestionService : IQuestionService
         if (existing.Any(x => x.Id != id && x.Text.Trim().ToLower() == request.Text.Trim().ToLower()))
             throw new ArgumentException($"Bu soru metniyle zaten bir soru mevcut. Farklı bir metin giriniz.");
 
+        // Aktif anketlerde kullanılan soru pasife alınamaz
+        if (q.IsActive && !request.IsActive)
+        {
+            var surveys = await _uow.Surveys.GetAllWithDetailsAsync();
+            var activeUsages = surveys.Where(s => s.IsActive && s.SurveyQuestions.Any(sq => sq.QuestionId == id)).ToList();
+            if (activeUsages.Any())
+            {
+                var names = string.Join(", ", activeUsages.Take(3).Select(s =>
+                    $"\"{s.Title.Substring(0, Math.Min(40, s.Title.Length))}{(s.Title.Length > 40 ? "..." : "")}\""));
+                var more = activeUsages.Count > 3 ? $" ve {activeUsages.Count - 3} anket daha" : "";
+                throw new InvalidOperationException(
+                    $"Bu soru {activeUsages.Count} aktif ankette kullanılmaktadır. Pasife almadan önce bu anketleri pasife alınız.|{activeUsages.Count}|{names}{more}"
+                );
+            }
+        }
+
         q.Text = request.Text;
         q.AnswerTemplateId = request.AnswerTemplateId;
         q.IsActive = request.IsActive;

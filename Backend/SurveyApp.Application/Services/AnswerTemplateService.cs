@@ -62,6 +62,22 @@ public class AnswerTemplateService : IAnswerTemplateService
         if (existing.Any(t => t.Id != id && t.Name.Trim().ToLower() == request.Name.Trim().ToLower()))
             throw new ArgumentException($"'{request.Name}' adında bir şablon zaten mevcut. Farklı bir ad giriniz.");
 
+        // Aktif sorularda kullanılan şablon pasife alınamaz
+        if (template.IsActive && !request.IsActive)
+        {
+            var questions = await _uow.Questions.GetAllWithTemplatesAsync();
+            var activeUsages = questions.Where(q => q.AnswerTemplateId == id && q.IsActive).ToList();
+            if (activeUsages.Any())
+            {
+                var names = string.Join(", ", activeUsages.Take(3).Select(q =>
+                    $"\"{q.Text.Substring(0, Math.Min(40, q.Text.Length))}{(q.Text.Length > 40 ? "..." : "")}\""));
+                var more = activeUsages.Count > 3 ? $" ve {activeUsages.Count - 3} soru daha" : "";
+                throw new InvalidOperationException(
+                    $"Bu şablon {activeUsages.Count} aktif soruda kullanılmaktadır. Pasife almadan önce bu soruları pasife alınız.|{activeUsages.Count}|{names}{more}"
+                );
+            }
+        }
+
         template.Name = request.Name;
         template.IsActive = request.IsActive;
         template.UpdatedAt = DateTime.UtcNow;

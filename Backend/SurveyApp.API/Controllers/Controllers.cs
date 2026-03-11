@@ -108,6 +108,7 @@ public class AnswerTemplatesController : ControllerBase
             return result == null ? NotFound() : Ok(result);
         }
         catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
     }
 
     [HttpDelete("{id}")]
@@ -154,8 +155,13 @@ public class QuestionsController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateQuestionRequest request)
     {
-        var result = await _service.UpdateAsync(id, request);
-        return result == null ? NotFound() : Ok(result);
+        try
+        {
+            var result = await _service.UpdateAsync(id, request);
+            return result == null ? NotFound() : Ok(result);
+        }
+        catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
     }
 
     [HttpDelete("{id}")]

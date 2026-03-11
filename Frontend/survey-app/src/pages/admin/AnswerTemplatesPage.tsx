@@ -15,7 +15,8 @@ export default function AnswerTemplatesPage() {
   const [form, setForm] = useState({ name: '', options: ['', ''], isActive: true });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [errorType, setErrorType] = useState<'duplicate' | 'general' | ''>('');
+  const [errorType, setErrorType] = useState<'duplicate' | 'passive_conflict' | 'general' | ''>('');
+  const [errorDetail, setErrorDetail] = useState('');
   const [shake, setShake] = useState(false);
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
@@ -41,8 +42,7 @@ export default function AnswerTemplatesPage() {
   const updateOption = (i: number, val: string) => setForm(f => ({ ...f, options: f.options.map((o, idx) => idx === i ? val : o) }));
 
   const handleSave = async () => {
-    setError('');
-    setErrorType('');
+    setError(''); setErrorType(''); setErrorDetail('');
     if (!form.name.trim()) { setError('Şablon adı zorunludur.'); setErrorType('general'); return; }
     if (form.options.some(o => !o.trim())) { setError('Tüm seçenekler doldurulmalıdır.'); setErrorType('general'); return; }
     setSaving(true);
@@ -59,10 +59,12 @@ export default function AnswerTemplatesPage() {
       setShowModal(false); load();
     } catch (e: any) {
       const msg = e.response?.data?.message || 'Bir hata oluştu.';
+      const parts = msg.split('|');
       const isDuplicate = msg.toLowerCase().includes('zaten mevcut');
-      setError(msg);
-      setErrorType(isDuplicate ? 'duplicate' : 'general');
-      // Shake animasyonu tetikle
+      const isPassiveConflict = parts.length === 3 && msg.toLowerCase().includes('aktif soruda');
+      setError(isPassiveConflict ? parts[0] : msg);
+      setErrorType(isPassiveConflict ? 'passive_conflict' : isDuplicate ? 'duplicate' : 'general');
+      if (isPassiveConflict) setErrorDetail(parts[2]);
       setShake(true);
       setTimeout(() => setShake(false), 600);
     } finally { setSaving(false); }
@@ -283,25 +285,33 @@ export default function AnswerTemplatesPage() {
             <div className={`modal${shake ? ' modal-shake' : ''}`} onClick={e => e.stopPropagation()}>
               <div className="modal-header">
                 <h3>{editItem ? `#${editRowNum} Şablonu Düzenle` : 'Yeni Şablon'}</h3>
-                <button className="modal-close" onClick={() => { setShowModal(false); setError(''); setErrorType(''); }}>×</button>
+                <button className="modal-close" onClick={() => { setShowModal(false); setError(''); setErrorType(''); setErrorDetail(''); }}>×</button>
               </div>
               <div className="modal-body">
                 {error && (
                   <div style={{
                     display: 'flex', alignItems: 'flex-start', gap: '10px',
-                    background: errorType === 'duplicate' ? '#fff7ed' : '#fef2f2',
-                    border: `1px solid ${errorType === 'duplicate' ? '#fed7aa' : '#fecaca'}`,
-                    borderLeft: `4px solid ${errorType === 'duplicate' ? '#f97316' : '#ef4444'}`,
+                    background: errorType === 'duplicate' ? '#fff7ed' : errorType === 'passive_conflict' ? '#fefce8' : '#fef2f2',
+                    border: `1px solid ${errorType === 'duplicate' ? '#fed7aa' : errorType === 'passive_conflict' ? '#fde047' : '#fecaca'}`,
+                    borderLeft: `4px solid ${errorType === 'duplicate' ? '#f97316' : errorType === 'passive_conflict' ? '#eab308' : '#ef4444'}`,
                     borderRadius: '8px', padding: '12px 14px', marginBottom: '16px'
                   }}>
                     <span style={{ fontSize: '18px', lineHeight: 1 }}>
-                      {errorType === 'duplicate' ? '⚠️' : '❌'}
+                      {errorType === 'duplicate' ? '⚠️' : errorType === 'passive_conflict' ? '🔒' : '❌'}
                     </span>
                     <div>
-                      <div style={{ fontWeight: 600, fontSize: '13px', color: errorType === 'duplicate' ? '#c2410c' : '#dc2626', marginBottom: '2px' }}>
-                        {errorType === 'duplicate' ? 'Yinelenen Şablon Adı' : 'Hata'}
+                      <div style={{ fontWeight: 600, fontSize: '13px', color: errorType === 'duplicate' ? '#c2410c' : errorType === 'passive_conflict' ? '#854d0e' : '#dc2626', marginBottom: '2px' }}>
+                        {errorType === 'duplicate' ? 'Yinelenen Şablon Adı' : errorType === 'passive_conflict' ? 'Pasife Alınamaz — Aktif Sorularda Kullanımda' : 'Hata'}
                       </div>
                       <div style={{ fontSize: '13px', color: '#374151' }}>{error}</div>
+                      {errorType === 'passive_conflict' && errorDetail && (
+                        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>{errorDetail}</div>
+                      )}
+                      {errorType === 'passive_conflict' && (
+                        <div style={{ fontSize: '12px', color: '#92400e', marginTop: '6px', fontWeight: 500 }}>
+                          💡 Bu soruları önce pasife alın, ardından şablonu pasife alabilirsiniz.
+                        </div>
+                      )}
                       {errorType === 'duplicate' && (
                         <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
                           Şablon adını değiştirerek tekrar deneyebilirsiniz.
