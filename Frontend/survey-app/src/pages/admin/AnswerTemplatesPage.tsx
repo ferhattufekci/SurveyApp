@@ -4,22 +4,33 @@ import type { AnswerTemplate } from '../../types';
 
 type FilterKey = 'all' | 'active' | 'passive';
 
+const PAGE_SIZE = 8;
+
 export default function AnswerTemplatesPage() {
   const [templates, setTemplates] = useState<AnswerTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editItem, setEditItem] = useState<AnswerTemplate | null>(null);
-  const [form, setForm] = useState({ name: '', options: ['', ''] });
+  const [form, setForm] = useState({ name: '', options: ['', ''], isActive: true });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
+  const [page, setPage] = useState(1);
 
   const load = () => answerTemplatesApi.getAll().then(setTemplates).finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
 
-  const openCreate = () => { setEditItem(null); setForm({ name: '', options: ['', ''] }); setError(''); setShowModal(true); };
-  const openEdit = (t: AnswerTemplate) => { setEditItem(t); setForm({ name: t.name, options: t.options.map(o => o.text) }); setError(''); setShowModal(true); };
+  const openCreate = () => {
+    setEditItem(null);
+    setForm({ name: '', options: ['', ''], isActive: true });
+    setError(''); setShowModal(true);
+  };
+  const openEdit = (t: AnswerTemplate) => {
+    setEditItem(t);
+    setForm({ name: t.name, options: t.options.map(o => o.text), isActive: t.isActive });
+    setError(''); setShowModal(true);
+  };
   const addOption = () => { if (form.options.length < 4) setForm(f => ({ ...f, options: [...f.options, ''] })); };
   const removeOption = (i: number) => { if (form.options.length > 2) setForm(f => ({ ...f, options: f.options.filter((_, idx) => idx !== i) })); };
   const updateOption = (i: number, val: string) => setForm(f => ({ ...f, options: f.options.map((o, idx) => idx === i ? val : o) }));
@@ -32,14 +43,16 @@ export default function AnswerTemplatesPage() {
     try {
       if (editItem) {
         await answerTemplatesApi.update(editItem.id, {
-          name: form.name, isActive: editItem.isActive,
+          name: form.name,
+          isActive: form.isActive,
           options: form.options.map((text, i) => ({ id: editItem.options[i]?.id ?? null, text, orderIndex: i }))
         });
       } else {
-        await answerTemplatesApi.create({ name: form.name, options: form.options });
+        await answerTemplatesApi.create({ name: form.name, options: form.options, isActive: form.isActive });
       }
       setShowModal(false); load();
-    } catch (e: any) { setError(e.response?.data?.message || 'Bir hata oluştu.');
+    } catch (e: any) {
+      setError(e.response?.data?.message || 'Bir hata oluştu.');
     } finally { setSaving(false); }
   };
 
@@ -48,7 +61,10 @@ export default function AnswerTemplatesPage() {
     await answerTemplatesApi.delete(id); load();
   };
 
-  const handleFilterClick = (key: FilterKey) => { setActiveFilter(prev => prev === key ? 'all' : key); setSearch(''); };
+  const handleFilterClick = (key: FilterKey) => {
+    setActiveFilter(prev => prev === key ? 'all' : key);
+    setSearch(''); setPage(1);
+  };
 
   const totalCount   = templates.length;
   const activeCount  = templates.filter(t => t.isActive).length;
@@ -65,6 +81,10 @@ export default function AnswerTemplatesPage() {
     return t.name.toLowerCase().includes(q) || durum.includes(q) ||
       t.options.some(o => o.text.toLowerCase().includes(q));
   });
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage   = Math.min(page, totalPages);
+  const paginated  = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   const pillStyle = (key: FilterKey, activeBg: string, activeColor: string, inactiveBg: string, inactiveColor: string) => ({
     flex: 1, background: activeFilter === key ? activeBg : inactiveBg,
@@ -110,18 +130,19 @@ export default function AnswerTemplatesPage() {
       <div className="card">
         <div className="card-toolbar">
           <input className="search-input" placeholder="Şablon adı, seçenek veya durum ara..." value={search}
-            onChange={e => { setSearch(e.target.value); setActiveFilter('all'); }} />
+            onChange={e => { setSearch(e.target.value); setActiveFilter('all'); setPage(1); }} />
           {activeFilter !== 'all' && (
-            <button className="btn btn-sm btn-outline" onClick={() => setActiveFilter('all')}>Filtreyi Temizle ×</button>
+            <button className="btn btn-sm btn-outline" onClick={() => { setActiveFilter('all'); setPage(1); }}>Filtreyi Temizle ×</button>
           )}
         </div>
+
         <div className="table-container">
           <table className="table">
             <thead>
               <tr><th>Durum</th><th>Ad</th><th>Seçenek Sayısı</th><th>Seçenekler</th><th>İşlemler</th></tr>
             </thead>
             <tbody>
-              {filtered.map(t => (
+              {paginated.map(t => (
                 <tr key={t.id}>
                   <td><span className={`badge ${t.isActive ? 'badge-success' : 'badge-secondary'}`}>{t.isActive ? 'Aktif' : 'Pasif'}</span></td>
                   <td><strong>{t.name}</strong></td>
@@ -139,6 +160,35 @@ export default function AnswerTemplatesPage() {
           </table>
           {filtered.length === 0 && <div className="empty-state">Şablon bulunamadı.</div>}
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderTop: '1px solid #e5e7eb' }}>
+            <span style={{ fontSize: '13px', color: '#6b7280' }}>
+              {filtered.length} şablondan {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} gösteriliyor
+            </span>
+            <div style={{ display: 'flex', gap: '4px' }}>
+              <button
+                className="btn btn-sm btn-outline"
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={safePage === 1}
+              >‹ Önceki</button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                <button
+                  key={p}
+                  className={`btn btn-sm ${p === safePage ? 'btn-primary' : 'btn-outline'}`}
+                  onClick={() => setPage(p)}
+                  style={{ minWidth: '36px' }}
+                >{p}</button>
+              ))}
+              <button
+                className="btn btn-sm btn-outline"
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={safePage === totalPages}
+              >Sonraki ›</button>
+            </div>
+          </div>
+        )}
       </div>
 
       {showModal && (
@@ -153,6 +203,13 @@ export default function AnswerTemplatesPage() {
               <div className="form-group">
                 <label>Şablon Adı</label>
                 <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Örn: Evet/Hayır" />
+              </div>
+              <div className="form-group">
+                <label>Durum</label>
+                <select value={form.isActive ? 'true' : 'false'} onChange={e => setForm(f => ({ ...f, isActive: e.target.value === 'true' }))}>
+                  <option value="true">Aktif</option>
+                  <option value="false">Pasif</option>
+                </select>
               </div>
               <div className="form-group">
                 <label>Seçenekler ({form.options.length}/4)</label>

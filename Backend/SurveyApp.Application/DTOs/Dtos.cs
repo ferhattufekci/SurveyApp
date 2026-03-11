@@ -12,7 +12,7 @@ public record UpdateUserRequest(string FullName, bool IsActive);
 // AnswerTemplate DTOs
 public record AnswerOptionDto(int Id, string Text, int OrderIndex);
 public record AnswerTemplateDto(int Id, string Name, bool IsActive, List<AnswerOptionDto> Options);
-public record CreateAnswerTemplateRequest(string Name, List<string> Options);
+public record CreateAnswerTemplateRequest(string Name, List<string> Options, bool IsActive = true);
 public record UpdateAnswerTemplateRequest(string Name, bool IsActive, List<AnswerOptionUpdateDto> Options);
 public record AnswerOptionUpdateDto(int? Id, string Text, int OrderIndex);
 

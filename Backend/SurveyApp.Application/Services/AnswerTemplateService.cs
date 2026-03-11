@@ -31,6 +31,7 @@ public class AnswerTemplateService : IAnswerTemplateService
         var template = new AnswerTemplate
         {
             Name = request.Name,
+            IsActive = request.IsActive,
             Options = request.Options.Select((text, i) => new AnswerOption
             {
                 Text = text,
