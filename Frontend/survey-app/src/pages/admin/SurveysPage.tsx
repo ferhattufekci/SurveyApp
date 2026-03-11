@@ -198,7 +198,7 @@ export default function SurveysPage() {
           <div>
             <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '4px' }}>Her anket</div>
             <div style={{ fontWeight: 600, color: '#374151' }}>Bir veya daha fazla soru içerir</div>
-            <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>Yanıt alınan ve süresi geçmiş anketler düzenlenemez ve silinemez. Pasif kullanıcılar ankete atanamaz.</div>
+            <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>Yanıt alınan ve süresi geçmiş anketler düzenlenemez ve silinemez. Pasif kullanıcılar ve pasif sorular ankete eklenemez.</div>
           </div>
         </div>
       </div>
@@ -375,7 +375,7 @@ export default function SurveysPage() {
               </div>
 
               <div className="form-group">
-                <label>Sorular ({form.questionIds.length} seçili)</label>
+                <label>Sorular ({form.questionIds.length} seçili) <span style={{ fontSize: '12px', color: '#9ca3af', fontWeight: 400 }}>— yalnızca aktif sorular</span></label>
                 <div className="checkbox-list">
                   {questions.filter(q => q.isActive).map(q => (
                     <label key={q.id} className="checkbox-item">
