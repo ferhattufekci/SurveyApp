@@ -296,7 +296,7 @@ export default function UsersPage() {
         <div className="table-container">
           <table className="table">
             <thead>
-              <tr><th>#</th><th>Rol</th><th>Durum</th><th>Ad Soyad</th><th>E-posta</th><th>İşlemler</th></tr>
+              <tr><th>#</th><th>Durum</th><th>Rol</th><th>Ad Soyad</th><th>E-posta</th><th>İşlemler</th></tr>
             </thead>
             <tbody>
               {paginated.map((u, i) => {
@@ -314,8 +314,8 @@ export default function UsersPage() {
                 return (
                   <tr key={u.id}>
                     <td className="text-muted" style={{ fontWeight: 600 }}>{rowNum}</td>
-                    <td><span className={`badge ${u.role === 'Admin' ? 'badge-warning' : 'badge-info'}`}>{u.role}</span></td>
                     <td><span className={`badge ${u.isActive ? 'badge-success' : 'badge-secondary'}`}>{u.isActive ? 'Aktif' : 'Pasif'}</span></td>
+                    <td><span className={`badge ${u.role === 'Admin' ? 'badge-warning' : 'badge-info'}`}>{u.role}</span></td>
                     <td>
                       <div className="user-cell">
                         <div className="user-avatar-sm">{u.fullName[0]?.toUpperCase()}</div>

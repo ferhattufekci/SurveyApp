@@ -90,6 +90,7 @@ public class SurveyRepository : Repository<Survey>, ISurveyRepository
     public async Task<IEnumerable<Survey>> GetAssignedSurveysForUserAsync(int userId) =>
         await _db.Surveys
             .Include(s => s.SurveyAssignments)
+            .Include(s => s.SurveyQuestions).ThenInclude(sq => sq.Question).ThenInclude(q => q.AnswerTemplate).ThenInclude(t => t.Options)
             .Where(s => s.IsActive && s.SurveyAssignments.Any(a => a.UserId == userId))
             .ToListAsync();
 

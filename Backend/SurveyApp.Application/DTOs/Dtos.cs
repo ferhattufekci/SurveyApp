@@ -33,7 +33,7 @@ public record UpdateSurveyRequest(string Title, string Description, DateTime Sta
     List<int> QuestionIds, List<int> UserIds);
 
 // Survey Fill DTOs
-public record UserSurveyListDto(int Id, string Title, string Description, DateTime StartDate, DateTime EndDate, bool IsCompleted);
+public record UserSurveyListDto(int Id, string Title, string Description, DateTime StartDate, DateTime EndDate, bool IsCompleted, List<SurveyQuestionDto> Questions);
 public record SubmitSurveyRequest(int SurveyId, List<SurveyAnswerRequest> Answers);
 public record SurveyAnswerRequest(int QuestionId, int AnswerOptionId);
 

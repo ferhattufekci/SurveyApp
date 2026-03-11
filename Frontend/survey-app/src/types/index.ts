@@ -79,6 +79,7 @@ export interface UserSurvey {
   startDate: string;
   endDate: string;
   isCompleted: boolean;
+  questions: SurveyQuestion[];
 }
 
 export interface AnswerDetail {

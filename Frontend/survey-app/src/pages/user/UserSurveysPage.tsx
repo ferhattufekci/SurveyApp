@@ -26,16 +26,22 @@ export function UserSurveysListPage() {
 
   const grouped: Record<string, UserSurvey[]> = { active, completed, upcoming, expired };
   const tabList = [
-    { key: 'active',    label: '🟢 Aktif',     count: active.length },
-    { key: 'completed', label: '✅ Tamamlanan', count: completed.length },
-    { key: 'upcoming',  label: '🕐 Yaklaşan',  count: upcoming.length },
+    { key: 'active',    label: '🟢 Aktif',        count: active.length },
+    { key: 'completed', label: '✅ Tamamlanan',    count: completed.length },
+    { key: 'upcoming',  label: '🕐 Yaklaşan',     count: upcoming.length },
     { key: 'expired',   label: '⏰ Süresi Geçen', count: expired.length },
   ] as const;
 
+  // Tam arama: başlık, açıklama, soru metni, şablon adı, seçenek metni
   const filtered = (grouped[tab] || []).filter(s => {
     if (!search) return true;
     const q = search.toLowerCase();
-    return s.title.toLowerCase().includes(q) || s.description.toLowerCase().includes(q);
+    if (s.title.toLowerCase().includes(q) || s.description.toLowerCase().includes(q)) return true;
+    return (s.questions || []).some(sq =>
+      sq.questionText.toLowerCase().includes(q) ||
+      sq.answerTemplate.name.toLowerCase().includes(q) ||
+      sq.answerTemplate.options.some(o => o.text.toLowerCase().includes(q))
+    );
   });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -93,7 +99,6 @@ export function UserSurveysListPage() {
           </div>
         </div>
 
-        {/* Pasif uyarı */}
         {isPassive && (
           <div style={{
             background: '#fffbeb', border: '1px solid #fde047', borderLeft: '4px solid #eab308',
@@ -103,7 +108,7 @@ export function UserSurveysListPage() {
             <span style={{ fontSize: '20px' }}>⚠️</span>
             <div>
               <div style={{ fontWeight: 600, color: '#854d0e', marginBottom: '2px' }}>Hesabınız pasif durumda</div>
-              <div style={{ fontSize: '13px', color: '#92400e' }}>Anketleri görüntüleyebilirsiniz, ancak anket dolduramaz ve yanıt gönderemezsiniz. Hesabınızın aktif edilmesi için yöneticinize başvurun.</div>
+              <div style={{ fontSize: '13px', color: '#92400e' }}>Anketleri görüntüleyebilirsiniz, ancak anket dolduramaz ve yanıt gönderemezsiniz.</div>
             </div>
           </div>
         )}
@@ -124,12 +129,12 @@ export function UserSurveysListPage() {
           ))}
         </div>
 
-        {/* Arama */}
+        {/* Arama — tüm alanlarda (madde 7) */}
         <div style={{ marginBottom: '12px' }}>
           <input
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1); }}
-            placeholder="Başlık veya açıklama ara..."
+            placeholder="Başlık, açıklama, soru metni, şablon veya seçenek ara..."
             style={{
               width: '100%', padding: '9px 14px', borderRadius: '8px',
               border: '1px solid #d1d5db', fontSize: '14px', outline: 'none', boxSizing: 'border-box',
@@ -137,7 +142,6 @@ export function UserSurveysListPage() {
           />
         </div>
 
-        {/* Tablo */}
         <div className="card" style={{ margin: 0 }}>
           <div className="table-container">
             <table className="table">
@@ -145,8 +149,7 @@ export function UserSurveysListPage() {
                 <tr>
                   <th>#</th>
                   <th>Durum</th>
-                  <th>Başlık</th>
-                  <th>Açıklama</th>
+                  <th>Başlık & Sorular</th>
                   <th>Başlangıç</th>
                   <th>Bitiş</th>
                   <th>İşlem</th>
@@ -154,23 +157,60 @@ export function UserSurveysListPage() {
               </thead>
               <tbody>
                 {paginated.length === 0 ? (
-                  <tr><td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: '#9ca3af' }}>
+                  <tr><td colSpan={6} style={{ textAlign: 'center', padding: '32px', color: '#9ca3af' }}>
                     {search ? 'Arama sonucu bulunamadı.' : 'Bu kategoride anket yok.'}
                   </td></tr>
                 ) : paginated.map((s, i) => {
                   const rowNum = (safePage - 1) * PAGE_SIZE + i + 1;
                   const canFill = !s.isCompleted && !isPassive && new Date(s.startDate) <= now && new Date(s.endDate) >= now;
+                  const qs = s.questions || [];
                   return (
                     <tr key={s.id}>
-                      <td className="text-muted" style={{ fontWeight: 600 }}>{rowNum}</td>
-                      <td>{statusBadge(s)}</td>
-                      <td><strong>{s.title}</strong></td>
-                      <td style={{ color: '#6b7280', fontSize: '13px', maxWidth: '200px' }}>
-                        {s.description.length > 50 ? s.description.substring(0, 50) + '…' : s.description}
-                      </td>
-                      <td style={{ fontSize: '13px', color: '#6b7280' }}>{new Date(s.startDate).toLocaleDateString('tr-TR')}</td>
-                      <td style={{ fontSize: '13px', color: '#6b7280' }}>{new Date(s.endDate).toLocaleDateString('tr-TR')}</td>
+                      <td className="text-muted" style={{ fontWeight: 600, verticalAlign: 'top', paddingTop: '14px' }}>{rowNum}</td>
+                      <td style={{ verticalAlign: 'top', paddingTop: '14px' }}>{statusBadge(s)}</td>
                       <td>
+                        {/* Başlık + açıklama */}
+                        <div style={{ marginBottom: qs.length > 0 ? '10px' : 0 }}>
+                          <strong style={{ fontSize: '14px' }}>{s.title}</strong>
+                          {s.description && (
+                            <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>
+                              {s.description.length > 70 ? s.description.substring(0, 70) + '…' : s.description}
+                            </div>
+                          )}
+                        </div>
+                        {/* Sorular + şablon + seçenekler (madde 6) */}
+                        {qs.length > 0 && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                            {qs.map((sq, qi) => (
+                              <div key={sq.questionId} style={{
+                                background: '#f8fafc', border: '1px solid #e2e8f0',
+                                borderRadius: '7px', padding: '7px 10px',
+                              }}>
+                                <div style={{ fontSize: '12px', color: '#374151', fontWeight: 500, marginBottom: '4px' }}>
+                                  <span style={{ color: '#9ca3af', marginRight: '4px' }}>{qi + 1}.</span>
+                                  {sq.questionText}
+                                </div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px', alignItems: 'center' }}>
+                                  <span style={{
+                                    fontSize: '10px', background: '#eef2ff', color: '#6366f1',
+                                    borderRadius: '4px', padding: '1px 6px', fontWeight: 600,
+                                  }}>{sq.answerTemplate.name}</span>
+                                  <span style={{ fontSize: '10px', color: '#9ca3af' }}>·</span>
+                                  {sq.answerTemplate.options.map(o => (
+                                    <span key={o.id} style={{
+                                      fontSize: '10px', background: '#f3f4f6', color: '#6b7280',
+                                      borderRadius: '4px', padding: '1px 6px', border: '1px solid #e5e7eb',
+                                    }}>{o.text}</span>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ fontSize: '13px', color: '#6b7280', verticalAlign: 'top', paddingTop: '14px' }}>{new Date(s.startDate).toLocaleDateString('tr-TR')}</td>
+                      <td style={{ fontSize: '13px', color: '#6b7280', verticalAlign: 'top', paddingTop: '14px' }}>{new Date(s.endDate).toLocaleDateString('tr-TR')}</td>
+                      <td style={{ verticalAlign: 'top', paddingTop: '12px' }}>
                         {canFill ? (
                           <button className="btn btn-sm btn-primary" onClick={() => navigate(`/user/surveys/${s.id}`)}>
                             Doldur →
@@ -190,7 +230,6 @@ export function UserSurveysListPage() {
             </table>
           </div>
 
-          {/* Pagination */}
           {totalPages > 1 && (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderTop: '1px solid #e5e7eb' }}>
               <span style={{ fontSize: '13px', color: '#6b7280' }}>

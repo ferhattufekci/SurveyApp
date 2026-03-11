@@ -283,7 +283,14 @@ public class UserSurveyService : IUserSurveyService
         foreach (var s in surveys)
         {
             var completed = await _uow.Surveys.HasUserCompletedSurveyAsync(s.Id, userId);
-            result.Add(new UserSurveyListDto(s.Id, s.Title, s.Description, s.StartDate, s.EndDate, completed));
+            var questions = s.SurveyQuestions.OrderBy(sq => sq.OrderIndex).Select(sq => new SurveyQuestionDto(
+                sq.Id, sq.QuestionId, sq.Question.Text, sq.OrderIndex,
+                new AnswerTemplateDto(sq.Question.AnswerTemplate.Id, sq.Question.AnswerTemplate.Name,
+                    sq.Question.AnswerTemplate.IsActive,
+                    sq.Question.AnswerTemplate.Options.OrderBy(o => o.OrderIndex)
+                        .Select(o => new AnswerOptionDto(o.Id, o.Text, o.OrderIndex)).ToList())
+            )).ToList();
+            result.Add(new UserSurveyListDto(s.Id, s.Title, s.Description, s.StartDate, s.EndDate, completed, questions));
         }
         return result;
     }

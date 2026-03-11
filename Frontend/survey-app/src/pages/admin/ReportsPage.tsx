@@ -6,11 +6,8 @@ import SearchInput from '../../components/admin/SearchInput';
 
 const PAGE_SIZE = 8;
 
-function progressColor(rate: number): string {
-  if (rate === 0) return '#e5e7eb';        // gri — hiç yanıt yok
-  if (rate < 40)  return '#ef4444';        // kırmızı
-  if (rate < 75)  return '#f59e0b';        // turuncu/sarı
-  return '#10b981';                         // yeşil
+function progressColor(_rate: number): string {
+  return '#10b981'; // her zaman yeşil (madde 3 & 5)
 }
 
 export function ReportsListPage() {
@@ -50,6 +47,7 @@ export function ReportsListPage() {
             <thead>
               <tr>
                 <th>#</th>
+                <th>Durum</th>
                 <th>Anket</th>
                 <th>Tarih Aralığı</th>
                 <th>Atanan</th>
@@ -65,16 +63,15 @@ export function ReportsListPage() {
                 const rate = s.assignedUserCount > 0
                   ? Math.round((s.responseCount / s.assignedUserCount) * 100)
                   : 0;
-                const barColor = progressColor(rate);
                 return (
                   <tr key={s.id}>
                     <td className="text-muted" style={{ fontWeight: 600 }}>{rowNum}</td>
                     <td>
-                      <strong>{s.title}</strong>
-                      <span className={`badge ml-2 ${s.isActive ? 'badge-success' : 'badge-secondary'}`}>
+                      <span className={`badge ${s.isActive ? 'badge-success' : 'badge-secondary'}`}>
                         {s.isActive ? 'Aktif' : 'Pasif'}
                       </span>
                     </td>
+                    <td><strong>{s.title}</strong></td>
                     <td className="text-sm">
                       {new Date(s.startDate).toLocaleDateString('tr-TR')} - {new Date(s.endDate).toLocaleDateString('tr-TR')}
                     </td>
@@ -84,9 +81,9 @@ export function ReportsListPage() {
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '110px' }}>
                         <div style={{ flex: 1, height: '8px', borderRadius: '10px', background: '#e5e7eb', overflow: 'hidden' }}>
-                          <div style={{ width: `${rate}%`, height: '100%', background: barColor, borderRadius: '10px', transition: 'width 0.3s' }} />
+                          <div style={{ width: `${rate}%`, height: '100%', background: '#10b981', borderRadius: '10px', transition: 'width 0.3s' }} />
                         </div>
-                        <span style={{ fontSize: '12px', fontWeight: 700, color: barColor, minWidth: '36px', textAlign: 'right' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 700, color: '#10b981', minWidth: '36px', textAlign: 'right' }}>
                           {rate}%
                         </span>
                       </div>
@@ -137,14 +134,17 @@ export function SurveyReportPage() {
   if (!report) return <div className="page"><div className="alert alert-error">Rapor bulunamadı.</div></div>;
 
   const rate = report.totalAssigned > 0 ? Math.round((report.totalCompleted / report.totalAssigned) * 100) : 0;
-  const barColor = progressColor(rate);
+
+  const handleTabChange = (tab: 'completed' | 'pending') => {
+    setActiveTab(tab);
+    setExpandedUser(null);
+  };
 
   return (
     <div className="page">
       <div className="page-header">
         <div>
           <Link to="/admin/reports" className="back-link">← Raporlar</Link>
-          {/* Anket adı → Anketler sayfasına başlık filtreli git */}
           <h1 style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             <button
               onClick={() => navigate(`/admin/surveys?search=${encodeURIComponent(report.title)}`)}
@@ -158,44 +158,52 @@ export function SurveyReportPage() {
             >
               {report.title}
             </button>
-            <span style={{ fontSize: '14px', fontWeight: 400, color: '#6b7280', textDecoration: 'none' }}>
-              🔗 Ankete git
-            </span>
+            <span style={{ fontSize: '14px', fontWeight: 400, color: '#6b7280' }}>🔗 Ankete git</span>
           </h1>
         </div>
       </div>
 
-      {/* Özet stat kartları + oran */}
+      {/* Özet stat kartları — tıklanınca tab değişir (madde 4) */}
       <div className="stats-grid stats-grid-3" style={{ marginBottom: '12px' }}>
         <div className="stat-card stat-blue">
           <div className="stat-icon">👥</div>
           <div className="stat-info"><div className="stat-value">{report.totalAssigned}</div><div className="stat-label">Toplam Atanan</div></div>
         </div>
-        <div className="stat-card stat-green">
+        <div
+          className="stat-card stat-green"
+          onClick={() => handleTabChange('completed')}
+          style={{ cursor: 'pointer', outline: activeTab === 'completed' ? '2px solid #10b981' : 'none', outlineOffset: '2px' }}
+          title="Tamamlayanları göster"
+        >
           <div className="stat-icon">✅</div>
           <div className="stat-info"><div className="stat-value">{report.totalCompleted}</div><div className="stat-label">Tamamlayan</div></div>
         </div>
-        <div className="stat-card stat-orange">
+        <div
+          className="stat-card stat-orange"
+          onClick={() => handleTabChange('pending')}
+          style={{ cursor: 'pointer', outline: activeTab === 'pending' ? '2px solid #f59e0b' : 'none', outlineOffset: '2px' }}
+          title="Tamamlamayanları göster"
+        >
           <div className="stat-icon">⏳</div>
           <div className="stat-info"><div className="stat-value">{report.totalPending}</div><div className="stat-label">Tamamlamayan</div></div>
         </div>
       </div>
 
-      {/* Tamamlanma oranı */}
-      <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '10px', padding: '14px 20px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+      {/* Tamamlanma oranı — yeşil (madde 5) */}
+      <div style={{ background: '#f0fdf4', border: '1px solid #10b98133', borderRadius: '10px', padding: '14px 20px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
         <span style={{ fontSize: '13px', color: '#6b7280', whiteSpace: 'nowrap' }}>Tamamlanma Oranı</span>
-        <div style={{ flex: 1, height: '10px', borderRadius: '10px', background: '#e5e7eb', overflow: 'hidden' }}>
-          <div style={{ width: `${rate}%`, height: '100%', background: barColor, borderRadius: '10px', transition: 'width 0.4s' }} />
+        <div style={{ flex: 1, height: '10px', borderRadius: '10px', background: '#d1fae5', overflow: 'hidden' }}>
+          <div style={{ width: `${rate}%`, height: '100%', background: '#10b981', borderRadius: '10px', transition: 'width 0.4s' }} />
         </div>
-        <span style={{ fontSize: '18px', fontWeight: 800, color: barColor, minWidth: '48px', textAlign: 'right' }}>{rate}%</span>
+        <span style={{ fontSize: '18px', fontWeight: 800, color: '#10b981', minWidth: '48px', textAlign: 'right' }}>{rate}%</span>
       </div>
 
       <div className="card">
         <div className="tabs">
-          <button className={`tab ${activeTab === 'completed' ? 'active' : ''}`} onClick={() => setActiveTab('completed')}>
+          <button className={`tab ${activeTab === 'completed' ? 'active' : ''}`} onClick={() => handleTabChange('completed')}>
             Tamamlayanlar ({report.totalCompleted})
           </button>
-          <button className={`tab ${activeTab === 'pending' ? 'active' : ''}`} onClick={() => setActiveTab('pending')}>
+          <button className={`tab ${activeTab === 'pending' ? 'active' : ''}`} onClick={() => handleTabChange('pending')}>
             Tamamlamayanlar ({report.totalPending})
           </button>
         </div>
