@@ -2,12 +2,13 @@ import SearchInput from '../../components/admin/SearchInput';
 import { useEffect, useState, useRef } from 'react';
 import { questionsApi, answerTemplatesApi, surveysApi } from '../../api';
 import type { QuestionListItem, AnswerTemplate, SurveyListItem } from '../../types';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 type FilterKey = 'all' | 'active' | 'passive';
 const PAGE_SIZE = 8;
 
 export default function QuestionsPage() {
+  const location = useLocation();
   const [questions, setQuestions]   = useState<QuestionListItem[]>([]);
   const [templates, setTemplates]   = useState<AnswerTemplate[]>([]);
   const [surveys, setSurveys]       = useState<SurveyListItem[]>([]);
@@ -20,7 +21,10 @@ export default function QuestionsPage() {
   const [errorType, setErrorType]   = useState<'duplicate' | 'passive_conflict' | 'general' | ''>('');
   const [errorDetail, setErrorDetail] = useState('');
   const [shake, setShake]           = useState(false);
-  const [search, setSearch]         = useState('');
+  const [search, setSearch]         = useState(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get('search') || '';
+  });
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
   const [page, setPage]             = useState(1);
   const [deleteError, setDeleteError] = useState<{ id: number; count: number; detail: string } | null>(null);
@@ -104,6 +108,9 @@ export default function QuestionsPage() {
   const passiveCount = questions.filter(q => !q.isActive).length;
 
   // Filtreleme
+  // Template id -> options map for search
+  const templateMap = new Map<number, AnswerTemplate>(templates.map(t => [t.id, t]));
+
   const filtered = questions.filter(q => {
     const passesFilter =
       activeFilter === 'active'  ? q.isActive :
@@ -112,10 +119,15 @@ export default function QuestionsPage() {
     if (!search) return true;
     const s = search.toLowerCase();
     const durum = q.isActive ? 'aktif' : 'pasif';
+    const tpl = templateMap.get(q.answerTemplateId);
+    const optionsText = tpl ? tpl.options.map((o: { text: string }) => o.text).join(' ') : '';
+    const optionCount = tpl ? `${tpl.options.length} seçenek` : '';
     return (
       q.text.toLowerCase().includes(s) ||
       q.answerTemplateName.toLowerCase().includes(s) ||
-      durum.includes(s)
+      durum.includes(s) ||
+      optionsText.toLowerCase().includes(s) ||
+      optionCount.includes(s)
     );
   });
 
@@ -277,7 +289,7 @@ export default function QuestionsPage() {
         <div className="card-toolbar">
           <SearchInput
             value={search}
-            placeholder="Soru metni, cevap şablonu adı veya durum ara..."
+            placeholder="Soru metni, şablon adı, seçenek veya durum ara..."
             onChange={v => { setSearch(v); setActiveFilter('all'); setPage(1); }}
           />
           {activeFilter !== 'all' && (
@@ -288,7 +300,7 @@ export default function QuestionsPage() {
         <div className="table-container">
           <table className="table">
             <thead>
-              <tr><th>#</th><th>Durum</th><th>Soru Metni</th><th>Cevap Şablonu</th><th>İşlemler</th></tr>
+              <tr><th>#</th><th>Durum</th><th>Soru Metni</th><th>Cevap Şablonu</th><th>Seçenekler</th><th>İşlemler</th></tr>
             </thead>
             <tbody>
               {paginated.map((q, i) => {
@@ -300,6 +312,22 @@ export default function QuestionsPage() {
                     <td><span className={`badge ${q.isActive ? 'badge-success' : 'badge-secondary'}`}>{q.isActive ? 'Aktif' : 'Pasif'}</span></td>
                     <td>{q.text}</td>
                     <td><span className="pill">{q.answerTemplateName}</span></td>
+                    <td>
+                      {(() => {
+                        const tpl = templateMap.get(q.answerTemplateId);
+                        if (!tpl) return <span className="text-muted">—</span>;
+                        return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                            <span style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '2px' }}>{tpl.options.length} seçenek</span>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                              {tpl.options.map((o: { id: number; text: string }) => (
+                                <span key={o.id} className="pill" style={{ fontSize: '11px', padding: '2px 7px' }}>{o.text}</span>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </td>
                     <td>
                       <div className="action-btns">
                         <button className="btn btn-sm btn-outline" onClick={() => openEdit(q, rowNum)}>Düzenle</button>

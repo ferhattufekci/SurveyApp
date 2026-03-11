@@ -1,8 +1,8 @@
 import SearchInput from '../../components/admin/SearchInput';
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { surveysApi, questionsApi, usersApi } from '../../api';
-import type { SurveyListItem, QuestionListItem, User } from '../../types';
+import { surveysApi, questionsApi, usersApi, answerTemplatesApi } from '../../api';
+import type { SurveyListItem, QuestionListItem, User, AnswerTemplate } from '../../types';
 
 type FilterKey = 'all' | 'active' | 'passive' | 'expired';
 const PAGE_SIZE = 8;
@@ -37,6 +37,7 @@ export default function SurveysPage() {
   const location = useLocation();
   const [surveys, setSurveys]     = useState<SurveyListItem[]>([]);
   const [questions, setQuestions] = useState<QuestionListItem[]>([]);
+  const [templates, setTemplates] = useState<AnswerTemplate[]>([]);
   const [users, setUsers]         = useState<User[]>([]);
   const [loading, setLoading]     = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -65,8 +66,8 @@ export default function SurveysPage() {
   };
 
   const load = () =>
-    Promise.all([surveysApi.getAll(), questionsApi.getAll(), usersApi.getAll()])
-      .then(([s, q, u]) => { setSurveys(s); setQuestions(q); setUsers(u.filter((u: User) => u.role === 'User')); })
+    Promise.all([surveysApi.getAll(), questionsApi.getAll(), usersApi.getAll(), answerTemplatesApi.getAll()])
+      .then(([s, q, u, t]) => { setSurveys(s); setQuestions(q); setUsers(u.filter((u: User) => u.role === 'User')); setTemplates(t); })
       .finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
 
@@ -136,6 +137,21 @@ export default function SurveysPage() {
   const passiveCount = surveys.filter(s => !s.isActive).length;
   const expiredCount = surveys.filter(isExpiredFn).length;
 
+  // Lookup maps
+  const questionMap  = new Map<number, QuestionListItem>(questions.map(q => [q.id, q]));
+  const templateMap  = new Map<number, AnswerTemplate>(templates.map(t => [t.id, t]));
+
+  // Her anketin soru ve şablon metinlerini döndürür (arama için)
+  const getSurveySearchText = (s: SurveyListItem) => {
+    return (s.questionIds || []).map(qId => {
+      const q = questionMap.get(qId);
+      if (!q) return '';
+      const tpl = templateMap.get(q.answerTemplateId);
+      const opts = tpl ? tpl.options.map(o => o.text).join(' ') : '';
+      return `${q.text} ${q.answerTemplateName} ${opts}`;
+    }).join(' ');
+  };
+
   const filtered = surveys.filter(s => {
     const expired = isExpiredFn(s);
     const passesFilter =
@@ -146,6 +162,7 @@ export default function SurveysPage() {
     if (!search) return true;
     const q = search.toLowerCase();
     const durum = !s.isActive ? 'pasif' : expired ? 'süresi geçmiş süresi geçti' : 'aktif';
+    const surveyQText = getSurveySearchText(s);
     return (
       s.title.toLowerCase().includes(q) ||
       s.description.toLowerCase().includes(q) ||
@@ -155,7 +172,8 @@ export default function SurveysPage() {
       `${s.assignedUserCount} kişi`.includes(q) ||
       String(s.assignedUserCount).includes(q) ||
       `${s.responseCount} yanıt`.includes(q) ||
-      String(s.responseCount).includes(q)
+      String(s.responseCount).includes(q) ||
+      surveyQText.toLowerCase().includes(q)
     );
   });
 
@@ -229,7 +247,7 @@ export default function SurveysPage() {
         <div className="card-toolbar">
           <SearchInput
             value={search}
-            placeholder="Başlık, açıklama, tarih (gg.aa.yyyy), atanan/yanıtlayan sayısı veya durum ara..."
+            placeholder="Başlık, açıklama, soru metni, şablon, seçenek, tarih veya durum ara..."
             onChange={v => { setSearch(v); setActiveFilter('all'); setPage(1); }}
           />
           {activeFilter !== 'all' && (
@@ -240,7 +258,7 @@ export default function SurveysPage() {
         <div className="table-container">
           <table className="table">
             <thead>
-              <tr><th>#</th><th>Durum</th><th>Başlık</th><th>Başlangıç</th><th>Bitiş</th><th>Atanan</th><th>Yanıtlayan</th><th>İşlemler</th></tr>
+              <tr><th>#</th><th>Durum</th><th>Başlık</th><th>Sorular & Şablonlar</th><th>Başlangıç</th><th>Bitiş</th><th>Atanan</th><th>Yanıtlayan</th><th>İşlemler</th></tr>
             </thead>
             <tbody>
               {paginated.map((s, i) => {
@@ -265,6 +283,34 @@ export default function SurveysPage() {
                     <td>
                       <strong>{s.title}</strong><br />
                       <small className="text-muted">{s.description.substring(0, 50)}{s.description.length > 50 ? '...' : ''}</small>
+                    </td>
+                    <td style={{ maxWidth: '240px' }}>
+                      {(s.questionIds || []).length === 0 ? (
+                        <span className="text-muted" style={{ fontSize: '12px' }}>—</span>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                          {(s.questionIds || []).map(qId => {
+                            const q = questionMap.get(qId);
+                            if (!q) return null;
+                            const tpl = templateMap.get(q.answerTemplateId);
+                            return (
+                              <div key={qId} style={{ fontSize: '12px', lineHeight: 1.3 }}>
+                                <span style={{ color: '#374151', fontWeight: 500 }}>
+                                  {q.text.length > 35 ? q.text.substring(0, 35) + '…' : q.text}
+                                </span>
+                                {tpl && (
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px', marginTop: '3px' }}>
+                                    <span className="pill" style={{ fontSize: '10px', padding: '1px 6px', background: '#eef2ff', color: '#6366f1' }}>{tpl.name}</span>
+                                    {tpl.options.map(o => (
+                                      <span key={o.id} className="pill" style={{ fontSize: '10px', padding: '1px 6px' }}>{o.text}</span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </td>
                     <td>{new Date(s.startDate).toLocaleDateString('tr-TR')}</td>
                     <td>{new Date(s.endDate).toLocaleDateString('tr-TR')}</td>
