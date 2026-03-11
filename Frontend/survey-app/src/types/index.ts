@@ -50,6 +50,7 @@ export interface SurveyListItem {
   isActive: boolean;
   assignedUserCount: number;
   responseCount: number;
+  questionIds: number[];
 }
 
 export interface SurveyQuestion {

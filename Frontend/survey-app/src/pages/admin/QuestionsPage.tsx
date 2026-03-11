@@ -1,7 +1,8 @@
 import SearchInput from '../../components/admin/SearchInput';
-import { useEffect, useState } from 'react';
-import { questionsApi, answerTemplatesApi } from '../../api';
-import type { QuestionListItem, AnswerTemplate } from '../../types';
+import { useEffect, useState, useRef } from 'react';
+import { questionsApi, answerTemplatesApi, surveysApi } from '../../api';
+import type { QuestionListItem, AnswerTemplate, SurveyListItem } from '../../types';
+import { Link } from 'react-router-dom';
 
 type FilterKey = 'all' | 'active' | 'passive';
 const PAGE_SIZE = 8;
@@ -9,6 +10,7 @@ const PAGE_SIZE = 8;
 export default function QuestionsPage() {
   const [questions, setQuestions]   = useState<QuestionListItem[]>([]);
   const [templates, setTemplates]   = useState<AnswerTemplate[]>([]);
+  const [surveys, setSurveys]       = useState<SurveyListItem[]>([]);
   const [loading, setLoading]       = useState(true);
   const [showModal, setShowModal]   = useState(false);
   const [editItem, setEditItem]     = useState<QuestionListItem | null>(null);
@@ -28,8 +30,8 @@ export default function QuestionsPage() {
   const showSuccess = (msg: string) => { setSuccessMsg(msg); setTimeout(() => setSuccessMsg(''), 3000); };
 
   const load = () =>
-    Promise.all([questionsApi.getAll(), answerTemplatesApi.getAll()])
-      .then(([q, t]) => { setQuestions(q); setTemplates(t); })
+    Promise.all([questionsApi.getAll(), answerTemplatesApi.getAll(), surveysApi.getAll()])
+      .then(([q, t, s]) => { setQuestions(q); setTemplates(t); setSurveys(s); })
       .finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
 
@@ -133,17 +135,74 @@ export default function QuestionsPage() {
 
   if (loading) return <div className="loading-container"><div className="spinner-large"></div></div>;
 
-  function Tooltip({ text, children }: { text: string; children: React.ReactNode }) {
+  function DeletePopover({ question, usedSurveys }: { question: QuestionListItem; usedSurveys: SurveyListItem[] }) {
     const [show, setShow] = useState(false);
+    const ref = useRef<HTMLSpanElement>(null);
+
+    useEffect(() => {
+      if (!show) return;
+      const handler = (e: MouseEvent) => {
+        if (ref.current && !ref.current.contains(e.target as Node)) setShow(false);
+      };
+      document.addEventListener('mousedown', handler);
+      return () => document.removeEventListener('mousedown', handler);
+    }, [show]);
+
     return (
-      <span style={{ position: 'relative', display: 'inline-block' }}
-        onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
-        {children}
+      <span ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+        <button
+          disabled
+          onMouseEnter={() => setShow(true)}
+          style={{ opacity: 0.55, cursor: 'not-allowed' }}
+          className="btn btn-sm btn-danger"
+        >Sil</button>
+
         {show && (
-          <span style={{ position: 'absolute', bottom: 'calc(100% + 6px)', left: '50%', transform: 'translateX(-50%)', whiteSpace: 'nowrap', background: '#1f2937', color: '#fff', fontSize: '12px', padding: '5px 10px', borderRadius: '6px', zIndex: 999, boxShadow: '0 2px 8px rgba(0,0,0,.25)', pointerEvents: 'none' }}>
-            {text}
-            <span style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', borderWidth: '5px', borderStyle: 'solid', borderColor: '#1f2937 transparent transparent transparent' }} />
-          </span>
+          <div style={{
+            position: 'absolute', bottom: 'calc(100% + 10px)', right: 0,
+            width: '300px', background: '#fff', borderRadius: '10px', zIndex: 1000,
+            boxShadow: '0 8px 24px rgba(0,0,0,.18)', border: '1px solid #e5e7eb',
+            overflow: 'hidden',
+          }}>
+            <div style={{ background: '#fff7ed', borderBottom: '1px solid #fed7aa', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '16px' }}>🔒</span>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '13px', color: '#c2410c' }}>Soru Silinemez</div>
+                <div style={{ fontSize: '12px', color: '#9a3412' }}>
+                  <strong>{usedSurveys.length} ankette</strong> kullanılıyor
+                </div>
+              </div>
+            </div>
+
+            <div style={{ maxHeight: '200px', overflowY: 'auto', padding: '8px 0' }}>
+              {usedSurveys.map((s, i) => (
+                <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 14px', borderBottom: i < usedSurveys.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', minWidth: '16px' }}>{i + 1}</span>
+                  <span style={{ flex: 1, fontSize: '12px', color: '#374151', lineHeight: 1.3 }}>
+                    {s.title.length > 40 ? s.title.substring(0, 40) + '…' : s.title}
+                  </span>
+                  <span className={`badge ${s.isActive ? 'badge-success' : 'badge-secondary'}`} style={{ fontSize: '10px', padding: '2px 6px' }}>
+                    {s.isActive ? 'Aktif' : 'Pasif'}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ padding: '10px 14px', borderTop: '1px solid #e5e7eb', background: '#f9fafb' }}>
+              <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '6px' }}>
+                💡 Silmek için bu soruyu kullanan anketleri güncelleyin.
+              </div>
+              <Link
+                to={`/admin/surveys?search=${encodeURIComponent(question.text.substring(0, 30))}`}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 600, color: '#6366f1', textDecoration: 'none' }}
+                onClick={() => setShow(false)}
+              >
+                🔗 Anketleri görüntüle →
+              </Link>
+            </div>
+
+            <div style={{ position: 'absolute', bottom: '-6px', right: '14px', width: '12px', height: '12px', background: '#f9fafb', border: '1px solid #e5e7eb', borderTop: 'none', borderLeft: 'none', transform: 'rotate(45deg)' }} />
+          </div>
         )}
       </span>
     );
@@ -226,9 +285,10 @@ export default function QuestionsPage() {
                       <div className="action-btns">
                         <button className="btn btn-sm btn-outline" onClick={() => openEdit(q, rowNum)}>Düzenle</button>
                         {q.usedInSurveysCount > 0 ? (
-                          <Tooltip text={`${q.usedInSurveysCount} ankette kullanılıyor — silinemez`}>
-                            <button className="btn btn-sm btn-danger" disabled style={{ opacity: 0.45, cursor: 'not-allowed' }}>Sil</button>
-                          </Tooltip>
+                          <DeletePopover
+                            question={q}
+                            usedSurveys={surveys.filter(s => s.questionIds?.includes(q.id))}
+                          />
                         ) : (
                           <button className="btn btn-sm btn-danger" onClick={() => handleDelete(q.id, rowNum)}>Sil</button>
                         )}

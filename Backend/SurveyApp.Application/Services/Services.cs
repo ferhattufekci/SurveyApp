@@ -125,7 +125,8 @@ public class SurveyService : ISurveyService
     {
         var surveys = await _uow.Surveys.GetAllWithDetailsAsync();
         return surveys.Select(s => new SurveyListDto(s.Id, s.Title, s.Description, s.StartDate, s.EndDate, s.IsActive,
-            s.SurveyAssignments.Count, s.SurveyResponses.Count)).ToList();
+            s.SurveyAssignments.Count, s.SurveyResponses.Count,
+            s.SurveyQuestions.Select(sq => sq.QuestionId).ToList())).ToList();
     }
 
     public async Task<SurveyDetailDto?> GetByIdAsync(int id)
@@ -398,7 +399,8 @@ public class ReportService : IReportService
     {
         var surveys = await _uow.Surveys.GetAllWithDetailsAsync();
         return surveys.Select(s => new SurveyListDto(s.Id, s.Title, s.Description, s.StartDate, s.EndDate, s.IsActive,
-            s.SurveyAssignments.Count, s.SurveyResponses.Count)).ToList();
+            s.SurveyAssignments.Count, s.SurveyResponses.Count,
+            s.SurveyQuestions.Select(sq => sq.QuestionId).ToList())).ToList();
     }
 }
 

@@ -23,7 +23,7 @@ public record CreateQuestionRequest(string Text, int AnswerTemplateId, bool IsAc
 public record UpdateQuestionRequest(string Text, int AnswerTemplateId, bool IsActive);
 
 // Survey DTOs
-public record SurveyListDto(int Id, string Title, string Description, DateTime StartDate, DateTime EndDate, bool IsActive, int AssignedUserCount, int ResponseCount);
+public record SurveyListDto(int Id, string Title, string Description, DateTime StartDate, DateTime EndDate, bool IsActive, int AssignedUserCount, int ResponseCount, List<int> QuestionIds);
 public record SurveyDetailDto(int Id, string Title, string Description, DateTime StartDate, DateTime EndDate, bool IsActive, 
     List<SurveyQuestionDto> Questions, List<int> AssignedUserIds);
 public record SurveyQuestionDto(int Id, int QuestionId, string QuestionText, int OrderIndex, AnswerTemplateDto AnswerTemplate);

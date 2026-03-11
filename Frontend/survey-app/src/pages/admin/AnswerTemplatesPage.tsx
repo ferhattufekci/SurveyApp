@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
-import { answerTemplatesApi } from '../../api';
-import type { AnswerTemplate } from '../../types';
+import { answerTemplatesApi, questionsApi } from '../../api';
+import type { AnswerTemplate, QuestionListItem } from '../../types';
 import SearchInput from '../../components/admin/SearchInput';
+import { Link } from 'react-router-dom';
 
 type FilterKey = 'all' | 'active' | 'passive';
 
@@ -9,6 +10,7 @@ const PAGE_SIZE = 8;
 
 export default function AnswerTemplatesPage() {
   const [templates, setTemplates] = useState<AnswerTemplate[]>([]);
+  const [questions, setQuestions] = useState<QuestionListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editItem, setEditItem] = useState<AnswerTemplate | null>(null);
@@ -27,7 +29,10 @@ export default function AnswerTemplatesPage() {
 
   const showSuccess = (msg: string) => { setSuccessMsg(msg); setTimeout(() => setSuccessMsg(''), 3000); };
 
-  const load = () => answerTemplatesApi.getAll().then(setTemplates).finally(() => setLoading(false));
+  const load = () =>
+    Promise.all([answerTemplatesApi.getAll(), questionsApi.getAll()])
+      .then(([t, q]) => { setTemplates(t); setQuestions(q); })
+      .finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
 
   const openCreate = () => {
@@ -130,27 +135,80 @@ export default function AnswerTemplatesPage() {
 
   if (loading) return <div className="loading-container"><div className="spinner-large"></div></div>;
 
-  function Tooltip({ text, children }: { text: string; children: React.ReactNode }) {
+  function DeletePopover({ template, usedQuestions }: { template: AnswerTemplate; usedQuestions: QuestionListItem[] }) {
     const [show, setShow] = useState(false);
+    const ref = useRef<HTMLSpanElement>(null);
+
+    // Dışarı tıklanınca kapat
+    useEffect(() => {
+      if (!show) return;
+      const handler = (e: MouseEvent) => {
+        if (ref.current && !ref.current.contains(e.target as Node)) setShow(false);
+      };
+      document.addEventListener('mousedown', handler);
+      return () => document.removeEventListener('mousedown', handler);
+    }, [show]);
+
     return (
-      <span style={{ position: 'relative', display: 'inline-block' }}
-        onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
-        {children}
+      <span ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+        <button
+          disabled
+          onClick={() => setShow(s => !s)}
+          onMouseEnter={() => setShow(true)}
+          style={{ opacity: 0.55, cursor: 'not-allowed' }}
+          className="btn btn-sm btn-danger"
+        >Sil</button>
+
         {show && (
-          <span style={{
-            position: 'absolute', bottom: 'calc(100% + 6px)', left: '50%',
-            transform: 'translateX(-50%)', whiteSpace: 'nowrap',
-            background: '#1f2937', color: '#fff', fontSize: '12px',
-            padding: '5px 10px', borderRadius: '6px', zIndex: 999,
-            boxShadow: '0 2px 8px rgba(0,0,0,.25)', pointerEvents: 'none',
+          <div style={{
+            position: 'absolute', bottom: 'calc(100% + 10px)', right: 0,
+            width: '300px', background: '#fff', borderRadius: '10px', zIndex: 1000,
+            boxShadow: '0 8px 24px rgba(0,0,0,.18)', border: '1px solid #e5e7eb',
+            overflow: 'hidden',
           }}>
-            {text}
-            <span style={{
-              position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)',
-              borderWidth: '5px', borderStyle: 'solid',
-              borderColor: '#1f2937 transparent transparent transparent',
-            }} />
-          </span>
+            {/* Başlık */}
+            <div style={{ background: '#fff7ed', borderBottom: '1px solid #fed7aa', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '16px' }}>🔒</span>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '13px', color: '#c2410c' }}>Şablon Silinemez</div>
+                <div style={{ fontSize: '12px', color: '#9a3412' }}>
+                  <strong>{usedQuestions.length} soruda</strong> kullanılıyor
+                </div>
+              </div>
+            </div>
+
+            {/* Soru listesi */}
+            <div style={{ maxHeight: '200px', overflowY: 'auto', padding: '8px 0' }}>
+              {usedQuestions.map((q, i) => (
+                <div key={q.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 14px', borderBottom: i < usedQuestions.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', minWidth: '16px' }}>{i + 1}</span>
+                  <span style={{ flex: 1, fontSize: '12px', color: '#374151', lineHeight: 1.3 }}>
+                    {q.text.length > 48 ? q.text.substring(0, 48) + '…' : q.text}
+                  </span>
+                  <span className={`badge ${q.isActive ? 'badge-success' : 'badge-secondary'}`} style={{ fontSize: '10px', padding: '2px 6px' }}>
+                    {q.isActive ? 'Aktif' : 'Pasif'}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Alt link */}
+            <div style={{ padding: '10px 14px', borderTop: '1px solid #e5e7eb', background: '#f9fafb' }}>
+              <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '6px' }}>
+                💡 Silmek için bu soruları farklı bir şablonla güncelleyin.
+              </div>
+              <Link
+                to={`/admin/questions?search=${encodeURIComponent(template.name)}`}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 600, color: '#6366f1', textDecoration: 'none' }}
+                onClick={() => setShow(false)}
+              >
+                🔗 Soruları görüntüle →
+              </Link>
+            </div>
+
+            {/* Ok işareti */}
+            <div style={{ position: 'absolute', bottom: '-6px', right: '14px', width: '12px', height: '12px', background: '#f9fafb', border: '1px solid #e5e7eb', borderTop: 'none', borderLeft: 'none', transform: 'rotate(45deg)' }} />
+          </div>
         )}
       </span>
     );
@@ -230,9 +288,10 @@ export default function AnswerTemplatesPage() {
                       <div className="action-btns">
                         <button className="btn btn-sm btn-outline" onClick={() => openEdit(t, rowNum)}>Düzenle</button>
                         {t.usedInQuestionsCount > 0 ? (
-                          <Tooltip text={`${t.usedInQuestionsCount} soruda kullanılıyor — silinemez`}>
-                            <button className="btn btn-sm btn-danger" disabled style={{ opacity: 0.45, cursor: 'not-allowed' }}>Sil</button>
-                          </Tooltip>
+                          <DeletePopover
+                            template={t}
+                            usedQuestions={questions.filter(q => q.answerTemplateId === t.id)}
+                          />
                         ) : (
                           <button className="btn btn-sm btn-danger" onClick={() => handleDelete(t.id, rowNum)}>Sil</button>
                         )}
