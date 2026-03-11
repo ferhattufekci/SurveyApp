@@ -27,7 +27,12 @@ public class QuestionService : IQuestionService
         _ = await _uow.AnswerTemplates.GetWithOptionsAsync(request.AnswerTemplateId)
             ?? throw new ArgumentException("Answer template not found.");
 
-        var question = new Question { Text = request.Text, AnswerTemplateId = request.AnswerTemplateId };
+        // Duplicate soru metni kontrolü
+        var existing = await _uow.Questions.GetAllWithTemplatesAsync();
+        if (existing.Any(q => q.Text.Trim().ToLower() == request.Text.Trim().ToLower()))
+            throw new ArgumentException($"Bu soru metniyle zaten bir soru mevcut. Farklı bir metin giriniz.");
+
+        var question = new Question { Text = request.Text, AnswerTemplateId = request.AnswerTemplateId, IsActive = request.IsActive };
         await _uow.Questions.AddAsync(question);
         await _uow.SaveChangesAsync();
 
@@ -39,6 +44,11 @@ public class QuestionService : IQuestionService
     {
         var q = await _uow.Questions.GetByIdAsync(id);
         if (q == null) return null;
+
+        // Duplicate soru metni kontrolü (kendi ID'si hariç)
+        var existing = await _uow.Questions.GetAllWithTemplatesAsync();
+        if (existing.Any(x => x.Id != id && x.Text.Trim().ToLower() == request.Text.Trim().ToLower()))
+            throw new ArgumentException($"Bu soru metniyle zaten bir soru mevcut. Farklı bir metin giriniz.");
 
         q.Text = request.Text;
         q.AnswerTemplateId = request.AnswerTemplateId;
@@ -56,6 +66,20 @@ public class QuestionService : IQuestionService
     {
         var q = await _uow.Questions.GetByIdAsync(id);
         if (q == null) return false;
+
+        // Ankette kullanılan soru silinemez
+        var surveys = await _uow.Surveys.GetAllWithDetailsAsync();
+        var usedInSurveys = surveys.Where(s => s.SurveyQuestions.Any(sq => sq.QuestionId == id)).ToList();
+        if (usedInSurveys.Any())
+        {
+            var names = string.Join(", ", usedInSurveys.Take(3).Select(s =>
+                $"\"{s.Title.Substring(0, Math.Min(40, s.Title.Length))}{(s.Title.Length > 40 ? "..." : "")}\""));
+            var more = usedInSurveys.Count > 3 ? $" ve {usedInSurveys.Count - 3} anket daha" : "";
+            throw new InvalidOperationException(
+                $"Bu soru {usedInSurveys.Count} ankette kullanılmaktadır ve silinemez.|{usedInSurveys.Count}|{names}{more}"
+            );
+        }
+
         await _uow.Questions.DeleteAsync(q);
         await _uow.SaveChangesAsync();
         return true;

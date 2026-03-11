@@ -4,18 +4,23 @@ import { questionsApi, answerTemplatesApi } from '../../api';
 import type { QuestionListItem, AnswerTemplate } from '../../types';
 
 type FilterKey = 'all' | 'active' | 'passive';
+const PAGE_SIZE = 8;
 
 export default function QuestionsPage() {
-  const [questions, setQuestions] = useState<QuestionListItem[]>([]);
-  const [templates, setTemplates] = useState<AnswerTemplate[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [editItem, setEditItem] = useState<QuestionListItem | null>(null);
-  const [form, setForm] = useState({ text: '', answerTemplateId: 0, isActive: true });
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [search, setSearch] = useState('');
+  const [questions, setQuestions]   = useState<QuestionListItem[]>([]);
+  const [templates, setTemplates]   = useState<AnswerTemplate[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [showModal, setShowModal]   = useState(false);
+  const [editItem, setEditItem]     = useState<QuestionListItem | null>(null);
+  const [form, setForm]             = useState({ text: '', answerTemplateId: 0, isActive: true });
+  const [saving, setSaving]         = useState(false);
+  const [error, setError]           = useState('');
+  const [errorType, setErrorType]   = useState<'duplicate' | 'general' | ''>('');
+  const [shake, setShake]           = useState(false);
+  const [search, setSearch]         = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
+  const [page, setPage]             = useState(1);
+  const [deleteError, setDeleteError] = useState<{ id: number; count: number; detail: string } | null>(null);
 
   const load = () =>
     Promise.all([questionsApi.getAll(), answerTemplatesApi.getAll()])
@@ -23,44 +28,70 @@ export default function QuestionsPage() {
       .finally(() => setLoading(false));
   useEffect(() => { load(); }, []);
 
+  const closeModal = () => { setShowModal(false); setError(''); setErrorType(''); };
+
   const openCreate = () => {
-    setEditItem(null); setForm({ text: '', answerTemplateId: templates[0]?.id || 0, isActive: true });
-    setError(''); setShowModal(true);
+    setEditItem(null);
+    setForm({ text: '', answerTemplateId: templates[0]?.id || 0, isActive: true });
+    setError(''); setErrorType(''); setShowModal(true);
   };
+
   const openEdit = (q: QuestionListItem) => {
-    setEditItem(q); setForm({ text: q.text, answerTemplateId: q.answerTemplateId, isActive: q.isActive });
-    setError(''); setShowModal(true);
+    setEditItem(q);
+    setForm({ text: q.text, answerTemplateId: q.answerTemplateId, isActive: q.isActive });
+    setError(''); setErrorType(''); setShowModal(true);
   };
 
   const handleSave = async () => {
-    if (!form.text.trim()) { setError('Soru metni zorunludur.'); return; }
-    if (!form.answerTemplateId) { setError('Cevap şablonu seçiniz.'); return; }
+    setError(''); setErrorType('');
+    if (!form.text.trim()) { setError('Soru metni zorunludur.'); setErrorType('general'); return; }
+    if (!form.answerTemplateId) { setError('Cevap şablonu seçiniz.'); setErrorType('general'); return; }
     setSaving(true);
     try {
-      if (editItem) await questionsApi.update(editItem.id, form);
-      else await questionsApi.create({ text: form.text, answerTemplateId: form.answerTemplateId });
-      setShowModal(false); load();
-    } catch (e: any) { setError(e.response?.data?.message || 'Bir hata oluştu.');
+      if (editItem) {
+        await questionsApi.update(editItem.id, { text: form.text, answerTemplateId: form.answerTemplateId, isActive: form.isActive });
+      } else {
+        await questionsApi.create({ text: form.text, answerTemplateId: form.answerTemplateId, isActive: form.isActive });
+      }
+      closeModal(); load();
+    } catch (e: any) {
+      const msg = e.response?.data?.message || 'Bir hata oluştu.';
+      const isDuplicate = msg.toLowerCase().includes('zaten bir soru mevcut');
+      setError(msg);
+      setErrorType(isDuplicate ? 'duplicate' : 'general');
+      setShake(true);
+      setTimeout(() => setShake(false), 600);
     } finally { setSaving(false); }
   };
 
   const handleDelete = async (id: number) => {
+    setDeleteError(null);
     if (!confirm('Bu soruyu silmek istediğinize emin misiniz?')) return;
-    await questionsApi.delete(id); load();
+    try {
+      await questionsApi.delete(id); load();
+    } catch (e: any) {
+      const msg: string = e.response?.data?.message || '';
+      const parts = msg.split('|');
+      if (parts.length === 3) {
+        setDeleteError({ id, count: parseInt(parts[1]), detail: parts[2] });
+      } else {
+        setDeleteError({ id, count: 0, detail: msg });
+      }
+      setTimeout(() => setDeleteError(null), 8000);
+    }
   };
 
-  const handleFilterClick = (key: FilterKey) => { setActiveFilter(prev => prev === key ? 'all' : key); setSearch(''); };
+  const handleFilterClick = (key: FilterKey) => {
+    setActiveFilter(prev => prev === key ? 'all' : key);
+    setSearch(''); setPage(1);
+  };
 
+  // İstatistikler
   const totalCount   = questions.length;
   const activeCount  = questions.filter(q => q.isActive).length;
   const passiveCount = questions.filter(q => !q.isActive).length;
 
-  // Her şablonun kaç soruda kullanıldığını bul
-  const templateUsage = templates.map(t => ({
-    name: t.name,
-    count: questions.filter(q => q.answerTemplateId === t.id).length
-  })).filter(t => t.count > 0).sort((a, b) => b.count - a.count);
-
+  // Filtreleme
   const filtered = questions.filter(q => {
     const passesFilter =
       activeFilter === 'active'  ? q.isActive :
@@ -69,8 +100,17 @@ export default function QuestionsPage() {
     if (!search) return true;
     const s = search.toLowerCase();
     const durum = q.isActive ? 'aktif' : 'pasif';
-    return q.text.toLowerCase().includes(s) || q.answerTemplateName.toLowerCase().includes(s) || durum.includes(s);
+    return (
+      q.text.toLowerCase().includes(s) ||
+      q.answerTemplateName.toLowerCase().includes(s) ||
+      durum.includes(s)
+    );
   });
+
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage   = Math.min(page, totalPages);
+  const paginated  = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   const pillStyle = (key: FilterKey, activeBg: string, activeColor: string, inactiveBg: string, inactiveColor: string) => ({
     flex: 1, background: activeFilter === key ? activeBg : inactiveBg,
@@ -92,6 +132,7 @@ export default function QuestionsPage() {
 
       {/* Stat kartları */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
+
         {/* Toplam */}
         <div style={{ background: '#eef2ff', border: '1px solid #6366f122', borderRadius: '12px', padding: '16px 20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
@@ -105,18 +146,13 @@ export default function QuestionsPage() {
           </div>
         </div>
 
-        {/* Şablon dağılımı */}
-        <div style={{ background: '#fffbeb', border: '1px solid #f59e0b22', borderRadius: '12px', padding: '16px 20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-            <span style={{ fontSize: '20px' }}>📊</span>
-            <span style={{ fontWeight: 600, color: '#4b5563' }}>Şablona Göre Dağılım</span>
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: '6px' }}>
-            {templateUsage.length > 0 ? templateUsage.map(t => (
-              <span key={t.name} style={{ background: '#fef3c7', color: '#92400e', borderRadius: '6px', padding: '4px 10px', fontSize: '12px', fontWeight: 600 }}>
-                {t.name}: {t.count}
-              </span>
-            )) : <span style={{ color: '#9ca3af', fontSize: '13px' }}>Henüz soru yok</span>}
+        {/* Bilgilendirme */}
+        <div style={{ background: '#f0fdf4', border: '1px solid #10b98122', borderRadius: '12px', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <span style={{ fontSize: '32px' }}>💡</span>
+          <div>
+            <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '4px' }}>Her soru</div>
+            <div style={{ fontWeight: 600, color: '#374151' }}>Bir cevap şablonuyla ilişkilendirilir</div>
+            <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>Aktif sorular anketlere eklenebilir</div>
           </div>
         </div>
       </div>
@@ -126,60 +162,158 @@ export default function QuestionsPage() {
           <SearchInput
             value={search}
             placeholder="Soru metni, şablon adı veya durum ara..."
-            onChange={v => { setSearch(v); setActiveFilter('all'); }}
+            onChange={v => { setSearch(v); setActiveFilter('all'); setPage(1); }}
           />
           {activeFilter !== 'all' && (
-            <button className="btn btn-sm btn-outline" onClick={() => setActiveFilter('all')}>Filtreyi Temizle ×</button>
+            <button className="btn btn-sm btn-outline" onClick={() => { setActiveFilter('all'); setPage(1); }}>Filtreyi Temizle ×</button>
           )}
         </div>
+
         <div className="table-container">
           <table className="table">
             <thead>
               <tr><th>Durum</th><th>#</th><th>Soru Metni</th><th>Cevap Şablonu</th><th>İşlemler</th></tr>
             </thead>
             <tbody>
-              {filtered.map((q, i) => (
-                <tr key={q.id}>
-                  <td><span className={`badge ${q.isActive ? 'badge-success' : 'badge-secondary'}`}>{q.isActive ? 'Aktif' : 'Pasif'}</span></td>
-                  <td className="text-muted">{i + 1}</td>
-                  <td>{q.text}</td>
-                  <td><span className="pill">{q.answerTemplateName}</span></td>
-                  <td>
-                    <div className="action-btns">
-                      <button className="btn btn-sm btn-outline" onClick={() => openEdit(q)}>Düzenle</button>
-                      <button className="btn btn-sm btn-danger" onClick={() => handleDelete(q.id)}>Sil</button>
-                    </div>
-                  </td>
-                </tr>
+              {paginated.map((q, i) => (
+                <>
+                  <tr key={q.id}>
+                    <td><span className={`badge ${q.isActive ? 'badge-success' : 'badge-secondary'}`}>{q.isActive ? 'Aktif' : 'Pasif'}</span></td>
+                    <td className="text-muted">{(safePage - 1) * PAGE_SIZE + i + 1}</td>
+                    <td>{q.text}</td>
+                    <td><span className="pill">{q.answerTemplateName}</span></td>
+                    <td>
+                      <div className="action-btns">
+                        <button className="btn btn-sm btn-outline" onClick={() => openEdit(q)}>Düzenle</button>
+                        <button className="btn btn-sm btn-danger" onClick={() => handleDelete(q.id)}>Sil</button>
+                      </div>
+                    </td>
+                  </tr>
+                  {deleteError?.id === q.id && (
+                    <tr key={`err-${q.id}`}>
+                      <td colSpan={5} style={{ padding: 0, border: 'none' }}>
+                        <div style={{
+                          display: 'flex', alignItems: 'flex-start', gap: '12px',
+                          background: '#fff7ed', borderLeft: '4px solid #f97316',
+                          borderBottom: '1px solid #fed7aa', padding: '12px 16px',
+                          animation: 'slideDown 0.2s ease',
+                        }}>
+                          <span style={{ fontSize: '20px', lineHeight: 1, marginTop: '1px' }}>🔒</span>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 600, color: '#c2410c', fontSize: '13px', marginBottom: '3px' }}>
+                              Soru Silinemez — Ankette Kullanımda
+                            </div>
+                            <div style={{ fontSize: '13px', color: '#374151', marginBottom: '4px' }}>
+                              Bu soru <strong>{deleteError.count} ankette</strong> kullanılmaktadır.
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#6b7280' }}>{deleteError.detail}</div>
+                            <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '6px' }}>
+                              💡 Silmek için önce bu soruyu kullanan anketleri güncelleyin.
+                            </div>
+                          </div>
+                          <button onClick={() => setDeleteError(null)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '18px', lineHeight: 1, padding: '0 4px' }}
+                            title="Kapat">×</button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </>
               ))}
             </tbody>
           </table>
           {filtered.length === 0 && <div className="empty-state">Soru bulunamadı.</div>}
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderTop: '1px solid #e5e7eb' }}>
+            <span style={{ fontSize: '13px', color: '#6b7280' }}>
+              {filtered.length} sorudan {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} gösteriliyor
+            </span>
+            <div style={{ display: 'flex', gap: '4px' }}>
+              <button className="btn btn-sm btn-outline" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage === 1}>‹ Önceki</button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                <button key={p} className={`btn btn-sm ${p === safePage ? 'btn-primary' : 'btn-outline'}`}
+                  onClick={() => setPage(p)} style={{ minWidth: '36px' }}>{p}</button>
+              ))}
+              <button className="btn btn-sm btn-outline" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}>Sonraki ›</button>
+            </div>
+          </div>
+        )}
       </div>
 
+      {/* Modal */}
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>{editItem ? 'Soruyu Düzenle' : 'Yeni Soru'}</h3>
-              <button className="modal-close" onClick={() => setShowModal(false)}>×</button>
-            </div>
-            <div className="modal-body">
-              {error && <div className="alert alert-error">{error}</div>}
-              <div className="form-group">
-                <label>Soru Metni</label>
-                <textarea rows={3} value={form.text}
-                  onChange={e => setForm(f => ({ ...f, text: e.target.value }))} placeholder="Soru metnini giriniz..." />
+        <>
+          <style>{`
+            @keyframes shake {
+              0%, 100% { transform: translateX(0); }
+              15%       { transform: translateX(-8px); }
+              30%       { transform: translateX(8px); }
+              45%       { transform: translateX(-6px); }
+              60%       { transform: translateX(6px); }
+              75%       { transform: translateX(-3px); }
+              90%       { transform: translateX(3px); }
+            }
+            .modal-shake { animation: shake 0.6s ease; }
+            @keyframes slideDown {
+              from { opacity: 0; transform: translateY(-6px); }
+              to   { opacity: 1; transform: translateY(0); }
+            }
+          `}</style>
+          <div className="modal-overlay" onClick={closeModal}>
+            <div className={`modal${shake ? ' modal-shake' : ''}`} onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3>{editItem ? 'Soruyu Düzenle' : 'Yeni Soru'}</h3>
+                <button className="modal-close" onClick={closeModal}>×</button>
               </div>
-              <div className="form-group">
-                <label>Cevap Şablonu</label>
-                <select value={form.answerTemplateId} onChange={e => setForm(f => ({ ...f, answerTemplateId: Number(e.target.value) }))}>
-                  <option value={0}>Şablon seçiniz...</option>
-                  {templates.map(t => <option key={t.id} value={t.id}>{t.name} ({t.options.length} seçenek)</option>)}
-                </select>
-              </div>
-              {editItem && (
+              <div className="modal-body">
+                {error && (
+                  <div style={{
+                    display: 'flex', alignItems: 'flex-start', gap: '10px',
+                    background: errorType === 'duplicate' ? '#fff7ed' : '#fef2f2',
+                    border: `1px solid ${errorType === 'duplicate' ? '#fed7aa' : '#fecaca'}`,
+                    borderLeft: `4px solid ${errorType === 'duplicate' ? '#f97316' : '#ef4444'}`,
+                    borderRadius: '8px', padding: '12px 14px', marginBottom: '16px',
+                  }}>
+                    <span style={{ fontSize: '18px', lineHeight: 1 }}>{errorType === 'duplicate' ? '⚠️' : '❌'}</span>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: '13px', color: errorType === 'duplicate' ? '#c2410c' : '#dc2626', marginBottom: '2px' }}>
+                        {errorType === 'duplicate' ? 'Yinelenen Soru Metni' : 'Hata'}
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#374151' }}>{error}</div>
+                      {errorType === 'duplicate' && (
+                        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                          Soru metnini değiştirerek tekrar deneyebilirsiniz.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="form-group">
+                  <label>Soru Metni</label>
+                  <textarea
+                    rows={3}
+                    value={form.text}
+                    onChange={e => {
+                      setForm(f => ({ ...f, text: e.target.value }));
+                      if (errorType === 'duplicate') { setError(''); setErrorType(''); }
+                    }}
+                    placeholder="Soru metnini giriniz..."
+                    style={errorType === 'duplicate' ? { borderColor: '#f97316', boxShadow: '0 0 0 3px #fed7aa66' } : {}}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Cevap Şablonu</label>
+                  <select value={form.answerTemplateId} onChange={e => setForm(f => ({ ...f, answerTemplateId: Number(e.target.value) }))}>
+                    <option value={0}>Şablon seçiniz...</option>
+                    {templates.map(t => <option key={t.id} value={t.id}>{t.name} ({t.options.length} seçenek)</option>)}
+                  </select>
+                </div>
+
                 <div className="form-group">
                   <label>Durum</label>
                   <select value={form.isActive ? 'true' : 'false'} onChange={e => setForm(f => ({ ...f, isActive: e.target.value === 'true' }))}>
@@ -187,14 +321,14 @@ export default function QuestionsPage() {
                     <option value="false">Pasif</option>
                   </select>
                 </div>
-              )}
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-outline" onClick={() => setShowModal(false)}>İptal</button>
-              <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Kaydediliyor...' : 'Kaydet'}</button>
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-outline" onClick={closeModal}>İptal</button>
+                <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Kaydediliyor...' : 'Kaydet'}</button>
+              </div>
             </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

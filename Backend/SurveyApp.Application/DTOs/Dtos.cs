@@ -19,7 +19,7 @@ public record AnswerOptionUpdateDto(int? Id, string Text, int OrderIndex);
 // Question DTOs
 public record QuestionDto(int Id, string Text, bool IsActive, AnswerTemplateDto AnswerTemplate);
 public record QuestionListDto(int Id, string Text, bool IsActive, int AnswerTemplateId, string AnswerTemplateName);
-public record CreateQuestionRequest(string Text, int AnswerTemplateId);
+public record CreateQuestionRequest(string Text, int AnswerTemplateId, bool IsActive = true);
 public record UpdateQuestionRequest(string Text, int AnswerTemplateId, bool IsActive);
 
 // Survey DTOs
