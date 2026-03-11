@@ -54,8 +54,12 @@ public class UsersController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateUserRequest request)
     {
-        var user = await _userService.UpdateAsync(id, request);
-        return user == null ? NotFound() : Ok(user);
+        try
+        {
+            var user = await _userService.UpdateAsync(id, request);
+            return user == null ? NotFound() : Ok(user);
+        }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
     }
 
     [HttpDelete("{id}")]

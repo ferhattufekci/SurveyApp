@@ -409,6 +409,25 @@ public class UserService : IUserService
     {
         var u = await _uow.Users.GetByIdAsync(id);
         if (u == null) return null;
+
+        // Aktif→Pasif geçişinde: aktif ankete atanmış mı kontrol et
+        if (u.IsActive && !request.IsActive)
+        {
+            var surveys = await _uow.Surveys.GetAllWithDetailsAsync();
+            var activeUsages = surveys
+                .Where(s => s.IsActive && s.SurveyAssignments.Any(a => a.UserId == id))
+                .ToList();
+            if (activeUsages.Any())
+            {
+                var names = string.Join(", ", activeUsages.Take(3).Select(s =>
+                    $"\"{s.Title.Substring(0, Math.Min(40, s.Title.Length))}{(s.Title.Length > 40 ? "..." : "")}\""));
+                var more = activeUsages.Count > 3 ? $" ve {activeUsages.Count - 3} anket daha" : "";
+                throw new InvalidOperationException(
+                    $"Bu kullanıcı {activeUsages.Count} aktif ankete atanmıştır. Pasife almadan önce bu anketleri güncelleyiniz.|{activeUsages.Count}|{names}{more}"
+                );
+            }
+        }
+
         u.FullName = request.FullName;
         u.IsActive = request.IsActive;
         await _uow.Users.UpdateAsync(u);
@@ -427,6 +446,19 @@ public class UserService : IUserService
             var adminCount = await _uow.Users.GetActiveAdminCountAsync();
             if (adminCount <= 1)
                 throw new InvalidOperationException("Sistemde en az bir aktif admin bulunmalıdır. Son admin silinemez.");
+        }
+
+        // Ankette kullanılan kullanıcı silinemez
+        var surveys = await _uow.Surveys.GetAllWithDetailsAsync();
+        var usedInSurveys = surveys.Where(s => s.SurveyAssignments.Any(a => a.UserId == id)).ToList();
+        if (usedInSurveys.Any())
+        {
+            var names = string.Join(", ", usedInSurveys.Take(3).Select(s =>
+                $"\"{s.Title.Substring(0, Math.Min(40, s.Title.Length))}{(s.Title.Length > 40 ? "..." : "")}\""));
+            var more = usedInSurveys.Count > 3 ? $" ve {usedInSurveys.Count - 3} anket daha" : "";
+            throw new InvalidOperationException(
+                $"Bu kullanıcı {usedInSurveys.Count} ankete atanmıştır ve silinemez.|{usedInSurveys.Count}|{names}{more}"
+            );
         }
 
         await _uow.Users.DeleteAsync(u);
