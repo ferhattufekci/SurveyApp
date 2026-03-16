@@ -6,10 +6,6 @@ import SearchInput from '../../components/admin/SearchInput';
 
 const PAGE_SIZE = 8;
 
-function progressColor(_rate: number): string {
-  return '#10b981'; // her zaman yeşil (madde 3 & 5)
-}
-
 export function ReportsListPage() {
   const [surveys, setSurveys] = useState<SurveyListItem[]>([]);
   const [loading, setLoading] = useState(true);
