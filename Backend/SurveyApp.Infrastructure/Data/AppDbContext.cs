@@ -19,13 +19,23 @@ public class AppDbContext : DbContext
     public DbSet<SurveyAnswer> SurveyAnswers => Set<SurveyAnswer>();
 
     // ── Soft Delete interception ──────────────────────────────────────────────
-    /// <summary>
-    /// Converts any hard-delete of an ISoftDeletable entity into a soft-delete
-    /// by flipping IsDeleted and recording the timestamp. The calling code
-    /// (repositories / services) is completely unaware of this conversion.
-    /// </summary>
+    // Senkron SaveChanges — soft delete buradan da geçmeli
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        InterceptSoftDeletes();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    // Asenkron SaveChangesAsync — soft delete buradan da geçmeli
     public override async Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default)
+    {
+        InterceptSoftDeletes();
+        return await base.SaveChangesAsync(cancellationToken);
+    }
+
+    // Her iki override'ın ortak soft delete mantığı
+    private void InterceptSoftDeletes()
     {
         foreach (var entry in ChangeTracker.Entries<ISoftDeletable>()
                      .Where(e => e.State == EntityState.Deleted))
@@ -34,23 +44,19 @@ public class AppDbContext : DbContext
             entry.Entity.IsDeleted = true;
             entry.Entity.DeletedAt = DateTime.UtcNow;
         }
-
-        return await base.SaveChangesAsync(cancellationToken);
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        // ── Global query filters — soft-deleted rows are invisible everywhere ──
-        // IgnoreQueryFilters() can be used in specific admin/audit queries
-        // if deleted records ever need to be surfaced.
+        // ── Global query filters ──────────────────────────────────────────────
         modelBuilder.Entity<User>()         .HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<AnswerTemplate>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<Question>()     .HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<Survey>()       .HasQueryFilter(e => !e.IsDeleted);
 
-        // ── Entity configurations (unchanged) ────────────────────────────────
+        // ── Entity configurations ─────────────────────────────────────────────
         modelBuilder.Entity<User>(e =>
         {
             e.HasIndex(u => u.Email).IsUnique();
@@ -109,7 +115,7 @@ public class AppDbContext : DbContext
              .HasForeignKey(a => a.AnswerOptionId).OnDelete(DeleteBehavior.Restrict);
         });
 
-        // ── Seed (unchanged) ─────────────────────────────────────────────────
+        // ── Seed ─────────────────────────────────────────────────────────────
         modelBuilder.Entity<User>().HasData(new User
         {
             Id = 1,
