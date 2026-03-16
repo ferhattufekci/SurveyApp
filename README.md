@@ -65,6 +65,7 @@ A full-stack survey management system built with **.NET 8** (Clean Architecture)
 - Templates used in questions cannot be deleted until re-assigned
 - The last remaining active admin cannot be deleted
 - JWT tokens are validated for expiry on every page load
+- **Deleted records (users, templates, questions, surveys) are soft-deleted** — the row is retained in the database with `IsDeleted = true` and a `DeletedAt` timestamp; it never appears in any query
 
 ---
 
@@ -77,7 +78,7 @@ Dependencies flow strictly inward. The Domain layer has zero external dependenci
 ```
 SurveyApp/
 ├── Backend/
-│   ├── SurveyApp.Domain/           # Entities, repository interfaces
+│   ├── SurveyApp.Domain/           # Entities, repository interfaces, ISoftDeletable
 │   ├── SurveyApp.Application/      # Use cases, DTOs, service interfaces
 │   ├── SurveyApp.Infrastructure/   # EF Core, repositories, Unit of Work
 │   └── SurveyApp.API/              # Controllers, JWT middleware, Swagger
@@ -94,6 +95,16 @@ SurveyApp/
 ```
 
 **Dependency direction:** `API → Application → Domain ← Infrastructure`
+
+### Soft Delete Design
+
+| Layer          | Responsibility                                                                                                   |
+| -------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **Domain**     | `ISoftDeletable` interface declares `IsDeleted` and `DeletedAt`. Entities implement it — no EF Core dependency. |
+| **Infrastructure** | `AppDbContext` applies `HasQueryFilter(!IsDeleted)` on all four aggregate roots and intercepts `EntityState.Deleted` in `SaveChangesAsync`, converting it transparently to a soft delete. |
+| **Application / API** | Zero changes. Services call `DeleteAsync` exactly as before; they are unaware of the persistence strategy. |
+
+> `SurveyResponse` and `SurveyAnswer` are intentionally excluded from soft delete — they are audit records and must never be altered.
 
 ### Frontend — Component Architecture
 
@@ -149,18 +160,22 @@ The backend API is designed around REST constraints, ensuring a predictable and 
 ```
 Users
   Id · Email (unique) · PasswordHash · FullName · Role (Admin|User) · IsActive · CreatedAt
+  IsDeleted · DeletedAt
 
 AnswerTemplates
   Id · Name · IsActive · CreatedAt · UpdatedAt
+  IsDeleted · DeletedAt
 
 AnswerOptions
   Id · AnswerTemplateId (FK) · Text · OrderIndex
 
 Questions
   Id · Text · AnswerTemplateId (FK) · IsActive · CreatedAt · UpdatedAt
+  IsDeleted · DeletedAt
 
 Surveys
   Id · Title · Description · StartDate · EndDate · IsActive · CreatedAt · UpdatedAt
+  IsDeleted · DeletedAt
 
 SurveyQuestions
   Id · SurveyId (FK) · QuestionId (FK) · OrderIndex
@@ -169,11 +184,11 @@ SurveyAssignments
   Id · SurveyId (FK) · UserId (FK) · AssignedAt
   UNIQUE (SurveyId, UserId)
 
-SurveyResponses
+SurveyResponses  ← audit record, never soft-deleted
   Id · SurveyId (FK) · UserId (FK) · SubmittedAt
   UNIQUE (SurveyId, UserId)
 
-SurveyAnswers
+SurveyAnswers  ← audit record, never soft-deleted
   Id · SurveyResponseId (FK) · QuestionId (FK) · AnswerOptionId (FK)
 ```
 
@@ -224,7 +239,7 @@ Protected endpoints require `Authorization: Bearer <token>`.
 | `GET`    | `/api/users/{id}` | Get user by ID |
 | `POST`   | `/api/users`      | Create user    |
 | `PUT`    | `/api/users/{id}` | Update user    |
-| `DELETE` | `/api/users/{id}` | Delete user    |
+| `DELETE` | `/api/users/{id}` | Soft-delete user |
 
 **Create / Update body**
 
@@ -248,7 +263,7 @@ Protected endpoints require `Authorization: Bearer <token>`.
 | `GET`    | `/api/answertemplates/{id}` | Get template by ID                             |
 | `POST`   | `/api/answertemplates`      | Create template (2–4 options required)         |
 | `PUT`    | `/api/answertemplates/{id}` | Update template                                |
-| `DELETE` | `/api/answertemplates/{id}` | Delete template (blocked if used in questions) |
+| `DELETE` | `/api/answertemplates/{id}` | Soft-delete template (blocked if used in questions) |
 
 **Create body**
 
@@ -270,7 +285,7 @@ Protected endpoints require `Authorization: Bearer <token>`.
 | `GET`    | `/api/questions/{id}` | Get question with full template and options  |
 | `POST`   | `/api/questions`      | Create question                              |
 | `PUT`    | `/api/questions/{id}` | Update question                              |
-| `DELETE` | `/api/questions/{id}` | Delete question (blocked if used in surveys) |
+| `DELETE` | `/api/questions/{id}` | Soft-delete question (blocked if used in surveys) |
 
 **Create body**
 
@@ -292,7 +307,7 @@ Protected endpoints require `Authorization: Bearer <token>`.
 | `GET`    | `/api/surveys/{id}` | Get survey with questions and assigned user IDs |
 | `POST`   | `/api/surveys`      | Create survey                                   |
 | `PUT`    | `/api/surveys/{id}` | Update survey (blocked if responses exist)      |
-| `DELETE` | `/api/surveys/{id}` | Delete survey (blocked if responses exist)      |
+| `DELETE` | `/api/surveys/{id}` | Soft-delete survey (blocked if responses exist) |
 
 **Create body**
 
@@ -422,10 +437,6 @@ Restore dependencies and apply migrations:
 
 ```sh
 dotnet restore
-```
-
-```sh
-dotnet ef migrations add InitialCreate --project ..\SurveyApp.Infrastructure --startup-project .
 ```
 
 ```sh
@@ -670,6 +681,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 - Sorularda kullanılan şablonlar, yeniden atanmadan silinemez
 - Son aktif admin silinemez
 - JWT token geçerliliği her sayfa yüklemesinde kontrol edilir
+- **Silinen kayıtlar (kullanıcı, şablon, soru, anket) fiziksel olarak silinmez** — satır `IsDeleted = true` ve `DeletedAt` zaman damgasıyla veritabanında tutulur; hiçbir sorguda görünmez
 
 ---
 
@@ -682,7 +694,7 @@ Bağımlılıklar yalnızca içe doğru akar. Domain katmanının hiçbir dış 
 ```
 SurveyApp/
 ├── Backend/
-│   ├── SurveyApp.Domain/           # Entity'ler, repository arayüzleri
+│   ├── SurveyApp.Domain/           # Entity'ler, repository arayüzleri, ISoftDeletable
 │   ├── SurveyApp.Application/      # Use case'ler, DTO'lar, servis arayüzleri
 │   ├── SurveyApp.Infrastructure/   # EF Core, repository'ler, Unit of Work
 │   └── SurveyApp.API/              # Controller'lar, JWT middleware, Swagger
@@ -699,6 +711,16 @@ SurveyApp/
 ```
 
 **Bağımlılık yönü:** `API → Application → Domain ← Infrastructure`
+
+### Soft Delete Tasarımı
+
+| Katman              | Sorumluluk                                                                                                                                                                              |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Domain**          | `ISoftDeletable` arayüzü `IsDeleted` ve `DeletedAt` özelliklerini tanımlar. Entity'ler bu arayüzü uygular — EF Core bağımlılığı yoktur.                                                |
+| **Infrastructure**  | `AppDbContext`, dört aggregate root üzerinde `HasQueryFilter(!IsDeleted)` uygular ve `SaveChangesAsync` içinde `EntityState.Deleted`'ı yakalayarak şeffaf biçimde soft delete'e çevirir. |
+| **Application / API** | Sıfır değişiklik. Servisler `DeleteAsync`'i eskisi gibi çağırır; kalıcılık stratejisinden haberleri yoktur.                                                                           |
+
+> `SurveyResponse` ve `SurveyAnswer` kasıtlı olarak soft delete kapsamı dışında tutulmuştur — bunlar denetim kayıtlarıdır ve asla değiştirilemez.
 
 ### Frontend — Bileşen Mimarisi
 
@@ -754,18 +776,22 @@ Backend API, tahmin edilebilir ve birlikte çalışabilir bir arayüz sağlamak 
 ```
 Users
   Id · Email (unique) · PasswordHash · FullName · Role (Admin|User) · IsActive · CreatedAt
+  IsDeleted · DeletedAt
 
 AnswerTemplates
   Id · Name · IsActive · CreatedAt · UpdatedAt
+  IsDeleted · DeletedAt
 
 AnswerOptions
   Id · AnswerTemplateId (FK) · Text · OrderIndex
 
 Questions
   Id · Text · AnswerTemplateId (FK) · IsActive · CreatedAt · UpdatedAt
+  IsDeleted · DeletedAt
 
 Surveys
   Id · Title · Description · StartDate · EndDate · IsActive · CreatedAt · UpdatedAt
+  IsDeleted · DeletedAt
 
 SurveyQuestions
   Id · SurveyId (FK) · QuestionId (FK) · OrderIndex
@@ -774,11 +800,11 @@ SurveyAssignments
   Id · SurveyId (FK) · UserId (FK) · AssignedAt
   UNIQUE (SurveyId, UserId)
 
-SurveyResponses
+SurveyResponses  ← denetim kaydı, soft delete dışında
   Id · SurveyId (FK) · UserId (FK) · SubmittedAt
   UNIQUE (SurveyId, UserId)
 
-SurveyAnswers
+SurveyAnswers  ← denetim kaydı, soft delete dışında
   Id · SurveyResponseId (FK) · QuestionId (FK) · AnswerOptionId (FK)
 ```
 
@@ -829,7 +855,7 @@ Korumalı endpoint'ler `Authorization: Bearer <token>` gerektirir.
 | `GET`    | `/api/users/{id}` | ID ile kullanıcı getir    |
 | `POST`   | `/api/users`      | Kullanıcı oluştur         |
 | `PUT`    | `/api/users/{id}` | Kullanıcı güncelle        |
-| `DELETE` | `/api/users/{id}` | Kullanıcı sil             |
+| `DELETE` | `/api/users/{id}` | Kullanıcıyı soft-delete et |
 
 **Oluşturma / Güncelleme gövdesi**
 
@@ -853,7 +879,7 @@ Korumalı endpoint'ler `Authorization: Bearer <token>` gerektirir.
 | `GET`    | `/api/answertemplates/{id}` | ID ile şablon getir                              |
 | `POST`   | `/api/answertemplates`      | Şablon oluştur (2–4 seçenek zorunlu)             |
 | `PUT`    | `/api/answertemplates/{id}` | Şablon güncelle                                  |
-| `DELETE` | `/api/answertemplates/{id}` | Şablon sil (sorularda kullanılıyorsa engellenir) |
+| `DELETE` | `/api/answertemplates/{id}` | Şablonu soft-delete et (sorularda kullanılıyorsa engellenir) |
 
 **Oluşturma gövdesi**
 
@@ -880,7 +906,7 @@ Korumalı endpoint'ler `Authorization: Bearer <token>` gerektirir.
 | `GET`    | `/api/questions/{id}` | Tam şablon ve seçenekleriyle soru getir         |
 | `POST`   | `/api/questions`      | Soru oluştur                                    |
 | `PUT`    | `/api/questions/{id}` | Soru güncelle                                   |
-| `DELETE` | `/api/questions/{id}` | Soru sil (anketlerde kullanılıyorsa engellenir) |
+| `DELETE` | `/api/questions/{id}` | Soruyu soft-delete et (anketlerde kullanılıyorsa engellenir) |
 
 **Oluşturma gövdesi**
 
@@ -902,7 +928,7 @@ Korumalı endpoint'ler `Authorization: Bearer <token>` gerektirir.
 | `GET`    | `/api/surveys/{id}` | Sorular ve atanan kullanıcı ID'leriyle anket getir |
 | `POST`   | `/api/surveys`      | Anket oluştur                                      |
 | `PUT`    | `/api/surveys/{id}` | Anket güncelle (yanıt varsa engellenir)            |
-| `DELETE` | `/api/surveys/{id}` | Anket sil (yanıt varsa engellenir)                 |
+| `DELETE` | `/api/surveys/{id}` | Anketi soft-delete et (yanıt varsa engellenir)     |
 
 **Oluşturma gövdesi**
 
@@ -1008,9 +1034,6 @@ npm --version
 
 ```sh
 git clone https://github.com/ferhattufekci/SurveyApp.git
-```
-
-```sh
 cd SurveyApp
 ```
 
@@ -1032,19 +1055,7 @@ Bağımlılıkları yükleyin ve migration'ları uygulayın:
 
 ```sh
 dotnet restore
-```
-
-```sh
-dotnet ef migrations add InitialCreate --project ..\SurveyApp.Infrastructure --startup-project .
-```
-
-```sh
 dotnet ef database update --project ..\SurveyApp.Infrastructure --startup-project .
-```
-
-Backend'i başlatın:
-
-```sh
 dotnet run
 ```
 
@@ -1086,22 +1097,17 @@ Tarayıcı → surveyapp.vercel.app (React / Vercel)
         SQLite (Railway volume)
 ```
 
-> **Not:** Uzun süreli üretim kullanımı için SQLite yerine PostgreSQL'e geçilmesi önerilir (Railway ücretsiz add-on sunar). Container yeniden başlatmalarında veri kaybını önler. Bkz. [Farklı Veritabanına Geçiş](#farklı-veritabanına-geçiş).
+> **Not:** Uzun süreli üretim kullanımı için SQLite yerine PostgreSQL'e geçilmesi önerilir. Bkz. [Farklı Veritabanına Geçiş](#farklı-veritabanına-geçiş).
 
 ---
 
 ### Adım 1 — Backend'i Railway'e Deploy Et
 
-**Gereksinim:** [railway.app](https://railway.app) hesabı (ücretsiz, GitHub ile giriş)
-
 1. [railway.app](https://railway.app) → **New Project** → **Deploy from GitHub repo**
-2. **SurveyApp** reposunu seç
-3. Root directory sorulduğunda **`Backend`** yaz
-4. Railway `Dockerfile`'ı otomatik algılar ve build başlar
-5. Deploy tamamlandıktan sonra **Settings → Networking → Generate Domain**
-6. Oluşan URL'yi kopyala (örn. `https://surveyapp-api.up.railway.app`)
+2. **SurveyApp** reposunu seç, root directory: **`Backend`**
+3. Deploy tamamlandıktan sonra **Settings → Networking → Generate Domain**
 
-**Railway'de environment variable'ları ayarla (Settings → Variables):**
+**Railway Variables:**
 
 | Değişken                 | Değer                                   |
 | ------------------------ | --------------------------------------- |
@@ -1111,52 +1117,19 @@ Tarayıcı → surveyapp.vercel.app (React / Vercel)
 | `Jwt__Issuer`            | `SurveyApp`                             |
 | `Jwt__Audience`          | `SurveyAppUsers`                        |
 
----
-
 ### Adım 2 — Frontend'i Vercel'e Deploy Et
 
-**Gereksinim:** [vercel.com](https://vercel.com) hesabı (ücretsiz, GitHub ile giriş)
+1. [vercel.com](https://vercel.com) → **New Project** → **SurveyApp** repo
+2. Root Directory: **`Frontend/survey-app`**
+3. Environment Variables: `VITE_API_URL` = `https://your-railway-url.up.railway.app/api`
 
-1. [vercel.com](https://vercel.com) → **New Project** → **SurveyApp** reposunu içe aktar
-2. **Root Directory** olarak **`Frontend/survey-app`** yaz
-3. Framework **Vite** olarak otomatik algılanır
-4. **Environment Variables** altına ekle:
+### Adım 3 — CORS Bağlantısı
 
-| Değişken       | Değer                                         |
-| -------------- | --------------------------------------------- |
-| `VITE_API_URL` | `https://your-railway-url.up.railway.app/api` |
-
-5. **Deploy** — Vercel sana bir URL verir (örn. `https://surveyapp.vercel.app`)
-
----
-
-### Adım 3 — Frontend URL'ini Backend CORS'una Tanıt
-
-Railway → **Variables** sekmesine dön ve güncelle:
-
-| Değişken       | Değer                          |
-| -------------- | ------------------------------ |
-| `FRONTEND_URL` | `https://surveyapp.vercel.app` |
-
-Railway backend'i otomatik olarak yeniden deploy eder.
-
----
-
-### Deployment Dosyaları
-
-| Dosya                                               | Amacı                                                          |
-| --------------------------------------------------- | -------------------------------------------------------------- |
-| `Backend/Dockerfile`                                | Railway için çok aşamalı Docker build                          |
-| `Backend/railway.json`                              | Railway build ve restart yapılandırması                        |
-| `Backend/SurveyApp.API/appsettings.Production.json` | Üretim ayarları şablonu (SQLite path, log seviyesi)            |
-| `Frontend/survey-app/vercel.json`                   | React Router'ın tüm rotaları yönetmesi için SPA rewrite kuralı |
-| `Frontend/survey-app/.env.example`                  | Yerel geliştirme için environment variable şablonu             |
+Railway → Variables: `FRONTEND_URL` = `https://surveyapp.vercel.app`
 
 ---
 
 ## Farklı Veritabanına Geçiş
-
-Varsayılan SQLite veritabanı, EF Core uyumlu herhangi bir sağlayıcıyla değiştirilebilir.
 
 **PostgreSQL örneği**
 

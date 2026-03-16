@@ -10,8 +10,17 @@ public class Repository<T> : IRepository<T> where T : class
     protected readonly AppDbContext _db;
     public Repository(AppDbContext db) => _db = db;
 
-    public async Task<T?> GetByIdAsync(int id) => await _db.Set<T>().FindAsync(id);
-    public async Task<IEnumerable<T>> GetAllAsync() => await _db.Set<T>().ToListAsync();
+    /// <summary>
+    /// Uses FirstOrDefaultAsync (not FindAsync) so global query filters
+    /// — including the soft-delete filter — are always respected.
+    /// </summary>
+    public async Task<T?> GetByIdAsync(int id) =>
+        await _db.Set<T>()
+                 .Where(e => EF.Property<int>(e, "Id") == id)
+                 .FirstOrDefaultAsync();
+
+    public async Task<IEnumerable<T>> GetAllAsync() =>
+        await _db.Set<T>().ToListAsync();
 
     public async Task<T> AddAsync(T entity)
     {
@@ -27,10 +36,14 @@ public class Repository<T> : IRepository<T> where T : class
 
     public Task DeleteAsync(T entity)
     {
+        // AppDbContext.SaveChangesAsync intercepts this EntityState.Deleted
+        // and converts it to a soft delete for ISoftDeletable entities.
+        // Non-soft-deletable entities (e.g. SurveyResponse) are hard-deleted.
         _db.Set<T>().Remove(entity);
         return Task.CompletedTask;
     }
 }
+
 
 public class UserRepository : Repository<User>, IUserRepository
 {
@@ -51,7 +64,8 @@ public class AnswerTemplateRepository : Repository<AnswerTemplate>, IAnswerTempl
     public AnswerTemplateRepository(AppDbContext db) : base(db) { }
 
     public async Task<AnswerTemplate?> GetWithOptionsAsync(int id) =>
-        await _db.AnswerTemplates.Include(t => t.Options).FirstOrDefaultAsync(t => t.Id == id);
+        await _db.AnswerTemplates.Include(t => t.Options)
+                                 .FirstOrDefaultAsync(t => t.Id == id);
 
     public async Task<IEnumerable<AnswerTemplate>> GetAllWithOptionsAsync() =>
         await _db.AnswerTemplates.Include(t => t.Options).ToListAsync();
@@ -66,7 +80,8 @@ public class QuestionRepository : Repository<Question>, IQuestionRepository
                            .FirstOrDefaultAsync(q => q.Id == id);
 
     public async Task<IEnumerable<Question>> GetAllWithTemplatesAsync() =>
-        await _db.Questions.Include(q => q.AnswerTemplate).ThenInclude(t => t.Options).ToListAsync();
+        await _db.Questions.Include(q => q.AnswerTemplate).ThenInclude(t => t.Options)
+                           .ToListAsync();
 }
 
 public class SurveyRepository : Repository<Survey>, ISurveyRepository
@@ -75,7 +90,8 @@ public class SurveyRepository : Repository<Survey>, ISurveyRepository
 
     public async Task<Survey?> GetWithDetailsAsync(int id) =>
         await _db.Surveys
-            .Include(s => s.SurveyQuestions).ThenInclude(sq => sq.Question).ThenInclude(q => q.AnswerTemplate).ThenInclude(t => t.Options)
+            .Include(s => s.SurveyQuestions).ThenInclude(sq => sq.Question)
+                .ThenInclude(q => q.AnswerTemplate).ThenInclude(t => t.Options)
             .Include(s => s.SurveyAssignments)
             .Include(s => s.SurveyResponses)
             .FirstOrDefaultAsync(s => s.Id == id);
@@ -90,7 +106,8 @@ public class SurveyRepository : Repository<Survey>, ISurveyRepository
     public async Task<IEnumerable<Survey>> GetAssignedSurveysForUserAsync(int userId) =>
         await _db.Surveys
             .Include(s => s.SurveyAssignments)
-            .Include(s => s.SurveyQuestions).ThenInclude(sq => sq.Question).ThenInclude(q => q.AnswerTemplate).ThenInclude(t => t.Options)
+            .Include(s => s.SurveyQuestions).ThenInclude(sq => sq.Question)
+                .ThenInclude(q => q.AnswerTemplate).ThenInclude(t => t.Options)
             .Where(s => s.IsActive && s.SurveyAssignments.Any(a => a.UserId == userId))
             .ToListAsync();
 
@@ -136,14 +153,13 @@ public class UnitOfWork : IUnitOfWork
     public UnitOfWork(AppDbContext db)
     {
         _db = db;
-        Users = new UserRepository(db);
+        Users          = new UserRepository(db);
         AnswerTemplates = new AnswerTemplateRepository(db);
-        Questions = new QuestionRepository(db);
-        Surveys = new SurveyRepository(db);
+        Questions      = new QuestionRepository(db);
+        Surveys        = new SurveyRepository(db);
         SurveyResponses = new SurveyResponseRepository(db);
     }
 
     public async Task<int> SaveChangesAsync() => await _db.SaveChangesAsync();
-
     public void Dispose() => _db.Dispose();
 }

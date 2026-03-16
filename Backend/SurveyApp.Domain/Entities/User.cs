@@ -9,6 +9,10 @@ public class User
     public string Role { get; set; } = "User"; // "Admin" or "User"
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+	
+	// ── Soft Delete ───────────────────────────────────────────────────────────
+    public bool IsDeleted { get; set; } = false;
+    public DateTime? DeletedAt { get; set; }
 
     public ICollection<SurveyAssignment> SurveyAssignments { get; set; } = new List<SurveyAssignment>();
     public ICollection<SurveyResponse> SurveyResponses { get; set; } = new List<SurveyResponse>();

@@ -7,6 +7,10 @@ public class AnswerTemplate
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
+	
+	// ── Soft Delete ───────────────────────────────────────────────────────────
+    public bool IsDeleted { get; set; } = false;
+    public DateTime? DeletedAt { get; set; }
 
     public ICollection<AnswerOption> Options { get; set; } = new List<AnswerOption>();
     public ICollection<Question> Questions { get; set; } = new List<Question>();

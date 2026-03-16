@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SurveyApp.Domain.Entities;
+using SurveyApp.Domain.Interfaces;
 
 namespace SurveyApp.Infrastructure.Data;
 
@@ -17,10 +18,39 @@ public class AppDbContext : DbContext
     public DbSet<SurveyResponse> SurveyResponses => Set<SurveyResponse>();
     public DbSet<SurveyAnswer> SurveyAnswers => Set<SurveyAnswer>();
 
+    // ── Soft Delete interception ──────────────────────────────────────────────
+    /// <summary>
+    /// Converts any hard-delete of an ISoftDeletable entity into a soft-delete
+    /// by flipping IsDeleted and recording the timestamp. The calling code
+    /// (repositories / services) is completely unaware of this conversion.
+    /// </summary>
+    public override async Task<int> SaveChangesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        foreach (var entry in ChangeTracker.Entries<ISoftDeletable>()
+                     .Where(e => e.State == EntityState.Deleted))
+        {
+            entry.State = EntityState.Modified;
+            entry.Entity.IsDeleted = true;
+            entry.Entity.DeletedAt = DateTime.UtcNow;
+        }
+
+        return await base.SaveChangesAsync(cancellationToken);
+    }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
+        // ── Global query filters — soft-deleted rows are invisible everywhere ──
+        // IgnoreQueryFilters() can be used in specific admin/audit queries
+        // if deleted records ever need to be surfaced.
+        modelBuilder.Entity<User>()         .HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<AnswerTemplate>().HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<Question>()     .HasQueryFilter(e => !e.IsDeleted);
+        modelBuilder.Entity<Survey>()       .HasQueryFilter(e => !e.IsDeleted);
+
+        // ── Entity configurations (unchanged) ────────────────────────────────
         modelBuilder.Entity<User>(e =>
         {
             e.HasIndex(u => u.Email).IsUnique();
@@ -45,32 +75,41 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<SurveyQuestion>(e =>
         {
-            e.HasOne(sq => sq.Survey).WithMany(s => s.SurveyQuestions).HasForeignKey(sq => sq.SurveyId).OnDelete(DeleteBehavior.Cascade);
-            e.HasOne(sq => sq.Question).WithMany(q => q.SurveyQuestions).HasForeignKey(sq => sq.QuestionId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(sq => sq.Survey).WithMany(s => s.SurveyQuestions)
+             .HasForeignKey(sq => sq.SurveyId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(sq => sq.Question).WithMany(q => q.SurveyQuestions)
+             .HasForeignKey(sq => sq.QuestionId).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<SurveyAssignment>(e =>
         {
-            e.HasOne(sa => sa.Survey).WithMany(s => s.SurveyAssignments).HasForeignKey(sa => sa.SurveyId).OnDelete(DeleteBehavior.Cascade);
-            e.HasOne(sa => sa.User).WithMany(u => u.SurveyAssignments).HasForeignKey(sa => sa.UserId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(sa => sa.Survey).WithMany(s => s.SurveyAssignments)
+             .HasForeignKey(sa => sa.SurveyId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(sa => sa.User).WithMany(u => u.SurveyAssignments)
+             .HasForeignKey(sa => sa.UserId).OnDelete(DeleteBehavior.Restrict);
             e.HasIndex(sa => new { sa.SurveyId, sa.UserId }).IsUnique();
         });
 
         modelBuilder.Entity<SurveyResponse>(e =>
         {
-            e.HasOne(sr => sr.Survey).WithMany(s => s.SurveyResponses).HasForeignKey(sr => sr.SurveyId).OnDelete(DeleteBehavior.Restrict);
-            e.HasOne(sr => sr.User).WithMany(u => u.SurveyResponses).HasForeignKey(sr => sr.UserId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(sr => sr.Survey).WithMany(s => s.SurveyResponses)
+             .HasForeignKey(sr => sr.SurveyId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(sr => sr.User).WithMany(u => u.SurveyResponses)
+             .HasForeignKey(sr => sr.UserId).OnDelete(DeleteBehavior.Restrict);
             e.HasIndex(sr => new { sr.SurveyId, sr.UserId }).IsUnique();
         });
 
         modelBuilder.Entity<SurveyAnswer>(e =>
         {
-            e.HasOne(a => a.SurveyResponse).WithMany(r => r.Answers).HasForeignKey(a => a.SurveyResponseId).OnDelete(DeleteBehavior.Cascade);
-            e.HasOne(a => a.Question).WithMany().HasForeignKey(a => a.QuestionId).OnDelete(DeleteBehavior.Restrict);
-            e.HasOne(a => a.AnswerOption).WithMany(o => o.SurveyAnswers).HasForeignKey(a => a.AnswerOptionId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(a => a.SurveyResponse).WithMany(r => r.Answers)
+             .HasForeignKey(a => a.SurveyResponseId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(a => a.Question).WithMany()
+             .HasForeignKey(a => a.QuestionId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(a => a.AnswerOption).WithMany(o => o.SurveyAnswers)
+             .HasForeignKey(a => a.AnswerOptionId).OnDelete(DeleteBehavior.Restrict);
         });
 
-        // Seed admin user
+        // ── Seed (unchanged) ─────────────────────────────────────────────────
         modelBuilder.Entity<User>().HasData(new User
         {
             Id = 1,
@@ -79,6 +118,7 @@ public class AppDbContext : DbContext
             FullName = "System Admin",
             Role = "Admin",
             IsActive = true,
+            IsDeleted = false,
             CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
         });
     }
