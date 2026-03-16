@@ -1,26 +1,22 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { answerTemplatesApi } from '../api';
 import type { AnswerTemplate } from '../types';
 
 export function useAnswerTemplates() {
-  const [templates, setTemplates] = useState<AnswerTemplate[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  const load = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await answerTemplatesApi.getAll();
-      setTemplates(data);
-    } catch {
-      setError('Şablonlar yüklenemedi.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { data: templates = [], isLoading: loading, error } = useQuery<AnswerTemplate[]>({
+    queryKey: ['answerTemplates'],
+    queryFn: () => answerTemplatesApi.getAll(),
+  });
 
-  useEffect(() => { load(); }, [load]);
+  const reload = () =>
+    queryClient.invalidateQueries({ queryKey: ['answerTemplates'] });
 
-  return { templates, loading, error, reload: load };
+  return {
+    templates,
+    loading,
+    error: error ? 'Şablonlar yüklenemedi.' : null,
+    reload,
+  };
 }

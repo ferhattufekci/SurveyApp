@@ -1,26 +1,22 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usersApi } from '../api';
 import type { User } from '../types';
 
 export function useUsers() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  const load = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await usersApi.getAll();
-      setUsers(data);
-    } catch {
-      setError('Kullanıcılar yüklenemedi.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { data: users = [], isLoading: loading, error } = useQuery<User[]>({
+    queryKey: ['users'],
+    queryFn: () => usersApi.getAll(),
+  });
 
-  useEffect(() => { load(); }, [load]);
+  const reload = () =>
+    queryClient.invalidateQueries({ queryKey: ['users'] });
 
-  return { users, loading, error, reload: load };
+  return {
+    users,
+    loading,
+    error: error ? 'Kullanıcılar yüklenemedi.' : null,
+    reload,
+  };
 }

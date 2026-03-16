@@ -1,26 +1,22 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { surveysApi } from '../api';
 import type { SurveyListItem } from '../types';
 
 export function useSurveys() {
-  const [surveys, setSurveys] = useState<SurveyListItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  const load = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await surveysApi.getAll();
-      setSurveys(data);
-    } catch {
-      setError('Anketler yüklenemedi.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { data: surveys = [], isLoading: loading, error } = useQuery<SurveyListItem[]>({
+    queryKey: ['surveys'],
+    queryFn: () => surveysApi.getAll(),
+  });
 
-  useEffect(() => { load(); }, [load]);
+  const reload = () =>
+    queryClient.invalidateQueries({ queryKey: ['surveys'] });
 
-  return { surveys, loading, error, reload: load };
+  return {
+    surveys,
+    loading,
+    error: error ? 'Anketler yüklenemedi.' : null,
+    reload,
+  };
 }

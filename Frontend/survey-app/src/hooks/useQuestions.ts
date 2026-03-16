@@ -1,26 +1,22 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { questionsApi } from '../api';
 import type { QuestionListItem } from '../types';
 
 export function useQuestions() {
-  const [questions, setQuestions] = useState<QuestionListItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  const load = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await questionsApi.getAll();
-      setQuestions(data);
-    } catch {
-      setError('Sorular yüklenemedi.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { data: questions = [], isLoading: loading, error } = useQuery<QuestionListItem[]>({
+    queryKey: ['questions'],
+    queryFn: () => questionsApi.getAll(),
+  });
 
-  useEffect(() => { load(); }, [load]);
+  const reload = () =>
+    queryClient.invalidateQueries({ queryKey: ['questions'] });
 
-  return { questions, loading, error, reload: load };
+  return {
+    questions,
+    loading,
+    error: error ? 'Sorular yüklenemedi.' : null,
+    reload,
+  };
 }
