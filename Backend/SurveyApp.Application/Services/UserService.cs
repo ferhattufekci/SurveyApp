@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using SurveyApp.Application.DTOs;
 using SurveyApp.Application.Interfaces;
 using SurveyApp.Domain.Interfaces;
+using SurveyApp.Domain.Constants;
 
 namespace SurveyApp.Application.Services;
 
@@ -82,7 +83,7 @@ public class UserService : IUserService
         var u = await _uow.Users.GetByIdAsync(id);
         if (u == null) return false;
 
-        if (u.Role == "Admin")
+        if (u.Role == Roles.Admin)
         {
             var adminCount = await _uow.Users.GetActiveAdminCountAsync();
             if (adminCount <= 1)

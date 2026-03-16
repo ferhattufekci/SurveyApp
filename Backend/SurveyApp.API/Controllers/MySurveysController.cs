@@ -3,12 +3,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SurveyApp.Application.DTOs;
 using SurveyApp.Application.Interfaces;
+using SurveyApp.Domain.Constants;
 
 namespace SurveyApp.API.Controllers;
 
 [ApiController]
 [Route("api/my-surveys")]
-[Authorize(Roles = "User")]
+[Authorize(Roles = Roles.User)]
 [Produces("application/json")]
 public class MySurveysController : ControllerBase
 {

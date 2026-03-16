@@ -2,12 +2,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SurveyApp.Application.DTOs;
 using SurveyApp.Application.Interfaces;
+using SurveyApp.Domain.Constants;
 
 namespace SurveyApp.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = Roles.Admin)]
 [Produces("application/json")]
 public class ReportsController : ControllerBase
 {
