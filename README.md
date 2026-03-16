@@ -66,6 +66,8 @@ A full-stack survey management system built with **.NET 8** (Clean Architecture)
 - The last remaining active admin cannot be deleted
 - JWT tokens are validated for expiry on every page load
 - **Deleted records (users, templates, questions, surveys) are soft-deleted** — the row is retained in the database with `IsDeleted = true` and a `DeletedAt` timestamp; it never appears in any query
+- All unhandled exceptions return structured `{ message }` JSON — stack traces are never exposed to clients
+- Role names (`Admin`, `User`) are compile-time constants — typos cause build errors, not silent authorization failures
 
 ---
 
@@ -74,22 +76,36 @@ A full-stack survey management system built with **.NET 8** (Clean Architecture)
 ### Backend — Clean Architecture
 
 Dependencies flow strictly inward. The Domain layer has zero external dependencies.
-
 ```
 SurveyApp/
 ├── Backend/
-│   ├── SurveyApp.Domain/           # Entities, repository interfaces, ISoftDeletable
-│   ├── SurveyApp.Application/      # Use cases, DTOs, service interfaces
-│   ├── SurveyApp.Infrastructure/   # EF Core, repositories, Unit of Work
-│   └── SurveyApp.API/              # Controllers, JWT middleware, Swagger
+│   ├── SurveyApp.Domain/
+│   │   ├── Entities/               # Aggregate roots and owned entities
+│   │   ├── Interfaces/             # Repository and UoW contracts, ISoftDeletable
+│   │   ├── Constants/              # Roles (compile-time role name constants)
+│   │   └── Exceptions/             # BusinessRuleException
+│   ├── SurveyApp.Application/
+│   │   ├── DTOs/                   # Request and response records with validation annotations
+│   │   ├── Interfaces/             # Service contracts
+│   │   └── Services/               # One file per service class
+│   ├── SurveyApp.Infrastructure/
+│   │   ├── Data/                   # AppDbContext — global filters, soft delete override
+│   │   ├── Repositories/           # Repository and Unit of Work implementations
+│   │   └── Migrations/             # EF Core migrations
+│   └── SurveyApp.API/
+│       ├── Controllers/            # One file per controller
+│       └── Middleware/             # GlobalExceptionMiddleware
 │
 └── Frontend/
     └── survey-app/src/
         ├── api/                    # Axios HTTP client
         ├── store/                  # Zustand auth store
+        ├── hooks/                  # Custom data-fetching hooks
+        ├── components/
+        │   ├── admin/              # Admin UI components
+        │   └── ErrorBoundary.tsx   # Catches render errors per route
         ├── pages/admin/            # Admin pages
         ├── pages/user/             # User-facing pages
-        ├── components/             # Shared UI components
         ├── types/                  # TypeScript interfaces
         └── styles/                 # Global CSS
 ```
@@ -98,11 +114,11 @@ SurveyApp/
 
 ### Soft Delete Design
 
-| Layer          | Responsibility                                                                                                   |
-| -------------- | ---------------------------------------------------------------------------------------------------------------- |
-| **Domain**     | `ISoftDeletable` interface declares `IsDeleted` and `DeletedAt`. Entities implement it — no EF Core dependency. |
-| **Infrastructure** | `AppDbContext` applies `HasQueryFilter(!IsDeleted)` on all four aggregate roots and overrides both `SaveChanges` and `SaveChangesAsync` to intercept `EntityState.Deleted`, converting it transparently to a soft delete. |
-| **Application / API** | Zero changes. Services call `DeleteAsync` exactly as before; they are unaware of the persistence strategy. |
+| Layer                 | Responsibility                                                                                                                                                                                |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Domain**            | `ISoftDeletable` interface declares `IsDeleted` and `DeletedAt`. Entities implement it — no EF Core dependency.                                                                               |
+| **Infrastructure**    | `AppDbContext` applies `HasQueryFilter(!IsDeleted)` on all four aggregate roots and overrides both `SaveChanges` and `SaveChangesAsync` to intercept `EntityState.Deleted`, converting it transparently to a soft delete. |
+| **Application / API** | Zero changes. Services call `DeleteAsync` exactly as before; they are unaware of the persistence strategy.                                                                                   |
 
 > `SurveyResponse` and `SurveyAnswer` are intentionally excluded from soft delete — they are audit records and must never be altered.
 
@@ -112,6 +128,8 @@ SurveyApp/
 - **React Router v6** handles client-side routing with role-based guards
 - **Axios interceptors** attach the Bearer token to every request and redirect to login on 401
 - **URL search params** enable shareable filtered views across admin pages
+- **ErrorBoundary** wraps each route — a single component crash never takes down the entire app
+- **Custom hooks** (`useAnswerTemplates`, `useQuestions`, `useSurveys`, `useUsers`) isolate data-fetching logic from page components
 
 ### API Design — RESTful Principles
 
@@ -156,7 +174,6 @@ The backend API is designed around REST constraints, ensuring a predictable and 
 ---
 
 ## Database Schema
-
 ```
 Users
   Id · Email (unique) · PasswordHash · FullName · Role (Admin|User) · IsActive · CreatedAt
@@ -206,13 +223,11 @@ Protected endpoints require `Authorization: Bearer <token>`.
 #### `POST /api/auth/login`
 
 **Request**
-
 ```json
 { "email": "admin@surveyapp.com", "password": "Admin123!" }
 ```
 
 **Response `200 OK`**
-
 ```json
 {
   "token": "eyJhbGciOiJIUzI1NiIs...",
@@ -224,7 +239,6 @@ Protected endpoints require `Authorization: Bearer <token>`.
 ```
 
 **Response `401 Unauthorized`**
-
 ```json
 { "message": "Invalid credentials" }
 ```
@@ -233,16 +247,15 @@ Protected endpoints require `Authorization: Bearer <token>`.
 
 ### Users _(Admin only)_
 
-| Method   | Endpoint          | Description    |
-| -------- | ----------------- | -------------- |
-| `GET`    | `/api/users`      | List all users |
-| `GET`    | `/api/users/{id}` | Get user by ID |
-| `POST`   | `/api/users`      | Create user    |
-| `PUT`    | `/api/users/{id}` | Update user    |
+| Method   | Endpoint          | Description      |
+| -------- | ----------------- | ---------------- |
+| `GET`    | `/api/users`      | List all users   |
+| `GET`    | `/api/users/{id}` | Get user by ID   |
+| `POST`   | `/api/users`      | Create user      |
+| `PUT`    | `/api/users/{id}` | Update user      |
 | `DELETE` | `/api/users/{id}` | Soft-delete user |
 
 **Create / Update body**
-
 ```json
 {
   "email": "user@example.com",
@@ -257,16 +270,15 @@ Protected endpoints require `Authorization: Bearer <token>`.
 
 ### Answer Templates _(Admin only)_
 
-| Method   | Endpoint                    | Description                                    |
-| -------- | --------------------------- | ---------------------------------------------- |
-| `GET`    | `/api/answertemplates`      | List all templates with options                |
-| `GET`    | `/api/answertemplates/{id}` | Get template by ID                             |
-| `POST`   | `/api/answertemplates`      | Create template (2–4 options required)         |
-| `PUT`    | `/api/answertemplates/{id}` | Update template                                |
+| Method   | Endpoint                    | Description                                         |
+| -------- | --------------------------- | --------------------------------------------------- |
+| `GET`    | `/api/answertemplates`      | List all templates with options                     |
+| `GET`    | `/api/answertemplates/{id}` | Get template by ID                                  |
+| `POST`   | `/api/answertemplates`      | Create template (2–4 options required)              |
+| `PUT`    | `/api/answertemplates/{id}` | Update template                                     |
 | `DELETE` | `/api/answertemplates/{id}` | Soft-delete template (blocked if used in questions) |
 
 **Create body**
-
 ```json
 {
   "name": "Agreement Scale",
@@ -279,16 +291,15 @@ Protected endpoints require `Authorization: Bearer <token>`.
 
 ### Questions _(Admin only)_
 
-| Method   | Endpoint              | Description                                  |
-| -------- | --------------------- | -------------------------------------------- |
-| `GET`    | `/api/questions`      | List all questions with template info        |
-| `GET`    | `/api/questions/{id}` | Get question with full template and options  |
-| `POST`   | `/api/questions`      | Create question                              |
-| `PUT`    | `/api/questions/{id}` | Update question                              |
+| Method   | Endpoint              | Description                                       |
+| -------- | --------------------- | ------------------------------------------------- |
+| `GET`    | `/api/questions`      | List all questions with template info             |
+| `GET`    | `/api/questions/{id}` | Get question with full template and options       |
+| `POST`   | `/api/questions`      | Create question                                   |
+| `PUT`    | `/api/questions/{id}` | Update question                                   |
 | `DELETE` | `/api/questions/{id}` | Soft-delete question (blocked if used in surveys) |
 
 **Create body**
-
 ```json
 {
   "text": "How satisfied are you with our service?",
@@ -301,16 +312,15 @@ Protected endpoints require `Authorization: Bearer <token>`.
 
 ### Surveys _(Admin only)_
 
-| Method   | Endpoint            | Description                                     |
-| -------- | ------------------- | ----------------------------------------------- |
-| `GET`    | `/api/surveys`      | List all surveys with assigned/response counts  |
-| `GET`    | `/api/surveys/{id}` | Get survey with questions and assigned user IDs |
-| `POST`   | `/api/surveys`      | Create survey                                   |
-| `PUT`    | `/api/surveys/{id}` | Update survey (blocked if responses exist)      |
-| `DELETE` | `/api/surveys/{id}` | Soft-delete survey (blocked if responses exist) |
+| Method   | Endpoint            | Description                                        |
+| -------- | ------------------- | -------------------------------------------------- |
+| `GET`    | `/api/surveys`      | List all surveys with assigned/response counts     |
+| `GET`    | `/api/surveys/{id}` | Get survey with questions and assigned user IDs    |
+| `POST`   | `/api/surveys`      | Create survey                                      |
+| `PUT`    | `/api/surveys/{id}` | Update survey (blocked if responses exist)         |
+| `DELETE` | `/api/surveys/{id}` | Soft-delete survey (blocked if responses exist)    |
 
 **Create body**
-
 ```json
 {
   "title": "Q4 Employee Satisfaction",
@@ -333,7 +343,6 @@ Protected endpoints require `Authorization: Bearer <token>`.
 | `GET`  | `/api/reports/{surveyId}` | Full report: who completed, who hasn't, all answers |
 
 **Report response `200 OK`**
-
 ```json
 {
   "surveyId": 1,
@@ -379,7 +388,6 @@ Protected endpoints require `Authorization: Bearer <token>`.
 | `POST` | `/api/my-surveys/{surveyId}/submit` | Submit answers                                          |
 
 **Submit body**
-
 ```json
 {
   "surveyId": 1,
@@ -402,7 +410,6 @@ Protected endpoints require `Authorization: Bearer <token>`.
 | Node.js  | 18+ LTS | [nodejs.org](https://nodejs.org/en/download)                                   |
 
 Verify installations:
-
 ```sh
 dotnet --version
 node --version
@@ -410,42 +417,27 @@ npm --version
 ```
 
 ### 1. Clone the Repository
-
 ```sh
 git clone https://github.com/ferhattufekci/SurveyApp.git
-```
-
-```sh
 cd SurveyApp
 ```
 
 ### 2. Run the Backend
 
 Install the EF Core CLI tool (one-time):
-
 ```sh
 dotnet tool install --global dotnet-ef
 ```
 
 Navigate to the API project:
-
 ```sh
 cd Backend/SurveyApp.API
 ```
 
 Restore dependencies and apply migrations:
-
 ```sh
 dotnet restore
-```
-
-```sh
 dotnet ef database update --project ..\SurveyApp.Infrastructure --startup-project .
-```
-
-Start the backend:
-
-```sh
 dotnet run
 ```
 
@@ -454,16 +446,9 @@ dotnet run
 ### 3. Run the Frontend
 
 Open a **new terminal** (keep the backend running):
-
 ```sh
 cd Frontend/survey-app
-```
-
-```sh
 npm install
-```
-
-```sh
 npm run dev
 ```
 
@@ -484,7 +469,6 @@ Additional users can be created from **Admin Panel → Users**.
 ## Deployment
 
 The project ships with configuration files for a **free-tier** production deployment: **.NET backend on Railway, React frontend on Vercel**.
-
 ```
 Browser → surveyapp.vercel.app (React / Vercel)
                 ↓ HTTPS API calls
@@ -568,20 +552,17 @@ The default SQLite database can be replaced with any EF Core-compatible provider
 **PostgreSQL example**
 
 `SurveyApp.Infrastructure.csproj`:
-
 ```xml
 <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.0" />
 ```
 
 `Program.cs`:
-
 ```csharp
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 ```
 
 `appsettings.json`:
-
 ```json
 "ConnectionStrings": {
   "DefaultConnection": "Host=localhost;Database=surveyapp;Username=postgres;Password=yourpassword"
@@ -682,6 +663,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 - Son aktif admin silinemez
 - JWT token geçerliliği her sayfa yüklemesinde kontrol edilir
 - **Silinen kayıtlar (kullanıcı, şablon, soru, anket) fiziksel olarak silinmez** — satır `IsDeleted = true` ve `DeletedAt` zaman damgasıyla veritabanında tutulur; hiçbir sorguda görünmez
+- Tüm işlenmemiş hatalar yapısal `{ message }` JSON olarak döner — istemciye asla stack trace iletilmez
+- Rol isimleri (`Admin`, `User`) derleme zamanı sabitleri — yazım hatası runtime hatası değil, derleme hatası üretir
 
 ---
 
@@ -690,22 +673,36 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 ### Backend — Clean Architecture
 
 Bağımlılıklar yalnızca içe doğru akar. Domain katmanının hiçbir dış bağımlılığı yoktur.
-
 ```
 SurveyApp/
 ├── Backend/
-│   ├── SurveyApp.Domain/           # Entity'ler, repository arayüzleri, ISoftDeletable
-│   ├── SurveyApp.Application/      # Use case'ler, DTO'lar, servis arayüzleri
-│   ├── SurveyApp.Infrastructure/   # EF Core, repository'ler, Unit of Work
-│   └── SurveyApp.API/              # Controller'lar, JWT middleware, Swagger
+│   ├── SurveyApp.Domain/
+│   │   ├── Entities/               # Aggregate root'lar ve owned entity'ler
+│   │   ├── Interfaces/             # Repository ve UoW arayüzleri, ISoftDeletable
+│   │   ├── Constants/              # Roles (derleme zamanı rol adı sabitleri)
+│   │   └── Exceptions/             # BusinessRuleException
+│   ├── SurveyApp.Application/
+│   │   ├── DTOs/                   # Validation annotation'lı request/response record'ları
+│   │   ├── Interfaces/             # Servis arayüzleri
+│   │   └── Services/               # Her servis sınıfı ayrı dosyada
+│   ├── SurveyApp.Infrastructure/
+│   │   ├── Data/                   # AppDbContext — global filter'lar, soft delete override
+│   │   ├── Repositories/           # Repository ve Unit of Work implementasyonları
+│   │   └── Migrations/             # EF Core migration'ları
+│   └── SurveyApp.API/
+│       ├── Controllers/            # Her controller ayrı dosyada
+│       └── Middleware/             # GlobalExceptionMiddleware
 │
 └── Frontend/
     └── survey-app/src/
         ├── api/                    # Axios HTTP istemcisi
         ├── store/                  # Zustand kimlik doğrulama store'u
+        ├── hooks/                  # Custom veri çekme hook'ları
+        ├── components/
+        │   ├── admin/              # Admin UI bileşenleri
+        │   └── ErrorBoundary.tsx   # Route başına render hatalarını yakalar
         ├── pages/admin/            # Admin sayfaları
         ├── pages/user/             # Kullanıcı sayfaları
-        ├── components/             # Paylaşılan UI bileşenleri
         ├── types/                  # TypeScript arayüzleri
         └── styles/                 # Global CSS
 ```
@@ -714,11 +711,11 @@ SurveyApp/
 
 ### Soft Delete Tasarımı
 
-| Katman              | Sorumluluk                                                                                                                                                                              |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Domain**          | `ISoftDeletable` arayüzü `IsDeleted` ve `DeletedAt` özelliklerini tanımlar. Entity'ler bu arayüzü uygular — EF Core bağımlılığı yoktur.                                                |
-| **Infrastructure**  | `AppDbContext`, dört aggregate root üzerinde `HasQueryFilter(!IsDeleted)` uygular; hem senkron`SaveChanges` hem de `SaveChangesAsync` override edilerek `EntityState.Deleted` yakalanır ve şeffaf biçimde soft delete'e çevrilir. |
-| **Application / API** | Sıfır değişiklik. Servisler `DeleteAsync`'i eskisi gibi çağırır; kalıcılık stratejisinden haberleri yoktur.                                                                           |
+| Katman              | Sorumluluk                                                                                                                                                                                                              |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Domain**          | `ISoftDeletable` arayüzü `IsDeleted` ve `DeletedAt` özelliklerini tanımlar. Entity'ler bu arayüzü uygular — EF Core bağımlılığı yoktur.                                                                                |
+| **Infrastructure**  | `AppDbContext`, dört aggregate root üzerinde `HasQueryFilter(!IsDeleted)` uygular; hem senkron `SaveChanges` hem de `SaveChangesAsync` override edilerek `EntityState.Deleted` yakalanır ve şeffaf biçimde soft delete'e çevrilir. |
+| **Application / API** | Sıfır değişiklik. Servisler `DeleteAsync`'i eskisi gibi çağırır; kalıcılık stratejisinden haberleri yoktur.                                                                                                           |
 
 > `SurveyResponse` ve `SurveyAnswer` kasıtlı olarak soft delete kapsamı dışında tutulmuştur — bunlar denetim kayıtlarıdır ve asla değiştirilemez.
 
@@ -728,6 +725,8 @@ SurveyApp/
 - **React Router v6** rol tabanlı korumalarla istemci tarafı yönlendirmeyi yönetir
 - **Axios interceptor'ları** her isteğe Bearer token ekler ve 401'de login'e yönlendirir
 - **URL search param'ları** admin sayfaları arasında paylaşılabilir filtrelenmiş görünümler sağlar
+- **ErrorBoundary** her route'u sarar — tek bir bileşen çökmesi tüm uygulamayı kapatmaz
+- **Custom hook'lar** (`useAnswerTemplates`, `useQuestions`, `useSurveys`, `useUsers`) veri çekme mantığını sayfa bileşenlerinden ayırır
 
 ### API Tasarımı — RESTful Prensipler
 
@@ -772,7 +771,6 @@ Backend API, tahmin edilebilir ve birlikte çalışabilir bir arayüz sağlamak 
 ---
 
 ## Veritabanı Şeması
-
 ```
 Users
   Id · Email (unique) · PasswordHash · FullName · Role (Admin|User) · IsActive · CreatedAt
@@ -822,13 +820,11 @@ Korumalı endpoint'ler `Authorization: Bearer <token>` gerektirir.
 #### `POST /api/auth/login`
 
 **İstek**
-
 ```json
 { "email": "admin@surveyapp.com", "password": "Admin123!" }
 ```
 
 **Yanıt `200 OK`**
-
 ```json
 {
   "token": "eyJhbGciOiJIUzI1NiIs...",
@@ -840,7 +836,6 @@ Korumalı endpoint'ler `Authorization: Bearer <token>` gerektirir.
 ```
 
 **Yanıt `401 Unauthorized`**
-
 ```json
 { "message": "Invalid credentials" }
 ```
@@ -849,16 +844,15 @@ Korumalı endpoint'ler `Authorization: Bearer <token>` gerektirir.
 
 ### Kullanıcılar _(Yalnızca Admin)_
 
-| Metod    | Endpoint          | Açıklama                  |
-| -------- | ----------------- | ------------------------- |
-| `GET`    | `/api/users`      | Tüm kullanıcıları listele |
-| `GET`    | `/api/users/{id}` | ID ile kullanıcı getir    |
-| `POST`   | `/api/users`      | Kullanıcı oluştur         |
-| `PUT`    | `/api/users/{id}` | Kullanıcı güncelle        |
+| Metod    | Endpoint          | Açıklama                   |
+| -------- | ----------------- | -------------------------- |
+| `GET`    | `/api/users`      | Tüm kullanıcıları listele  |
+| `GET`    | `/api/users/{id}` | ID ile kullanıcı getir     |
+| `POST`   | `/api/users`      | Kullanıcı oluştur          |
+| `PUT`    | `/api/users/{id}` | Kullanıcı güncelle         |
 | `DELETE` | `/api/users/{id}` | Kullanıcıyı soft-delete et |
 
 **Oluşturma / Güncelleme gövdesi**
-
 ```json
 {
   "email": "user@example.com",
@@ -873,16 +867,15 @@ Korumalı endpoint'ler `Authorization: Bearer <token>` gerektirir.
 
 ### Cevap Şablonları _(Yalnızca Admin)_
 
-| Metod    | Endpoint                    | Açıklama                                         |
-| -------- | --------------------------- | ------------------------------------------------ |
-| `GET`    | `/api/answertemplates`      | Seçenekleriyle tüm şablonları listele            |
-| `GET`    | `/api/answertemplates/{id}` | ID ile şablon getir                              |
-| `POST`   | `/api/answertemplates`      | Şablon oluştur (2–4 seçenek zorunlu)             |
-| `PUT`    | `/api/answertemplates/{id}` | Şablon güncelle                                  |
+| Metod    | Endpoint                    | Açıklama                                                     |
+| -------- | --------------------------- | ------------------------------------------------------------ |
+| `GET`    | `/api/answertemplates`      | Seçenekleriyle tüm şablonları listele                        |
+| `GET`    | `/api/answertemplates/{id}` | ID ile şablon getir                                          |
+| `POST`   | `/api/answertemplates`      | Şablon oluştur (2–4 seçenek zorunlu)                         |
+| `PUT`    | `/api/answertemplates/{id}` | Şablon güncelle                                              |
 | `DELETE` | `/api/answertemplates/{id}` | Şablonu soft-delete et (sorularda kullanılıyorsa engellenir) |
 
 **Oluşturma gövdesi**
-
 ```json
 {
   "name": "Katılım Düzeyi",
@@ -900,16 +893,15 @@ Korumalı endpoint'ler `Authorization: Bearer <token>` gerektirir.
 
 ### Sorular _(Yalnızca Admin)_
 
-| Metod    | Endpoint              | Açıklama                                        |
-| -------- | --------------------- | ----------------------------------------------- |
-| `GET`    | `/api/questions`      | Şablon bilgisiyle tüm soruları listele          |
-| `GET`    | `/api/questions/{id}` | Tam şablon ve seçenekleriyle soru getir         |
-| `POST`   | `/api/questions`      | Soru oluştur                                    |
-| `PUT`    | `/api/questions/{id}` | Soru güncelle                                   |
-| `DELETE` | `/api/questions/{id}` | Soruyu soft-delete et (anketlerde kullanılıyorsa engellenir) |
+| Metod    | Endpoint              | Açıklama                                                        |
+| -------- | --------------------- | --------------------------------------------------------------- |
+| `GET`    | `/api/questions`      | Şablon bilgisiyle tüm soruları listele                          |
+| `GET`    | `/api/questions/{id}` | Tam şablon ve seçenekleriyle soru getir                         |
+| `POST`   | `/api/questions`      | Soru oluştur                                                    |
+| `PUT`    | `/api/questions/{id}` | Soru güncelle                                                   |
+| `DELETE` | `/api/questions/{id}` | Soruyu soft-delete et (anketlerde kullanılıyorsa engellenir)    |
 
 **Oluşturma gövdesi**
-
 ```json
 {
   "text": "Hizmetimizden memnun musunuz?",
@@ -931,7 +923,6 @@ Korumalı endpoint'ler `Authorization: Bearer <token>` gerektirir.
 | `DELETE` | `/api/surveys/{id}` | Anketi soft-delete et (yanıt varsa engellenir)     |
 
 **Oluşturma gövdesi**
-
 ```json
 {
   "title": "Çalışan Memnuniyet Anketi",
@@ -954,7 +945,6 @@ Korumalı endpoint'ler `Authorization: Bearer <token>` gerektirir.
 | `GET` | `/api/reports/{surveyId}` | Tam rapor: kim doldurdu, kim doldurmadı, tüm yanıtlar |
 
 **Rapor yanıtı `200 OK`**
-
 ```json
 {
   "surveyId": 1,
@@ -1000,7 +990,6 @@ Korumalı endpoint'ler `Authorization: Bearer <token>` gerektirir.
 | `POST` | `/api/my-surveys/{surveyId}/submit` | Yanıtları gönder                                                               |
 
 **Gönderme gövdesi**
-
 ```json
 {
   "surveyId": 1,
@@ -1023,7 +1012,6 @@ Korumalı endpoint'ler `Authorization: Bearer <token>` gerektirir.
 | Node.js  | 18+ LTS  | [nodejs.org](https://nodejs.org/en/download)                                   |
 
 Kurulumu doğrulayın:
-
 ```sh
 dotnet --version
 node --version
@@ -1031,7 +1019,6 @@ npm --version
 ```
 
 ### 1. Repoyu Klonlayın
-
 ```sh
 git clone https://github.com/ferhattufekci/SurveyApp.git
 cd SurveyApp
@@ -1040,19 +1027,16 @@ cd SurveyApp
 ### 2. Backend'i Başlatın
 
 EF Core CLI aracını kurun (bir kez yapılır):
-
 ```sh
 dotnet tool install --global dotnet-ef
 ```
 
 API projesine gidin:
-
 ```sh
 cd Backend/SurveyApp.API
 ```
 
 Bağımlılıkları yükleyin ve migration'ları uygulayın:
-
 ```sh
 dotnet restore
 dotnet ef database update --project ..\SurveyApp.Infrastructure --startup-project .
@@ -1064,7 +1048,6 @@ dotnet run
 ### 3. Frontend'i Başlatın
 
 **Yeni bir terminal açın** (backend'i kapatmayın):
-
 ```sh
 cd Frontend/survey-app
 npm install
@@ -1088,7 +1071,6 @@ Ek kullanıcılar **Admin Paneli → Kullanıcılar** ekranından oluşturulabil
 ## Deployment
 
 Proje, **ücretsiz tier** için hazır deployment dosyalarıyla birlikte gelir: **.NET backend Railway'de, React frontend Vercel'de**.
-
 ```
 Tarayıcı → surveyapp.vercel.app (React / Vercel)
                 ↓ HTTPS API istekleri
@@ -1134,20 +1116,17 @@ Railway → Variables: `FRONTEND_URL` = `https://surveyapp.vercel.app`
 **PostgreSQL örneği**
 
 `SurveyApp.Infrastructure.csproj`:
-
 ```xml
 <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.0" />
 ```
 
 `Program.cs`:
-
 ```csharp
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 ```
 
 `appsettings.json`:
-
 ```json
 "ConnectionStrings": {
   "DefaultConnection": "Host=localhost;Database=surveyapp;Username=postgres;Password=sifreniz"
