@@ -1,3 +1,4 @@
+using SurveyApp.API.Middleware;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
