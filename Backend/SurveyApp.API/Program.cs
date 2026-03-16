@@ -28,7 +28,9 @@ builder.Services.AddScoped<IUserSurveyService, UserSurveyService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 
 // JWT Authentication
-var jwtKey = builder.Configuration["Jwt:Key"] ?? "SurveyAppSuperSecretKey2024!XYZ123";
+var jwtKey = builder.Configuration["Jwt:Key"]
+    ?? throw new InvalidOperationException(
+        "Jwt:Key is not configured. Set the Jwt__Key environment variable.");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
