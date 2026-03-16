@@ -91,11 +91,11 @@ export default function DashboardPage() {
   const expiredSlice = expiredSurveys.slice((expiredPage - 1) * PAGE_SIZE, expiredPage * PAGE_SIZE);
 
   const statCards = [
-    { label: 'Anketler', icon: '📝', total: sq.total, active: sq.active, passive: sq.passive, extra: sq.expired, extraLabel: 'Süresi Geçmiş', link: '/admin/surveys', bg: '#eef2ff', border: '#6366f122', accent: '#6366f1' },
-    { label: 'Sorular', icon: '❓', total: qq.total, active: qq.active, passive: qq.passive, extra: null, extraLabel: '', link: '/admin/questions', bg: '#f0fdf4', border: '#10b98122', accent: '#10b981' },
-    { label: 'Kullanıcılar', icon: '👥', total: uu.total, active: uu.active, passive: uu.passive, extra: null, extraLabel: '', link: '/admin/users', bg: '#faf5ff', border: '#8b5cf622', accent: '#8b5cf6' },
-    { label: 'Cevap Şablonları', icon: '📋', total: tt.total, active: tt.active, passive: tt.passive, extra: null, extraLabel: '', link: '/admin/answer-templates', bg: '#fffbeb', border: '#f59e0b22', accent: '#f59e0b' },
-  ];
+  { label: 'Cevap Şablonları', icon: '📋', total: tt.total, active: tt.active, passive: tt.passive, extra: null,        extraLabel: '',               link: '/admin/answer-templates',   bg: '#fffbeb', border: '#f59e0b22', accent: '#f59e0b' },
+  { label: 'Sorular',          icon: '❓', total: qq.total, active: qq.active, passive: qq.passive, extra: null,        extraLabel: '',               link: '/admin/questions',          bg: '#f0fdf4', border: '#10b98122', accent: '#10b981' },
+  { label: 'Anketler',         icon: '📝', total: sq.total, active: sq.active, passive: sq.passive, extra: sq.expired, extraLabel: 'Süresi Geçmiş', link: '/admin/surveys',            bg: '#eef2ff', border: '#6366f122', accent: '#6366f1' },
+  { label: 'Kullanıcılar',     icon: '👥', total: uu.total, active: uu.active, passive: uu.passive, extra: null,        extraLabel: '',               link: '/admin/users',              bg: '#faf5ff', border: '#8b5cf622', accent: '#8b5cf6' },
+];
 
   const pillBase: React.CSSProperties = {
     borderRadius: '7px', padding: '4px 10px', fontSize: '12px',
