@@ -101,7 +101,7 @@ SurveyApp/
 | Layer          | Responsibility                                                                                                   |
 | -------------- | ---------------------------------------------------------------------------------------------------------------- |
 | **Domain**     | `ISoftDeletable` interface declares `IsDeleted` and `DeletedAt`. Entities implement it — no EF Core dependency. |
-| **Infrastructure** | `AppDbContext` applies `HasQueryFilter(!IsDeleted)` on all four aggregate roots and intercepts `EntityState.Deleted` in `SaveChangesAsync`, converting it transparently to a soft delete. |
+| **Infrastructure** | `AppDbContext` applies `HasQueryFilter(!IsDeleted)` on all four aggregate roots and overrides both `SaveChanges` and `SaveChangesAsync` to intercept `EntityState.Deleted`, converting it transparently to a soft delete. |
 | **Application / API** | Zero changes. Services call `DeleteAsync` exactly as before; they are unaware of the persistence strategy. |
 
 > `SurveyResponse` and `SurveyAnswer` are intentionally excluded from soft delete — they are audit records and must never be altered.
@@ -717,7 +717,7 @@ SurveyApp/
 | Katman              | Sorumluluk                                                                                                                                                                              |
 | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Domain**          | `ISoftDeletable` arayüzü `IsDeleted` ve `DeletedAt` özelliklerini tanımlar. Entity'ler bu arayüzü uygular — EF Core bağımlılığı yoktur.                                                |
-| **Infrastructure**  | `AppDbContext`, dört aggregate root üzerinde `HasQueryFilter(!IsDeleted)` uygular ve `SaveChangesAsync` içinde `EntityState.Deleted`'ı yakalayarak şeffaf biçimde soft delete'e çevirir. |
+| **Infrastructure**  | `AppDbContext`, dört aggregate root üzerinde `HasQueryFilter(!IsDeleted)` uygular; hem senkron`SaveChanges` hem de `SaveChangesAsync` override edilerek `EntityState.Deleted` yakalanır ve şeffaf biçimde soft delete'e çevrilir. |
 | **Application / API** | Sıfır değişiklik. Servisler `DeleteAsync`'i eskisi gibi çağırır; kalıcılık stratejisinden haberleri yoktur.                                                                           |
 
 > `SurveyResponse` ve `SurveyAnswer` kasıtlı olarak soft delete kapsamı dışında tutulmuştur — bunlar denetim kayıtlarıdır ve asla değiştirilemez.
