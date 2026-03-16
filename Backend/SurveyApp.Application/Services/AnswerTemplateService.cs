@@ -18,13 +18,18 @@ public class AnswerTemplateService : IAnswerTemplateService
         _logger = logger;
     }
 
-    public async Task<List<AnswerTemplateDto>> GetAllAsync()
-    {
-        var templates = await _uow.AnswerTemplates.GetAllWithOptionsAsync();
-        var questions = await _uow.Questions.GetAllWithTemplatesAsync();
-        var usageCounts = questions.GroupBy(q => q.AnswerTemplateId).ToDictionary(g => g.Key, g => g.Count());
-        return templates.Select(t => MapToDtoWithCount(t, usageCounts.GetValueOrDefault(t.Id, 0))).ToList();
-    }
+	public async Task<List<AnswerTemplateDto>> GetAllAsync()
+	{
+		var (templates, questions) = await (
+			_uow.AnswerTemplates.GetAllWithOptionsAsync(),
+			_uow.Questions.GetAllWithTemplatesAsync()
+		).WhenAll();
+
+		var usageCounts = questions.GroupBy(q => q.AnswerTemplateId)
+			.ToDictionary(g => g.Key, g => g.Count());
+
+		return templates.Select(t => MapToDtoWithCount(t, usageCounts.GetValueOrDefault(t.Id, 0))).ToList();
+	}
 
     public async Task<AnswerTemplateDto?> GetByIdAsync(int id)
     {

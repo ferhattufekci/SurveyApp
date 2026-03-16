@@ -17,23 +17,28 @@ public class UserSurveyService : IUserSurveyService
     }
 
     public async Task<List<UserSurveyListDto>> GetAssignedSurveysAsync(int userId)
-    {
-        var surveys = await _uow.Surveys.GetAssignedSurveysForUserAsync(userId);
-        var result = new List<UserSurveyListDto>();
-        foreach (var s in surveys)
-        {
-            var completed = await _uow.Surveys.HasUserCompletedSurveyAsync(s.Id, userId);
-            var questions = s.SurveyQuestions.OrderBy(sq => sq.OrderIndex).Select(sq => new SurveyQuestionDto(
-                sq.Id, sq.QuestionId, sq.Question.Text, sq.OrderIndex,
-                new AnswerTemplateDto(sq.Question.AnswerTemplate.Id, sq.Question.AnswerTemplate.Name,
-                    sq.Question.AnswerTemplate.IsActive,
-                    sq.Question.AnswerTemplate.Options.OrderBy(o => o.OrderIndex)
-                        .Select(o => new AnswerOptionDto(o.Id, o.Text, o.OrderIndex)).ToList())
-            )).ToList();
-            result.Add(new UserSurveyListDto(s.Id, s.Title, s.Description, s.StartDate, s.EndDate, completed, questions));
-        }
-        return result;
-    }
+	{
+		var surveys = await _uow.Surveys.GetAssignedSurveysForUserAsync(userId);
+
+		// Tek sorguda tüm tamamlananları çek — N+1 yerine 1 sorgu
+		var completedIds = await _uow.Surveys.GetCompletedSurveyIdsForUserAsync(userId);
+
+		return surveys.Select(s =>
+		{
+			var questions = s.SurveyQuestions.OrderBy(sq => sq.OrderIndex).Select(sq => new SurveyQuestionDto(
+				sq.Id, sq.QuestionId, sq.Question.Text, sq.OrderIndex,
+				new AnswerTemplateDto(sq.Question.AnswerTemplate.Id, sq.Question.AnswerTemplate.Name,
+					sq.Question.AnswerTemplate.IsActive,
+					sq.Question.AnswerTemplate.Options.OrderBy(o => o.OrderIndex)
+						.Select(o => new AnswerOptionDto(o.Id, o.Text, o.OrderIndex)).ToList())
+			)).ToList();
+
+			return new UserSurveyListDto(
+				s.Id, s.Title, s.Description, s.StartDate, s.EndDate,
+				completedIds.Contains(s.Id), // foreach döngüsü yok
+				questions);
+		}).ToList();
+	}
 
     public async Task<SurveyDetailDto?> GetSurveyForUserAsync(int surveyId, int userId)
     {

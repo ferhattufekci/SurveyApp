@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using SurveyApp.Application.DTOs;
+using SurveyApp.Application.Extensions;
 using SurveyApp.Application.Interfaces;
 using SurveyApp.Domain.Entities;
 using SurveyApp.Domain.Exceptions;
@@ -34,13 +35,21 @@ public class SurveyService : ISurveyService
 
     public async Task<SurveyDetailDto> CreateAsync(CreateSurveyRequest request)
     {
-        var allSurveys = await _uow.Surveys.GetAllWithDetailsAsync();
+        // ÖNCE: sıralı — allSurveys beklendi, sonra allUsers başladı
+        // var allSurveys = await _uow.Surveys.GetAllWithDetailsAsync();
+        // var allUsers   = await _uow.Users.GetAllAsync();
+
+        // SONRA: paralel — ikisi aynı anda başlıyor, toplam süre = max(T1, T2)
+        var (allSurveys, allUsers) = await (
+            _uow.Surveys.GetAllWithDetailsAsync(),
+            _uow.Users.GetAllAsync()
+        ).WhenAll();
+
         if (allSurveys.Any(s => s.Title.Trim().ToLower() == request.Title.Trim().ToLower()))
             throw new ArgumentException($"'{request.Title}' başlıklı bir anket zaten mevcut. Farklı bir başlık giriniz.");
 
         if (request.UserIds.Any())
         {
-            var allUsers = await _uow.Users.GetAllAsync();
             var passiveAssigned = allUsers.Where(u => request.UserIds.Contains(u.Id) && !u.IsActive).ToList();
             if (passiveAssigned.Any())
             {
@@ -78,7 +87,16 @@ public class SurveyService : ISurveyService
 
     public async Task<SurveyDetailDto?> UpdateAsync(int id, UpdateSurveyRequest request)
     {
-        var survey = await _uow.Surveys.GetWithDetailsAsync(id);
+        // ÖNCE: sıralı — önce survey çekildi, sonra allSurveys başladı
+        // var survey     = await _uow.Surveys.GetWithDetailsAsync(id);
+        // var allSurveys = await _uow.Surveys.GetAllWithDetailsAsync();
+
+        // SONRA: paralel — ikisi aynı anda başlıyor
+        var (survey, allSurveys) = await (
+            _uow.Surveys.GetWithDetailsAsync(id),
+            _uow.Surveys.GetAllWithDetailsAsync()
+        ).WhenAll();
+
         if (survey == null) return null;
 
         if (survey.SurveyResponses.Any())
@@ -87,7 +105,6 @@ public class SurveyService : ISurveyService
                 survey.SurveyResponses.Count,
                 "Yanıt verilen anketlerin içeriği değiştirilemez.");
 
-        var allSurveys = await _uow.Surveys.GetAllWithDetailsAsync();
         if (allSurveys.Any(s => s.Id != id && s.Title.Trim().ToLower() == request.Title.Trim().ToLower()))
             throw new ArgumentException($"'{request.Title}' başlıklı bir anket zaten mevcut. Farklı bir başlık giriniz.");
 
@@ -143,4 +160,28 @@ public class SurveyService : ISurveyService
             throw new BusinessRuleException(
                 $"Bu anket {survey.SurveyResponses.Count} kullanıcı tarafından yanıtlanmıştır ve silinemez.",
                 survey.SurveyResponses.Count,
-                "Yanıt alınan anketler silinemez."
+                "Yanıt alınan anketler silinemez.");
+
+        await _uow.Surveys.DeleteAsync(survey);
+        await _uow.SaveChangesAsync();
+
+        _logger.LogInformation("Survey soft-deleted: {SurveyId}", id);
+        return true;
+    }
+
+    private static SurveyDetailDto MapToDto(Survey s)
+    {
+        var questions = s.SurveyQuestions.OrderBy(sq => sq.OrderIndex).Select(sq =>
+        {
+            var q = sq.Question;
+            var t = q.AnswerTemplate;
+            var tDto = new AnswerTemplateDto(t.Id, t.Name, t.IsActive,
+                t.Options.OrderBy(o => o.OrderIndex)
+                    .Select(o => new AnswerOptionDto(o.Id, o.Text, o.OrderIndex)).ToList());
+            return new SurveyQuestionDto(sq.Id, q.Id, q.Text, sq.OrderIndex, tDto);
+        }).ToList();
+
+        return new SurveyDetailDto(s.Id, s.Title, s.Description, s.StartDate, s.EndDate, s.IsActive,
+            questions, s.SurveyAssignments.Select(a => a.UserId).ToList());
+    }
+}

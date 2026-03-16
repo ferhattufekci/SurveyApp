@@ -113,6 +113,13 @@ public class SurveyRepository : Repository<Survey>, ISurveyRepository
 
     public async Task<bool> HasUserCompletedSurveyAsync(int surveyId, int userId) =>
         await _db.SurveyResponses.AnyAsync(r => r.SurveyId == surveyId && r.UserId == userId);
+		
+	public async Task<HashSet<int>> GetCompletedSurveyIdsForUserAsync(int userId) =>
+    (await _db.SurveyResponses
+        .Where(r => r.UserId == userId)
+        .Select(r => r.SurveyId)
+        .ToListAsync())
+    .ToHashSet();
 }
 
 public class SurveyResponseRepository : Repository<SurveyResponse>, ISurveyResponseRepository

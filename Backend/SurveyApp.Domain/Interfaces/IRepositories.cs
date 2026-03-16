@@ -36,6 +36,7 @@ public interface ISurveyRepository : IRepository<Survey>
     Task<IEnumerable<Survey>> GetAllWithDetailsAsync();
     Task<IEnumerable<Survey>> GetAssignedSurveysForUserAsync(int userId);
     Task<bool> HasUserCompletedSurveyAsync(int surveyId, int userId);
+	Task<HashSet<int>> GetCompletedSurveyIdsForUserAsync(int userId);
 }
 
 public interface ISurveyResponseRepository : IRepository<SurveyResponse>

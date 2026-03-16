@@ -10,6 +10,7 @@ namespace SurveyApp.Application.Services;
 public class QuestionService : IQuestionService
 {
     private readonly IUnitOfWork _uow;
+    private readonly IUnitOfWork _uow;
     private readonly ILogger<QuestionService> _logger;
 
     public QuestionService(IUnitOfWork uow, ILogger<QuestionService> logger)
@@ -18,17 +19,26 @@ public class QuestionService : IQuestionService
         _logger = logger;
     }
 
-    public async Task<List<QuestionListDto>> GetAllAsync()
-    {
-        var questions = await _uow.Questions.GetAllWithTemplatesAsync();
-        var surveys = await _uow.Surveys.GetAllWithDetailsAsync();
-        var usageCounts = surveys
-            .SelectMany(s => s.SurveyQuestions.Select(sq => sq.QuestionId))
-            .GroupBy(qId => qId)
-            .ToDictionary(g => g.Key, g => g.Count());
-        return questions.Select(q => new QuestionListDto(q.Id, q.Text, q.IsActive, q.AnswerTemplateId, q.AnswerTemplate.Name,
-            usageCounts.GetValueOrDefault(q.Id, 0))).ToList();
-    }
+	public async Task<List<QuestionListDto>> GetAllAsync()
+	{
+		// ÖNCE: sıralı — toplam süre = T1 + T2
+		// var questions = await _uow.Questions.GetAllWithTemplatesAsync();
+		// var surveys   = await _uow.Surveys.GetAllWithDetailsAsync();
+
+		// SONRA: paralel — toplam süre = max(T1, T2)
+		var (questions, surveys) = await (
+			_uow.Questions.GetAllWithTemplatesAsync(),
+			_uow.Surveys.GetAllWithDetailsAsync()
+		).WhenAll();
+
+		var usageCounts = surveys
+			.SelectMany(s => s.SurveyQuestions.Select(sq => sq.QuestionId))
+			.GroupBy(qId => qId)
+			.ToDictionary(g => g.Key, g => g.Count());
+
+		return questions.Select(q => new QuestionListDto(q.Id, q.Text, q.IsActive, q.AnswerTemplateId, q.AnswerTemplate.Name,
+			usageCounts.GetValueOrDefault(q.Id, 0))).ToList();
+	}
 
     public async Task<QuestionDto?> GetByIdAsync(int id)
     {
