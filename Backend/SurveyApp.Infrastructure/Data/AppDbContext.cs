@@ -114,7 +114,7 @@ public class AppDbContext : DbContext
         {
             Id = 1,
             Email = "admin@surveyapp.com",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
+            PasswordHash = "$2a$11$AJ9ZN6mjQcNBSyQOXXGo1.aASxctJmSDwbItZKPS.CPmZKEbRYACi",
             FullName = "System Admin",
             Role = "Admin",
             IsActive = true,
