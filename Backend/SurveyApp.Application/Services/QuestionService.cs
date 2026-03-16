@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using SurveyApp.Application.DTOs;
 using SurveyApp.Application.Interfaces;
 using SurveyApp.Domain.Entities;
@@ -8,7 +9,13 @@ namespace SurveyApp.Application.Services;
 public class QuestionService : IQuestionService
 {
     private readonly IUnitOfWork _uow;
-    public QuestionService(IUnitOfWork uow) => _uow = uow;
+    private readonly ILogger<QuestionService> _logger;
+
+    public QuestionService(IUnitOfWork uow, ILogger<QuestionService> logger)
+    {
+        _uow = uow;
+        _logger = logger;
+    }
 
     public async Task<List<QuestionListDto>> GetAllAsync()
     {
@@ -46,6 +53,8 @@ public class QuestionService : IQuestionService
         await _uow.Questions.AddAsync(question);
         await _uow.SaveChangesAsync();
 
+        _logger.LogInformation("Question created: {QuestionId}", question.Id);
+
         var created = await _uow.Questions.GetWithTemplateAsync(question.Id);
         return MapToDto(created!);
     }
@@ -69,8 +78,7 @@ public class QuestionService : IQuestionService
                     $"\"{s.Title.Substring(0, Math.Min(40, s.Title.Length))}{(s.Title.Length > 40 ? "..." : "")}\""));
                 var more = activeUsages.Count > 3 ? $" ve {activeUsages.Count - 3} anket daha" : "";
                 throw new InvalidOperationException(
-                    $"Bu soru {activeUsages.Count} aktif ankette kullanılmaktadır. Pasife almadan önce bu anketleri pasife alınız.|{activeUsages.Count}|{names}{more}"
-                );
+                    $"Bu soru {activeUsages.Count} aktif ankette kullanılmaktadır. Pasife almadan önce bu anketleri pasife alınız.|{activeUsages.Count}|{names}{more}");
             }
         }
 
@@ -81,6 +89,8 @@ public class QuestionService : IQuestionService
 
         await _uow.Questions.UpdateAsync(q);
         await _uow.SaveChangesAsync();
+
+        _logger.LogInformation("Question updated: {QuestionId}", id);
 
         var updated = await _uow.Questions.GetWithTemplateAsync(id);
         return MapToDto(updated!);
@@ -99,12 +109,13 @@ public class QuestionService : IQuestionService
                 $"\"{s.Title.Substring(0, Math.Min(40, s.Title.Length))}{(s.Title.Length > 40 ? "..." : "")}\""));
             var more = usedInSurveys.Count > 3 ? $" ve {usedInSurveys.Count - 3} anket daha" : "";
             throw new InvalidOperationException(
-                $"Bu soru {usedInSurveys.Count} ankette kullanılmaktadır ve silinemez.|{usedInSurveys.Count}|{names}{more}"
-            );
+                $"Bu soru {usedInSurveys.Count} ankette kullanılmaktadır ve silinemez.|{usedInSurveys.Count}|{names}{more}");
         }
 
         await _uow.Questions.DeleteAsync(q);
         await _uow.SaveChangesAsync();
+
+        _logger.LogInformation("Question soft-deleted: {QuestionId}", id);
         return true;
     }
 

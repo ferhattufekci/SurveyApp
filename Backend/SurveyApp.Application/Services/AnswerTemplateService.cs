@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using SurveyApp.Application.DTOs;
 using SurveyApp.Application.Interfaces;
 using SurveyApp.Domain.Entities;
@@ -8,8 +9,13 @@ namespace SurveyApp.Application.Services;
 public class AnswerTemplateService : IAnswerTemplateService
 {
     private readonly IUnitOfWork _uow;
+    private readonly ILogger<AnswerTemplateService> _logger;
 
-    public AnswerTemplateService(IUnitOfWork uow) => _uow = uow;
+    public AnswerTemplateService(IUnitOfWork uow, ILogger<AnswerTemplateService> logger)
+    {
+        _uow = uow;
+        _logger = logger;
+    }
 
     public async Task<List<AnswerTemplateDto>> GetAllAsync()
     {
@@ -38,15 +44,13 @@ public class AnswerTemplateService : IAnswerTemplateService
         {
             Name = request.Name,
             IsActive = request.IsActive,
-            Options = request.Options.Select((text, i) => new AnswerOption
-            {
-                Text = text,
-                OrderIndex = i
-            }).ToList()
+            Options = request.Options.Select((text, i) => new AnswerOption { Text = text, OrderIndex = i }).ToList()
         };
 
         await _uow.AnswerTemplates.AddAsync(template);
         await _uow.SaveChangesAsync();
+
+        _logger.LogInformation("Answer template created: {TemplateId} - {TemplateName}", template.Id, template.Name);
 
         var created = await _uow.AnswerTemplates.GetWithOptionsAsync(template.Id);
         return MapToDto(created!);
@@ -64,7 +68,6 @@ public class AnswerTemplateService : IAnswerTemplateService
         if (existing.Any(t => t.Id != id && t.Name.Trim().ToLower() == request.Name.Trim().ToLower()))
             throw new ArgumentException($"'{request.Name}' adında bir şablon zaten mevcut. Farklı bir ad giriniz.");
 
-        // Aktif sorularda kullanılan şablon pasife alınamaz
         if (template.IsActive && !request.IsActive)
         {
             var questions = await _uow.Questions.GetAllWithTemplatesAsync();
@@ -75,26 +78,23 @@ public class AnswerTemplateService : IAnswerTemplateService
                     $"\"{q.Text.Substring(0, Math.Min(40, q.Text.Length))}{(q.Text.Length > 40 ? "..." : "")}\""));
                 var more = activeUsages.Count > 3 ? $" ve {activeUsages.Count - 3} soru daha" : "";
                 throw new InvalidOperationException(
-                    $"Bu şablon {activeUsages.Count} aktif soruda kullanılmaktadır. Pasife almadan önce bu soruları pasife alınız.|{activeUsages.Count}|{names}{more}"
-                );
+                    $"Bu şablon {activeUsages.Count} aktif soruda kullanılmaktadır. Pasife almadan önce bu soruları pasife alınız.|{activeUsages.Count}|{names}{more}");
             }
         }
 
         template.Name = request.Name;
         template.IsActive = request.IsActive;
         template.UpdatedAt = DateTime.UtcNow;
-
         template.Options.Clear();
         template.Options = request.Options.Select((o, i) => new AnswerOption
         {
-            Id = o.Id ?? 0,
-            Text = o.Text,
-            OrderIndex = o.OrderIndex,
-            AnswerTemplateId = id
+            Id = o.Id ?? 0, Text = o.Text, OrderIndex = o.OrderIndex, AnswerTemplateId = id
         }).ToList();
 
         await _uow.AnswerTemplates.UpdateAsync(template);
         await _uow.SaveChangesAsync();
+
+        _logger.LogInformation("Answer template updated: {TemplateId} - {TemplateName}", id, template.Name);
 
         var updated = await _uow.AnswerTemplates.GetWithOptionsAsync(id);
         return MapToDto(updated!);
@@ -105,7 +105,6 @@ public class AnswerTemplateService : IAnswerTemplateService
         var template = await _uow.AnswerTemplates.GetByIdAsync(id);
         if (template == null) return false;
 
-        // Kullanımda olan şablon silinemez
         var questions = await _uow.Questions.GetAllWithTemplatesAsync();
         var usedInQuestions = questions.Where(q => q.AnswerTemplateId == id).ToList();
         if (usedInQuestions.Any())
@@ -114,12 +113,13 @@ public class AnswerTemplateService : IAnswerTemplateService
                 $"\"{q.Text.Substring(0, Math.Min(40, q.Text.Length))}{(q.Text.Length > 40 ? "..." : "")}\""));
             var more = usedInQuestions.Count > 3 ? $" ve {usedInQuestions.Count - 3} soru daha" : "";
             throw new InvalidOperationException(
-                $"Bu şablon {usedInQuestions.Count} soruda kullanılmaktadır ve silinemez.|{usedInQuestions.Count}|{names}{more}"
-            );
+                $"Bu şablon {usedInQuestions.Count} soruda kullanılmaktadır ve silinemez.|{usedInQuestions.Count}|{names}{more}");
         }
 
         await _uow.AnswerTemplates.DeleteAsync(template);
         await _uow.SaveChangesAsync();
+
+        _logger.LogInformation("Answer template soft-deleted: {TemplateId}", id);
         return true;
     }
 

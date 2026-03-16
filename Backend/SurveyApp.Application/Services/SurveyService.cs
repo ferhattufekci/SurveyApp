@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using SurveyApp.Application.DTOs;
 using SurveyApp.Application.Interfaces;
 using SurveyApp.Domain.Entities;
@@ -8,7 +9,13 @@ namespace SurveyApp.Application.Services;
 public class SurveyService : ISurveyService
 {
     private readonly IUnitOfWork _uow;
-    public SurveyService(IUnitOfWork uow) => _uow = uow;
+    private readonly ILogger<SurveyService> _logger;
+
+    public SurveyService(IUnitOfWork uow, ILogger<SurveyService> logger)
+    {
+        _uow = uow;
+        _logger = logger;
+    }
 
     public async Task<List<SurveyListDto>> GetAllAsync()
     {
@@ -48,19 +55,14 @@ public class SurveyService : ISurveyService
             StartDate = request.StartDate,
             EndDate = request.EndDate,
             IsActive = request.IsActive,
-            SurveyQuestions = request.QuestionIds.Select((qId, i) => new SurveyQuestion
-            {
-                QuestionId = qId,
-                OrderIndex = i
-            }).ToList(),
-            SurveyAssignments = request.UserIds.Select(uId => new SurveyAssignment
-            {
-                UserId = uId
-            }).ToList()
+            SurveyQuestions = request.QuestionIds.Select((qId, i) => new SurveyQuestion { QuestionId = qId, OrderIndex = i }).ToList(),
+            SurveyAssignments = request.UserIds.Select(uId => new SurveyAssignment { UserId = uId }).ToList()
         };
 
         await _uow.Surveys.AddAsync(survey);
         await _uow.SaveChangesAsync();
+
+        _logger.LogInformation("Survey created: {SurveyId} - {Title}", survey.Id, survey.Title);
 
         var created = await _uow.Surveys.GetWithDetailsAsync(survey.Id);
         return MapToDto(created!);
@@ -73,8 +75,7 @@ public class SurveyService : ISurveyService
 
         if (survey.SurveyResponses.Any())
             throw new InvalidOperationException(
-                $"Bu anket {survey.SurveyResponses.Count} kullanıcı tarafından yanıtlanmıştır ve düzenlenemez.|{survey.SurveyResponses.Count}|Yanıt verilen anketlerin içeriği değiştirilemez."
-            );
+                $"Bu anket {survey.SurveyResponses.Count} kullanıcı tarafından yanıtlanmıştır ve düzenlenemez.|{survey.SurveyResponses.Count}|Yanıt verilen anketlerin içeriği değiştirilemez.");
 
         var allSurveys = await _uow.Surveys.GetAllWithDetailsAsync();
         if (allSurveys.Any(s => s.Id != id && s.Title.Trim().ToLower() == request.Title.Trim().ToLower()))
@@ -97,24 +98,15 @@ public class SurveyService : ISurveyService
         survey.EndDate = request.EndDate;
         survey.IsActive = request.IsActive;
         survey.UpdatedAt = DateTime.UtcNow;
-
         survey.SurveyQuestions.Clear();
-        survey.SurveyQuestions = request.QuestionIds.Select((qId, i) => new SurveyQuestion
-        {
-            SurveyId = id,
-            QuestionId = qId,
-            OrderIndex = i
-        }).ToList();
-
+        survey.SurveyQuestions = request.QuestionIds.Select((qId, i) => new SurveyQuestion { SurveyId = id, QuestionId = qId, OrderIndex = i }).ToList();
         survey.SurveyAssignments.Clear();
-        survey.SurveyAssignments = request.UserIds.Select(uId => new SurveyAssignment
-        {
-            SurveyId = id,
-            UserId = uId
-        }).ToList();
+        survey.SurveyAssignments = request.UserIds.Select(uId => new SurveyAssignment { SurveyId = id, UserId = uId }).ToList();
 
         await _uow.Surveys.UpdateAsync(survey);
         await _uow.SaveChangesAsync();
+
+        _logger.LogInformation("Survey updated: {SurveyId}", id);
 
         var updated = await _uow.Surveys.GetWithDetailsAsync(id);
         return MapToDto(updated!);
@@ -133,6 +125,8 @@ public class SurveyService : ISurveyService
 
         await _uow.Surveys.DeleteAsync(survey);
         await _uow.SaveChangesAsync();
+
+        _logger.LogInformation("Survey soft-deleted: {SurveyId}", id);
         return true;
     }
 

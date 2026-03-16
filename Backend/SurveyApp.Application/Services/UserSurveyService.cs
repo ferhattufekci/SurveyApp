@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using SurveyApp.Application.DTOs;
 using SurveyApp.Application.Interfaces;
 using SurveyApp.Domain.Interfaces;
@@ -7,13 +8,18 @@ namespace SurveyApp.Application.Services;
 public class UserSurveyService : IUserSurveyService
 {
     private readonly IUnitOfWork _uow;
-    public UserSurveyService(IUnitOfWork uow) => _uow = uow;
+    private readonly ILogger<UserSurveyService> _logger;
+
+    public UserSurveyService(IUnitOfWork uow, ILogger<UserSurveyService> logger)
+    {
+        _uow = uow;
+        _logger = logger;
+    }
 
     public async Task<List<UserSurveyListDto>> GetAssignedSurveysAsync(int userId)
     {
         var surveys = await _uow.Surveys.GetAssignedSurveysForUserAsync(userId);
         var result = new List<UserSurveyListDto>();
-
         foreach (var s in surveys)
         {
             var completed = await _uow.Surveys.HasUserCompletedSurveyAsync(s.Id, userId);
@@ -33,10 +39,7 @@ public class UserSurveyService : IUserSurveyService
     {
         var survey = await _uow.Surveys.GetWithDetailsAsync(surveyId);
         if (survey == null) return null;
-
-        var isAssigned = survey.SurveyAssignments.Any(a => a.UserId == userId);
-        if (!isAssigned) return null;
-
+        if (!survey.SurveyAssignments.Any(a => a.UserId == userId)) return null;
         var now = DateTime.UtcNow;
         if (now < survey.StartDate || now > survey.EndDate || !survey.IsActive) return null;
 
@@ -66,9 +69,7 @@ public class UserSurveyService : IUserSurveyService
 
         var now = DateTime.UtcNow;
         if (now < survey.StartDate || now > survey.EndDate) return false;
-
-        var isAssigned = survey.SurveyAssignments.Any(a => a.UserId == userId);
-        if (!isAssigned) return false;
+        if (!survey.SurveyAssignments.Any(a => a.UserId == userId)) return false;
 
         var surveyQuestionIds = survey.SurveyQuestions.Select(sq => sq.QuestionId).ToHashSet();
         var answeredQuestionIds = request.Answers.Select(a => a.QuestionId).ToHashSet();
@@ -78,7 +79,6 @@ public class UserSurveyService : IUserSurveyService
         {
             var surveyQuestion = survey.SurveyQuestions.FirstOrDefault(sq => sq.QuestionId == answer.QuestionId);
             if (surveyQuestion == null) return false;
-
             var validOptionIds = surveyQuestion.Question.AnswerTemplate.Options.Select(o => o.Id).ToHashSet();
             if (!validOptionIds.Contains(answer.AnswerOptionId)) return false;
         }
@@ -96,6 +96,8 @@ public class UserSurveyService : IUserSurveyService
 
         await _uow.SurveyResponses.AddAsync(response);
         await _uow.SaveChangesAsync();
+
+        _logger.LogInformation("Survey {SurveyId} submitted by user {UserId}", request.SurveyId, userId);
         return true;
     }
 

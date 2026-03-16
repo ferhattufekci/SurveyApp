@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using SurveyApp.Application.DTOs;
 using SurveyApp.Application.Interfaces;
 using SurveyApp.Domain.Interfaces;
@@ -7,7 +8,13 @@ namespace SurveyApp.Application.Services;
 public class ReportService : IReportService
 {
     private readonly IUnitOfWork _uow;
-    public ReportService(IUnitOfWork uow) => _uow = uow;
+    private readonly ILogger<ReportService> _logger;
+
+    public ReportService(IUnitOfWork uow, ILogger<ReportService> logger)
+    {
+        _uow = uow;
+        _logger = logger;
+    }
 
     public async Task<SurveyReportDto?> GetSurveyReportAsync(int surveyId)
     {
@@ -28,6 +35,9 @@ public class ReportService : IReportService
             var answers = r.Answers.Select(a => new AnswerDetailDto(a.QuestionId, a.Question.Text, a.AnswerOption.Text)).ToList();
             return new UserResponseDto(r.UserId, r.User.FullName, r.User.Email, r.SubmittedAt, answers);
         }).ToList();
+
+        _logger.LogInformation("Report generated for survey {SurveyId}: {Completed}/{Total} completed",
+            surveyId, respondedUserIds.Count, assignedUserIds.Count);
 
         return new SurveyReportDto(survey.Id, survey.Title, assignedUserIds.Count,
             respondedUserIds.Count, pendingUserIds.Count, completedResponses, pendingUsers);
