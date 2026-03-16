@@ -469,7 +469,7 @@ export default function QuestionsPage() {
                   <label>Cevap Şablonu</label>
                   <select value={form.answerTemplateId} onChange={e => setForm(f => ({ ...f, answerTemplateId: Number(e.target.value) }))}>
                     <option value={0}>Şablon seçiniz...</option>
-                    {templates.map(t => <option key={t.id} value={t.id}>{t.name} ({t.options.length} seçenek)</option>)}
+                    {templates.filter(t => t.isActive).map(t => <option key={t.id} value={t.id}>{t.name} ({t.options.length} seçenek)</option>)}
                   </select>
                 </div>
 
