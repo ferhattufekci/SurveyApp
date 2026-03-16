@@ -11,7 +11,8 @@ import UsersPage from './pages/admin/UsersPage';
 import { ReportsListPage, SurveyReportPage } from './pages/admin/ReportsPage';
 import { UserSurveysListPage, FillSurveyPage } from './pages/user/UserSurveysPage';
 
-function RequireAuth({ children, role }: { children: JSX.Element; role?: string }) {
+// FIX 9: JSX.Element yerine React.ReactNode kullanıldı (React 18 uyumlu)
+function RequireAuth({ children, role }: { children: React.ReactNode; role?: string }) {
   const { isAuthenticated, user } = useAuthStore();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (role && user?.role !== role) return <Navigate to="/login" replace />;
@@ -20,7 +21,9 @@ function RequireAuth({ children, role }: { children: JSX.Element; role?: string 
 
 export default function App() {
   const { initFromStorage } = useAuthStore();
-  useEffect(() => { initFromStorage(); }, []);
+
+  // FIX 10: initFromStorage dependency array'e eklendi
+  useEffect(() => { initFromStorage(); }, [initFromStorage]);
 
   return (
     <BrowserRouter>
