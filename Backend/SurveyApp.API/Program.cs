@@ -93,6 +93,7 @@ using (var scope = app.Services.CreateScope())
     db.Database.Migrate();
 }
 
+app.UseMiddleware<GlobalExceptionMiddleware>();
 // Swagger tüm ortamlarda aktif
 app.UseSwagger();
 app.UseSwaggerUI();
