@@ -11,8 +11,8 @@ using SurveyApp.Infrastructure.Data;
 namespace SurveyApp.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260316200750_FixAdminPasswordHash")]
-    partial class FixAdminPasswordHash
+    [Migration("20260316203645_AddSoftDeleteAndFixHash")]
+    partial class AddSoftDeleteAndFixHash
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
