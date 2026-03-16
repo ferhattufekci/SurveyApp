@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Logging;
 using SurveyApp.Application.DTOs;
 using SurveyApp.Application.Interfaces;
+using SurveyApp.Domain.Exceptions;
 using SurveyApp.Domain.Interfaces;
-using SurveyApp.Domain.Constants;
 
 namespace SurveyApp.Application.Services;
 
@@ -58,53 +58,10 @@ public class UserService : IUserService
         if (u.IsActive && !request.IsActive)
         {
             var surveys = await _uow.Surveys.GetAllWithDetailsAsync();
-            var activeUsages = surveys.Where(s => s.IsActive && s.SurveyAssignments.Any(a => a.UserId == id)).ToList();
+            var activeUsages = surveys
+                .Where(s => s.IsActive && s.SurveyAssignments.Any(a => a.UserId == id))
+                .ToList();
             if (activeUsages.Any())
             {
                 var names = string.Join(", ", activeUsages.Take(3).Select(s =>
-                    $"\"{s.Title.Substring(0, Math.Min(40, s.Title.Length))}{(s.Title.Length > 40 ? "..." : "")}\""));
-                var more = activeUsages.Count > 3 ? $" ve {activeUsages.Count - 3} anket daha" : "";
-                throw new InvalidOperationException(
-                    $"Bu kullanıcı {activeUsages.Count} aktif ankete atanmıştır. Pasife almadan önce bu anketleri güncelleyiniz.|{activeUsages.Count}|{names}{more}");
-            }
-        }
-
-        u.FullName = request.FullName;
-        u.IsActive = request.IsActive;
-        await _uow.Users.UpdateAsync(u);
-        await _uow.SaveChangesAsync();
-
-        _logger.LogInformation("User updated: {UserId}", id);
-        return new UserDto(u.Id, u.Email, u.FullName, u.Role, u.IsActive);
-    }
-
-    public async Task<bool> DeleteAsync(int id)
-    {
-        var u = await _uow.Users.GetByIdAsync(id);
-        if (u == null) return false;
-
-        if (u.Role == Roles.Admin)
-        {
-            var adminCount = await _uow.Users.GetActiveAdminCountAsync();
-            if (adminCount <= 1)
-                throw new InvalidOperationException("Sistemde en az bir aktif admin bulunmalıdır. Son admin silinemez.");
-        }
-
-        var surveys = await _uow.Surveys.GetAllWithDetailsAsync();
-        var usedInSurveys = surveys.Where(s => s.SurveyAssignments.Any(a => a.UserId == id)).ToList();
-        if (usedInSurveys.Any())
-        {
-            var names = string.Join(", ", usedInSurveys.Take(3).Select(s =>
-                $"\"{s.Title.Substring(0, Math.Min(40, s.Title.Length))}{(s.Title.Length > 40 ? "..." : "")}\""));
-            var more = usedInSurveys.Count > 3 ? $" ve {usedInSurveys.Count - 3} anket daha" : "";
-            throw new InvalidOperationException(
-                $"Bu kullanıcı {usedInSurveys.Count} ankete atanmıştır ve silinemez.|{usedInSurveys.Count}|{names}{more}");
-        }
-
-        await _uow.Users.DeleteAsync(u);
-        await _uow.SaveChangesAsync();
-
-        _logger.LogInformation("User soft-deleted: {UserId}", id);
-        return true;
-    }
-}
+                    $"\"{s.Tit

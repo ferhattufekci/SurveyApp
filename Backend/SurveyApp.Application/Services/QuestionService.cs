@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using SurveyApp.Application.DTOs;
 using SurveyApp.Application.Interfaces;
 using SurveyApp.Domain.Entities;
+using SurveyApp.Domain.Exceptions;
 using SurveyApp.Domain.Interfaces;
 
 namespace SurveyApp.Application.Services;
@@ -77,8 +78,10 @@ public class QuestionService : IQuestionService
                 var names = string.Join(", ", activeUsages.Take(3).Select(s =>
                     $"\"{s.Title.Substring(0, Math.Min(40, s.Title.Length))}{(s.Title.Length > 40 ? "..." : "")}\""));
                 var more = activeUsages.Count > 3 ? $" ve {activeUsages.Count - 3} anket daha" : "";
-                throw new InvalidOperationException(
-                    $"Bu soru {activeUsages.Count} aktif ankette kullanılmaktadır. Pasife almadan önce bu anketleri pasife alınız.|{activeUsages.Count}|{names}{more}");
+                throw new BusinessRuleException(
+                    $"Bu soru {activeUsages.Count} aktif ankette kullanılmaktadır. Pasife almadan önce bu anketleri pasife alınız.",
+                    activeUsages.Count,
+                    $"{names}{more}");
             }
         }
 
@@ -108,8 +111,10 @@ public class QuestionService : IQuestionService
             var names = string.Join(", ", usedInSurveys.Take(3).Select(s =>
                 $"\"{s.Title.Substring(0, Math.Min(40, s.Title.Length))}{(s.Title.Length > 40 ? "..." : "")}\""));
             var more = usedInSurveys.Count > 3 ? $" ve {usedInSurveys.Count - 3} anket daha" : "";
-            throw new InvalidOperationException(
-                $"Bu soru {usedInSurveys.Count} ankette kullanılmaktadır ve silinemez.|{usedInSurveys.Count}|{names}{more}");
+            throw new BusinessRuleException(
+                $"Bu soru {usedInSurveys.Count} ankette kullanılmaktadır ve silinemez.",
+                usedInSurveys.Count,
+                $"{names}{more}");
         }
 
         await _uow.Questions.DeleteAsync(q);

@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using SurveyApp.Domain.Exceptions;
 
 namespace SurveyApp.API.Middleware;
 
@@ -24,7 +25,6 @@ public sealed class GlobalExceptionMiddleware
         {
             _logger.LogError(ex, "Unhandled exception for {Method} {Path}",
                 context.Request.Method, context.Request.Path);
-
             await WriteErrorResponse(context, ex);
         }
     }
@@ -35,11 +35,13 @@ public sealed class GlobalExceptionMiddleware
 
         var (statusCode, message) = ex switch
         {
-            ArgumentException         => (HttpStatusCode.BadRequest,      ex.Message),
-            InvalidOperationException => (HttpStatusCode.BadRequest,      ex.Message),
-            UnauthorizedAccessException => (HttpStatusCode.Unauthorized,  "Unauthorized."),
-            KeyNotFoundException      => (HttpStatusCode.NotFound,        "Resource not found."),
-            _                         => (HttpStatusCode.InternalServerError, "An unexpected error occurred.")
+            BusinessRuleException bre => (HttpStatusCode.BadRequest,
+                bre.Message + (string.IsNullOrEmpty(bre.Detail) ? "" : $"|{bre.AffectedCount}|{bre.Detail}")),
+            ArgumentException           => (HttpStatusCode.BadRequest,   ex.Message),
+            InvalidOperationException   => (HttpStatusCode.BadRequest,   ex.Message),
+            UnauthorizedAccessException => (HttpStatusCode.Unauthorized, "Unauthorized."),
+            KeyNotFoundException        => (HttpStatusCode.NotFound,     "Resource not found."),
+            _                           => (HttpStatusCode.InternalServerError, "An unexpected error occurred.")
         };
 
         context.Response.StatusCode = (int)statusCode;

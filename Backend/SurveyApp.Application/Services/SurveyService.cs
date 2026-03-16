@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using SurveyApp.Application.DTOs;
 using SurveyApp.Application.Interfaces;
 using SurveyApp.Domain.Entities;
+using SurveyApp.Domain.Exceptions;
 using SurveyApp.Domain.Interfaces;
 
 namespace SurveyApp.Application.Services;
@@ -55,8 +56,15 @@ public class SurveyService : ISurveyService
             StartDate = request.StartDate,
             EndDate = request.EndDate,
             IsActive = request.IsActive,
-            SurveyQuestions = request.QuestionIds.Select((qId, i) => new SurveyQuestion { QuestionId = qId, OrderIndex = i }).ToList(),
-            SurveyAssignments = request.UserIds.Select(uId => new SurveyAssignment { UserId = uId }).ToList()
+            SurveyQuestions = request.QuestionIds.Select((qId, i) => new SurveyQuestion
+            {
+                QuestionId = qId,
+                OrderIndex = i
+            }).ToList(),
+            SurveyAssignments = request.UserIds.Select(uId => new SurveyAssignment
+            {
+                UserId = uId
+            }).ToList()
         };
 
         await _uow.Surveys.AddAsync(survey);
@@ -74,8 +82,10 @@ public class SurveyService : ISurveyService
         if (survey == null) return null;
 
         if (survey.SurveyResponses.Any())
-            throw new InvalidOperationException(
-                $"Bu anket {survey.SurveyResponses.Count} kullanıcı tarafından yanıtlanmıştır ve düzenlenemez.|{survey.SurveyResponses.Count}|Yanıt verilen anketlerin içeriği değiştirilemez.");
+            throw new BusinessRuleException(
+                $"Bu anket {survey.SurveyResponses.Count} kullanıcı tarafından yanıtlanmıştır ve düzenlenemez.",
+                survey.SurveyResponses.Count,
+                "Yanıt verilen anketlerin içeriği değiştirilemez.");
 
         var allSurveys = await _uow.Surveys.GetAllWithDetailsAsync();
         if (allSurveys.Any(s => s.Id != id && s.Title.Trim().ToLower() == request.Title.Trim().ToLower()))
@@ -99,9 +109,18 @@ public class SurveyService : ISurveyService
         survey.IsActive = request.IsActive;
         survey.UpdatedAt = DateTime.UtcNow;
         survey.SurveyQuestions.Clear();
-        survey.SurveyQuestions = request.QuestionIds.Select((qId, i) => new SurveyQuestion { SurveyId = id, QuestionId = qId, OrderIndex = i }).ToList();
+        survey.SurveyQuestions = request.QuestionIds.Select((qId, i) => new SurveyQuestion
+        {
+            SurveyId = id,
+            QuestionId = qId,
+            OrderIndex = i
+        }).ToList();
         survey.SurveyAssignments.Clear();
-        survey.SurveyAssignments = request.UserIds.Select(uId => new SurveyAssignment { SurveyId = id, UserId = uId }).ToList();
+        survey.SurveyAssignments = request.UserIds.Select(uId => new SurveyAssignment
+        {
+            SurveyId = id,
+            UserId = uId
+        }).ToList();
 
         await _uow.Surveys.UpdateAsync(survey);
         await _uow.SaveChangesAsync();
@@ -121,27 +140,7 @@ public class SurveyService : ISurveyService
             throw new InvalidOperationException("Süresi geçmiş anketler silinemez.");
 
         if (survey.SurveyResponses.Any())
-            throw new InvalidOperationException($"Bu anket {survey.SurveyResponses.Count} kullanıcı tarafından yanıtlanmıştır ve silinemez.");
-
-        await _uow.Surveys.DeleteAsync(survey);
-        await _uow.SaveChangesAsync();
-
-        _logger.LogInformation("Survey soft-deleted: {SurveyId}", id);
-        return true;
-    }
-
-    private static SurveyDetailDto MapToDto(Survey s)
-    {
-        var questions = s.SurveyQuestions.OrderBy(sq => sq.OrderIndex).Select(sq =>
-        {
-            var q = sq.Question;
-            var t = q.AnswerTemplate;
-            var tDto = new AnswerTemplateDto(t.Id, t.Name, t.IsActive,
-                t.Options.OrderBy(o => o.OrderIndex).Select(o => new AnswerOptionDto(o.Id, o.Text, o.OrderIndex)).ToList());
-            return new SurveyQuestionDto(sq.Id, q.Id, q.Text, sq.OrderIndex, tDto);
-        }).ToList();
-
-        return new SurveyDetailDto(s.Id, s.Title, s.Description, s.StartDate, s.EndDate, s.IsActive,
-            questions, s.SurveyAssignments.Select(a => a.UserId).ToList());
-    }
-}
+            throw new BusinessRuleException(
+                $"Bu anket {survey.SurveyResponses.Count} kullanıcı tarafından yanıtlanmıştır ve silinemez.",
+                survey.SurveyResponses.Count,
+                "Yanıt alınan anketler silinemez."

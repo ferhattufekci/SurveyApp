@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using SurveyApp.Application.DTOs;
 using SurveyApp.Application.Interfaces;
 using SurveyApp.Domain.Entities;
+using SurveyApp.Domain.Exceptions;
 using SurveyApp.Domain.Interfaces;
 
 namespace SurveyApp.Application.Services;
@@ -44,7 +45,11 @@ public class AnswerTemplateService : IAnswerTemplateService
         {
             Name = request.Name,
             IsActive = request.IsActive,
-            Options = request.Options.Select((text, i) => new AnswerOption { Text = text, OrderIndex = i }).ToList()
+            Options = request.Options.Select((text, i) => new AnswerOption
+            {
+                Text = text,
+                OrderIndex = i
+            }).ToList()
         };
 
         await _uow.AnswerTemplates.AddAsync(template);
@@ -77,8 +82,10 @@ public class AnswerTemplateService : IAnswerTemplateService
                 var names = string.Join(", ", activeUsages.Take(3).Select(q =>
                     $"\"{q.Text.Substring(0, Math.Min(40, q.Text.Length))}{(q.Text.Length > 40 ? "..." : "")}\""));
                 var more = activeUsages.Count > 3 ? $" ve {activeUsages.Count - 3} soru daha" : "";
-                throw new InvalidOperationException(
-                    $"Bu şablon {activeUsages.Count} aktif soruda kullanılmaktadır. Pasife almadan önce bu soruları pasife alınız.|{activeUsages.Count}|{names}{more}");
+                throw new BusinessRuleException(
+                    $"Bu şablon {activeUsages.Count} aktif soruda kullanılmaktadır. Pasife almadan önce bu soruları pasife alınız.",
+                    activeUsages.Count,
+                    $"{names}{more}");
             }
         }
 
@@ -88,7 +95,10 @@ public class AnswerTemplateService : IAnswerTemplateService
         template.Options.Clear();
         template.Options = request.Options.Select((o, i) => new AnswerOption
         {
-            Id = o.Id ?? 0, Text = o.Text, OrderIndex = o.OrderIndex, AnswerTemplateId = id
+            Id = o.Id ?? 0,
+            Text = o.Text,
+            OrderIndex = o.OrderIndex,
+            AnswerTemplateId = id
         }).ToList();
 
         await _uow.AnswerTemplates.UpdateAsync(template);
@@ -112,8 +122,10 @@ public class AnswerTemplateService : IAnswerTemplateService
             var names = string.Join(", ", usedInQuestions.Take(3).Select(q =>
                 $"\"{q.Text.Substring(0, Math.Min(40, q.Text.Length))}{(q.Text.Length > 40 ? "..." : "")}\""));
             var more = usedInQuestions.Count > 3 ? $" ve {usedInQuestions.Count - 3} soru daha" : "";
-            throw new InvalidOperationException(
-                $"Bu şablon {usedInQuestions.Count} soruda kullanılmaktadır ve silinemez.|{usedInQuestions.Count}|{names}{more}");
+            throw new BusinessRuleException(
+                $"Bu şablon {usedInQuestions.Count} soruda kullanılmaktadır ve silinemez.",
+                usedInQuestions.Count,
+                $"{names}{more}");
         }
 
         await _uow.AnswerTemplates.DeleteAsync(template);
