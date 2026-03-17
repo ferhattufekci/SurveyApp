@@ -2,12 +2,13 @@ import SearchInput from '../../components/admin/SearchInput';
 import { useEffect, useState } from 'react';
 import { usersApi, surveysApi, extractErrorMessage } from '../../api';
 import { useAuthStore } from '../../store/authStore';
+import { useLanguageStore } from '../../store/languageStore';
+import { t, tx } from '../../i18n/translations';
 import type { User, SurveyListItem } from '../../types';
 
 type FilterKey = 'all' | 'active' | 'passive' | 'admin' | 'admin_active' | 'admin_passive' | 'user' | 'user_active' | 'user_passive';
 const PAGE_SIZE = 8;
 
-/* ── Tooltip ── */
 function Tooltip({ text, children }: { text: string; children: React.ReactNode }) {
   const [show, setShow] = useState(false);
   return (
@@ -15,19 +16,9 @@ function Tooltip({ text, children }: { text: string; children: React.ReactNode }
       onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
       {children}
       {show && (
-        <span style={{
-          position: 'absolute', bottom: 'calc(100% + 6px)', left: '50%',
-          transform: 'translateX(-50%)', whiteSpace: 'nowrap',
-          background: '#1f2937', color: '#fff', fontSize: '12px',
-          padding: '5px 10px', borderRadius: '6px', zIndex: 999,
-          boxShadow: '0 2px 8px rgba(0,0,0,.25)', pointerEvents: 'none',
-        }}>
+        <span style={{ position: 'absolute', bottom: 'calc(100% + 6px)', left: '50%', transform: 'translateX(-50%)', whiteSpace: 'nowrap', background: '#1f2937', color: '#fff', fontSize: '12px', padding: '5px 10px', borderRadius: '6px', zIndex: 999, boxShadow: '0 2px 8px rgba(0,0,0,.25)', pointerEvents: 'none' }}>
           {text}
-          <span style={{
-            position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)',
-            borderWidth: '5px', borderStyle: 'solid',
-            borderColor: '#1f2937 transparent transparent transparent',
-          }} />
+          <span style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', borderWidth: '5px', borderStyle: 'solid', borderColor: '#1f2937 transparent transparent transparent' }} />
         </span>
       )}
     </span>
@@ -35,6 +26,7 @@ function Tooltip({ text, children }: { text: string; children: React.ReactNode }
 }
 
 export default function UsersPage() {
+  const { language } = useLanguageStore();
   const [users, setUsers]     = useState<User[]>([]);
   const [surveys, setSurveys] = useState<SurveyListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,7 +44,6 @@ export default function UsersPage() {
   const [search, setSearch]   = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
   const [page, setPage]       = useState(1);
-
   const currentUser = useAuthStore(s => s.user);
 
   const load = () =>
@@ -77,9 +68,9 @@ export default function UsersPage() {
 
   const handleSave = async () => {
     setError(''); setErrorType(''); setErrorDetail('');
-    if (!form.fullName.trim()) { setError('Ad Soyad zorunludur.'); setErrorType('general'); return; }
-    if (!editItem && !form.email.trim()) { setError('E-posta zorunludur.'); setErrorType('general'); return; }
-    if (!editItem && !form.password.trim()) { setError('Şifre zorunludur.'); setErrorType('general'); return; }
+    if (!form.fullName.trim()) { setError(tx(language, t.users.errFullName)); setErrorType('general'); return; }
+    if (!editItem && !form.email.trim()) { setError(tx(language, t.users.errEmail)); setErrorType('general'); return; }
+    if (!editItem && !form.password.trim()) { setError(tx(language, t.users.errPassword)); setErrorType('general'); return; }
     setSaving(true);
     try {
       if (editItem) {
@@ -88,12 +79,12 @@ export default function UsersPage() {
         await usersApi.create({ email: form.email, password: form.password, fullName: form.fullName, role: form.role, isActive: form.isActive });
       }
       closeModal();
-      showSuccess(editItem ? 'Kullanıcı başarıyla güncellendi.' : 'Kullanıcı başarıyla oluşturuldu.');
+      showSuccess(editItem ? tx(language, t.users.successUpdate) : tx(language, t.users.successCreate));
       load();
     } catch (e: any) {
       const msg = extractErrorMessage(e);
       const parts = msg.split('|');
-      const isPassiveConflict = parts.length === 3 && msg.toLowerCase().includes('aktif ankete atanmıştır');
+      const isPassiveConflict = parts.length === 3 && (msg.toLowerCase().includes('aktif ankete') || msg.toLowerCase().includes('active survey'));
       setError(isPassiveConflict ? parts[0] : msg);
       setErrorType(isPassiveConflict ? 'passive_conflict' : 'general');
       if (isPassiveConflict) setErrorDetail(parts[2]);
@@ -103,37 +94,23 @@ export default function UsersPage() {
   };
 
   const handleDelete = async (u: User, rowNum: number) => {
-    if (u.email === currentUser?.email) { alert('Kendi hesabınızı silemezsiniz.'); return; }
+    if (u.email === currentUser?.email) { alert(tx(language, t.users.errSelf)); return; }
     const activeAdminCount = users.filter(x => x.role === 'Admin' && x.isActive).length;
-    if (u.role === 'Admin' && activeAdminCount <= 1) {
-      alert('Sistemde en az bir aktif admin bulunmalıdır. Son admin silinemez.');
-      return;
-    }
-    const confirmMsg = `${rowNum} numaralı ${u.role === 'Admin' ? 'Admin' : ''} kullanıcıyı silmek istediğinize emin misiniz?`;
+    if (u.role === 'Admin' && activeAdminCount <= 1) { alert(tx(language, t.users.errLastAdmin)); return; }
+    const confirmMsg = u.role === 'Admin'
+      ? `${rowNum} ${tx(language, t.users.deleteAdminConfirm)}`
+      : `${rowNum} ${tx(language, t.users.deleteConfirm)}`;
     if (!confirm(confirmMsg)) return;
     try {
-      await usersApi.delete(u.id); load(); showSuccess(`${rowNum} numaralı kullanıcı başarıyla silindi.`);
+      await usersApi.delete(u.id); load();
+      showSuccess(`${rowNum} ${tx(language, t.users.successDelete)}`);
     } catch (e: any) {
-      alert(e.response?.data?.message || 'Silme işlemi başarısız.');
+      alert(e.response?.data?.message || tx(language, t.common.error));
     }
   };
 
-  /* Kullanıcının ankette kullanılıp kullanılmadığını kontrol et */
-  const getUserSurveyCount = (userId: number) =>
-    surveys.filter(s => (s as any).assignedUserIds?.includes(userId) ?? false).length;
+  const handleFilterClick = (key: FilterKey) => { setActiveFilter(prev => prev === key ? 'all' : key); setSearch(''); setPage(1); };
 
-  /* Basit kontrol: SurveyListItem'da assignedUserIds yok, bu yüzden
-     assignedUserCount > 0 olan surveys'den kullanıcı kontrolü için
-     backend'e güveniyoruz. Sil butonu disable için başka bir sinyal yok,
-     bu yüzden sil butonunu her zaman aktif bırakıp backend hatası veriyoruz.
-     Ama UI'da surveysApi'dan gelen veride assignedUserIds varsa kullanalım. */
-
-  const handleFilterClick = (key: FilterKey) => {
-    setActiveFilter(prev => prev === key ? 'all' : key);
-    setSearch(''); setPage(1);
-  };
-
-  /* ── İstatistikler ── */
   const totalCount   = users.length;
   const activeCount  = users.filter(u => u.isActive).length;
   const passiveCount = users.filter(u => !u.isActive).length;
@@ -144,7 +121,6 @@ export default function UsersPage() {
   const userActive   = users.filter(u => u.role === 'User' && u.isActive).length;
   const userPassive  = users.filter(u => u.role === 'User' && !u.isActive).length;
 
-  /* ── Filtreleme ── */
   const filtered = users.filter(u => {
     const passesFilter =
       activeFilter === 'all'           ? true :
@@ -159,21 +135,16 @@ export default function UsersPage() {
     if (!passesFilter) return false;
     if (!search) return true;
     const q = search.toLowerCase();
-    const durum = u.isActive ? 'aktif' : 'pasif';
-    return (
-      u.fullName.toLowerCase().includes(q) ||
-      u.email.toLowerCase().includes(q) ||
-      u.role.toLowerCase().includes(q) ||
-      durum.includes(q)
-    );
+    const durum = u.isActive
+      ? `${tx(language, t.common.active).toLowerCase()} active`
+      : `${tx(language, t.common.passive).toLowerCase()} passive`;
+    return u.fullName.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || u.role.toLowerCase().includes(q) || durum.includes(q);
   });
 
-  /* ── Pagination ── */
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage   = Math.min(page, totalPages);
   const paginated  = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
-  /* ── Stil yardımcıları ── */
   const pillStyle = (key: FilterKey, activeBg: string, activeColor: string, inactiveBg: string, inactiveColor: string) => ({
     flex: 1, background: activeFilter === key ? activeBg : inactiveBg,
     color: activeFilter === key ? activeColor : inactiveColor,
@@ -187,8 +158,7 @@ export default function UsersPage() {
     fontWeight: 700, fontSize: '15px', cursor: 'pointer',
     color: activeFilter === key ? activeColor : '#4b5563',
     background: activeFilter === key ? `${activeColor}18` : 'transparent',
-    borderRadius: '6px', padding: '2px 8px',
-    transition: 'all 0.15s', userSelect: 'none' as const,
+    borderRadius: '6px', padding: '2px 8px', transition: 'all 0.15s', userSelect: 'none' as const,
     border: activeFilter === key ? `1.5px solid ${activeColor}44` : '1.5px solid transparent',
   });
 
@@ -196,143 +166,114 @@ export default function UsersPage() {
 
   return (
     <div className="page">
-      <style>{`
-        @keyframes shake {
-          0%,100%{transform:translateX(0)} 15%{transform:translateX(-8px)}
-          30%{transform:translateX(8px)} 45%{transform:translateX(-6px)}
-          60%{transform:translateX(6px)} 75%{transform:translateX(-3px)} 90%{transform:translateX(3px)}
-        }
-        .modal-shake { animation: shake 0.6s ease; }
-      `}</style>
+      <style>{`@keyframes shake{0%,100%{transform:translateX(0)}15%{transform:translateX(-8px)}30%{transform:translateX(8px)}45%{transform:translateX(-6px)}60%{transform:translateX(6px)}75%{transform:translateX(-3px)}90%{transform:translateX(3px)}}.modal-shake{animation:shake 0.6s ease;}`}</style>
 
       {successMsg && (
-        <div style={{
-          position: 'fixed', top: '20px', right: '24px', zIndex: 9999,
-          background: '#10b981', color: '#fff', padding: '12px 20px',
-          borderRadius: '10px', fontWeight: 600, fontSize: '14px',
-          boxShadow: '0 4px 16px rgba(16,185,129,.35)',
-          display: 'flex', alignItems: 'center', gap: '8px',
-        }}>✅ {successMsg}</div>
+        <div style={{ position: 'fixed', top: '20px', right: '24px', zIndex: 9999, background: '#10b981', color: '#fff', padding: '12px 20px', borderRadius: '10px', fontWeight: 600, fontSize: '14px', boxShadow: '0 4px 16px rgba(16,185,129,.35)', display: 'flex', alignItems: 'center', gap: '8px' }}>✅ {successMsg}</div>
       )}
 
       <div className="page-header">
-        <div><h1>Kullanıcılar</h1><p>Sistem kullanıcılarını yönetin</p></div>
-        <button className="btn btn-primary" onClick={openCreate}>+ Yeni Kullanıcı</button>
+        <div><h1>{tx(language, t.users.title)}</h1><p>{tx(language, t.users.subtitle)}</p></div>
+        <button className="btn btn-primary" onClick={openCreate}>{tx(language, t.users.newUser)}</button>
       </div>
 
-      {/* ── İstatistik kartları (3 + bilgilendirme) ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '12px', marginBottom: '20px' }}>
-
         {/* Toplam */}
         <div style={{ background: '#eef2ff', border: '1px solid #6366f122', borderRadius: '12px', padding: '16px 20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
             <span style={{ fontSize: '20px' }}>👥</span>
-            <span style={cardTitleStyle('all', '#6366f1')} onClick={() => handleFilterClick('all')}>
-              Toplam
-            </span>
+            <span style={cardTitleStyle('all', '#6366f1')} onClick={() => handleFilterClick('all')}>{tx(language, t.users.totalUsers)}</span>
             <span style={{ marginLeft: 'auto', fontSize: '26px', fontWeight: 700, color: '#6366f1' }}>{totalCount}</span>
           </div>
           <div style={{ display: 'flex', gap: '6px' }}>
-            <span style={pillStyle('active', '#15803d', '#fff', '#dcfce7', '#15803d')} onClick={() => handleFilterClick('active')}>✅ {activeCount} Aktif</span>
-            <span style={pillStyle('passive', '#6b7280', '#fff', '#f3f4f6', '#6b7280')} onClick={() => handleFilterClick('passive')}>⏸ {passiveCount} Pasif</span>
+            <span style={pillStyle('active', '#15803d', '#fff', '#dcfce7', '#15803d')} onClick={() => handleFilterClick('active')}>✅ {activeCount} {tx(language, t.common.active)}</span>
+            <span style={pillStyle('passive', '#6b7280', '#fff', '#f3f4f6', '#6b7280')} onClick={() => handleFilterClick('passive')}>⏸ {passiveCount} {tx(language, t.common.passive)}</span>
           </div>
         </div>
-
         {/* Admin */}
         <div style={{ background: '#fffbeb', border: '1px solid #f59e0b22', borderRadius: '12px', padding: '16px 20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
             <span style={{ fontSize: '20px' }}>👑</span>
-            <span style={cardTitleStyle('admin', '#f59e0b')} onClick={() => handleFilterClick('admin')}>
-              Admin
-            </span>
+            <span style={cardTitleStyle('admin', '#f59e0b')} onClick={() => handleFilterClick('admin')}>{tx(language, t.users.adminLabel)}</span>
             <span style={{ marginLeft: 'auto', fontSize: '26px', fontWeight: 700, color: '#f59e0b' }}>{adminTotal}</span>
           </div>
           <div style={{ display: 'flex', gap: '6px' }}>
-            <span style={pillStyle('admin_active', '#15803d', '#fff', '#dcfce7', '#15803d')} onClick={() => handleFilterClick('admin_active')}>✅ {adminActive} Aktif</span>
-            <span style={pillStyle('admin_passive', '#6b7280', '#fff', '#f3f4f6', '#6b7280')} onClick={() => handleFilterClick('admin_passive')}>⏸ {adminPassive} Pasif</span>
+            <span style={pillStyle('admin_active', '#15803d', '#fff', '#dcfce7', '#15803d')} onClick={() => handleFilterClick('admin_active')}>✅ {adminActive} {tx(language, t.common.active)}</span>
+            <span style={pillStyle('admin_passive', '#6b7280', '#fff', '#f3f4f6', '#6b7280')} onClick={() => handleFilterClick('admin_passive')}>⏸ {adminPassive} {tx(language, t.common.passive)}</span>
           </div>
         </div>
-
         {/* User */}
         <div style={{ background: '#eff6ff', border: '1px solid #3b82f622', borderRadius: '12px', padding: '16px 20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
             <span style={{ fontSize: '20px' }}>👤</span>
-            <span style={cardTitleStyle('user', '#3b82f6')} onClick={() => handleFilterClick('user')}>
-              Kullanıcı
-            </span>
+            <span style={cardTitleStyle('user', '#3b82f6')} onClick={() => handleFilterClick('user')}>{tx(language, t.users.userLabel)}</span>
             <span style={{ marginLeft: 'auto', fontSize: '26px', fontWeight: 700, color: '#3b82f6' }}>{userTotal}</span>
           </div>
           <div style={{ display: 'flex', gap: '6px' }}>
-            <span style={pillStyle('user_active', '#15803d', '#fff', '#dcfce7', '#15803d')} onClick={() => handleFilterClick('user_active')}>✅ {userActive} Aktif</span>
-            <span style={pillStyle('user_passive', '#6b7280', '#fff', '#f3f4f6', '#6b7280')} onClick={() => handleFilterClick('user_passive')}>⏸ {userPassive} Pasif</span>
+            <span style={pillStyle('user_active', '#15803d', '#fff', '#dcfce7', '#15803d')} onClick={() => handleFilterClick('user_active')}>✅ {userActive} {tx(language, t.common.active)}</span>
+            <span style={pillStyle('user_passive', '#6b7280', '#fff', '#f3f4f6', '#6b7280')} onClick={() => handleFilterClick('user_passive')}>⏸ {userPassive} {tx(language, t.common.passive)}</span>
           </div>
         </div>
-
-        {/* Bilgilendirme */}
+        {/* Bilgi */}
         <div style={{ background: '#f0fdf4', border: '1px solid #10b98122', borderRadius: '12px', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <span style={{ fontSize: '28px' }}>💡</span>
           <div>
-            <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '2px' }}>Sadece aktif kullanıcı</div>
-            <div style={{ fontWeight: 600, color: '#374151', fontSize: '13px' }}>Ankete atanabilir</div>
-            <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>Ankete atanan kullanıcılar silinemez</div>
+            <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '2px' }}>{tx(language, t.users.infoDesc)}</div>
+            <div style={{ fontWeight: 600, color: '#374151', fontSize: '13px' }}>{tx(language, t.users.infoSub)}</div>
+            <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>{tx(language, t.users.infoHint)}</div>
           </div>
         </div>
       </div>
 
       <div className="card">
         <div className="card-toolbar">
-          <SearchInput
-            value={search}
-            placeholder="Ad, e-posta, rol veya durum ara..."
-            onChange={v => { setSearch(v); setActiveFilter('all'); setPage(1); }}
-          />
+          <SearchInput value={search} placeholder={tx(language, t.users.searchPlaceholder)}
+            onChange={v => { setSearch(v); setActiveFilter('all'); setPage(1); }} />
           {activeFilter !== 'all' && (
-            <button className="btn btn-sm btn-outline" onClick={() => { setActiveFilter('all'); setPage(1); }}>
-              Filtreyi Temizle ×
-            </button>
+            <button className="btn btn-sm btn-outline" onClick={() => { setActiveFilter('all'); setPage(1); }}>{tx(language, t.common.clearFilter)}</button>
           )}
         </div>
 
         <div className="table-container">
           <table className="table">
             <thead>
-              <tr><th>#</th><th>Durum</th><th>Rol</th><th>Ad Soyad</th><th>E-posta</th><th>İşlemler</th></tr>
+              <tr>
+                <th>#</th>
+                <th>{tx(language, t.common.status)}</th>
+                <th>{tx(language, t.users.colRole)}</th>
+                <th>{tx(language, t.users.colFullName)}</th>
+                <th>{tx(language, t.users.colEmail)}</th>
+                <th>{tx(language, t.common.actions)}</th>
+              </tr>
             </thead>
             <tbody>
               {paginated.map((u, i) => {
-                const rowNum   = (safePage - 1) * PAGE_SIZE + i + 1;
-                const isSelf   = u.email === currentUser?.email;
+                const rowNum      = (safePage - 1) * PAGE_SIZE + i + 1;
+                const isSelf      = u.email === currentUser?.email;
                 const isLastAdmin = u.role === 'Admin' && users.filter(x => x.role === 'Admin' && x.isActive).length <= 1;
-
-                const canDelete = !isSelf && !isLastAdmin;
-                const deleteTip = isSelf
-                  ? 'Kendi hesabınızı silemezsiniz'
-                  : isLastAdmin
-                    ? 'Son aktif admin silinemez'
-                    : '';
-
+                const canDelete   = !isSelf && !isLastAdmin;
+                const deleteTip   = isSelf ? tx(language, t.users.tooltipSelf) : isLastAdmin ? tx(language, t.users.tooltipLastAdmin) : '';
                 return (
                   <tr key={u.id}>
                     <td className="text-muted" style={{ fontWeight: 600 }}>{rowNum}</td>
-                    <td><span className={`badge ${u.isActive ? 'badge-success' : 'badge-secondary'}`}>{u.isActive ? 'Aktif' : 'Pasif'}</span></td>
+                    <td><span className={`badge ${u.isActive ? 'badge-success' : 'badge-secondary'}`}>{u.isActive ? tx(language, t.common.active) : tx(language, t.common.passive)}</span></td>
                     <td><span className={`badge ${u.role === 'Admin' ? 'badge-warning' : 'badge-info'}`}>{u.role}</span></td>
                     <td>
                       <div className="user-cell">
                         <div className="user-avatar-sm">{u.fullName[0]?.toUpperCase()}</div>
                         <strong>{u.fullName}</strong>
-                        {isSelf && <span style={{ fontSize: '11px', color: '#6b7280', marginLeft: '6px' }}>(siz)</span>}
+                        {isSelf && <span style={{ fontSize: '11px', color: '#6b7280', marginLeft: '6px' }}>{tx(language, t.users.you)}</span>}
                       </div>
                     </td>
                     <td>{u.email}</td>
                     <td>
                       <div className="action-btns">
-                        <button className="btn btn-sm btn-outline" onClick={() => openEdit(u, rowNum)}>Düzenle</button>
-
+                        <button className="btn btn-sm btn-outline" onClick={() => openEdit(u, rowNum)}>{tx(language, t.common.edit)}</button>
                         {canDelete ? (
-                          <button className="btn btn-sm btn-danger" onClick={() => handleDelete(u, rowNum)}>Sil</button>
+                          <button className="btn btn-sm btn-danger" onClick={() => handleDelete(u, rowNum)}>{tx(language, t.common.delete)}</button>
                         ) : (
                           <Tooltip text={deleteTip}>
-                            <button className="btn btn-sm btn-danger" disabled style={{ opacity: 0.45, cursor: 'not-allowed' }}>Sil</button>
+                            <button className="btn btn-sm btn-danger" disabled style={{ opacity: 0.45, cursor: 'not-allowed' }}>{tx(language, t.common.delete)}</button>
                           </Tooltip>
                         )}
                       </div>
@@ -342,38 +283,33 @@ export default function UsersPage() {
               })}
             </tbody>
           </table>
-          {filtered.length === 0 && <div className="empty-state">Kullanıcı bulunamadı.</div>}
+          {filtered.length === 0 && <div className="empty-state">{tx(language, t.common.notFound)}</div>}
         </div>
 
-        {/* Pagination */}
         {totalPages > 1 && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderTop: '1px solid #e5e7eb' }}>
             <span style={{ fontSize: '13px', color: '#6b7280' }}>
-              {filtered.length} kullanıcıdan {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} gösteriliyor
+              {filtered.length} {language === 'tr' ? 'kullanıcıdan' : 'users'} {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} {tx(language, t.common.showing)}
             </span>
             <div style={{ display: 'flex', gap: '4px' }}>
-              <button className="btn btn-sm btn-outline" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage === 1}>‹ Önceki</button>
+              <button className="btn btn-sm btn-outline" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage === 1}>{tx(language, t.common.prev)}</button>
               {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-                <button key={p} className={`btn btn-sm ${p === safePage ? 'btn-primary' : 'btn-outline'}`}
-                  onClick={() => setPage(p)} style={{ minWidth: '36px' }}>{p}</button>
+                <button key={p} className={`btn btn-sm ${p === safePage ? 'btn-primary' : 'btn-outline'}`} onClick={() => setPage(p)} style={{ minWidth: '36px' }}>{p}</button>
               ))}
-              <button className="btn btn-sm btn-outline" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}>Sonraki ›</button>
+              <button className="btn btn-sm btn-outline" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}>{tx(language, t.common.next)}</button>
             </div>
           </div>
         )}
       </div>
 
-      {/* Modal */}
       {showModal && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className={`modal${shake ? ' modal-shake' : ''}`} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>{editItem ? `#${editRowNum} Kullanıcıyı Düzenle` : 'Yeni Kullanıcı'}</h3>
+              <h3>{editItem ? `#${editRowNum} ${tx(language, t.users.modalEdit)}` : tx(language, t.users.modalCreate)}</h3>
               <button className="modal-close" onClick={closeModal}>×</button>
             </div>
             <div className="modal-body">
-
-              {/* Hata banner */}
               {error && (
                 <div style={{
                   display: 'flex', alignItems: 'flex-start', gap: '10px',
@@ -384,46 +320,31 @@ export default function UsersPage() {
                 }}>
                   <span style={{ fontSize: '18px', lineHeight: 1 }}>{errorType === 'passive_conflict' ? '🔒' : '❌'}</span>
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: '2px',
-                      color: errorType === 'passive_conflict' ? '#854d0e' : '#dc2626' }}>
-                      {errorType === 'passive_conflict' ? 'Pasife Alınamaz — Aktif Ankete Atanmış' : 'Hata'}
+                    <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: '2px', color: errorType === 'passive_conflict' ? '#854d0e' : '#dc2626' }}>
+                      {errorType === 'passive_conflict' ? tx(language, t.users.passiveTitle) : tx(language, t.common.error)}
                     </div>
                     <div style={{ fontSize: '13px', color: '#374151' }}>{error}</div>
-                    {errorType === 'passive_conflict' && errorDetail && (
-                      <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>{errorDetail}</div>
-                    )}
-                    {errorType === 'passive_conflict' && (
-                      <div style={{ fontSize: '12px', color: '#92400e', fontWeight: 500, marginTop: '6px' }}>
-                        💡 Bu anketleri önce güncelleyin veya pasife alın, ardından kullanıcıyı pasife alabilirsiniz.
-                      </div>
-                    )}
+                    {errorType === 'passive_conflict' && errorDetail && <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>{errorDetail}</div>}
+                    {errorType === 'passive_conflict' && <div style={{ fontSize: '12px', color: '#92400e', fontWeight: 500, marginTop: '6px' }}>{tx(language, t.users.passiveHint)}</div>}
                   </div>
                 </div>
               )}
-
               <div className="form-group">
-                <label>Ad Soyad</label>
-                <input value={form.fullName}
-                  onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))}
-                  placeholder="Ad Soyad" />
+                <label>{tx(language, t.users.fullNameLabel)}</label>
+                <input value={form.fullName} onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))} placeholder={tx(language, t.users.fullNameLabel)} />
               </div>
-
               {!editItem && (
                 <>
                   <div className="form-group">
-                    <label>E-posta</label>
-                    <input type="email" value={form.email}
-                      onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                      placeholder="email@ornek.com" />
+                    <label>{tx(language, t.users.emailLabel)}</label>
+                    <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder={tx(language, t.users.emailPh)} />
                   </div>
                   <div className="form-group">
-                    <label>Şifre</label>
-                    <input type="password" value={form.password}
-                      onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                      placeholder="••••••••" />
+                    <label>{tx(language, t.users.passwordLabel)}</label>
+                    <input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="••••••••" />
                   </div>
                   <div className="form-group">
-                    <label>Rol</label>
+                    <label>{tx(language, t.users.roleLabel)}</label>
                     <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))}>
                       <option value="User">User</option>
                       <option value="Admin">Admin</option>
@@ -431,25 +352,21 @@ export default function UsersPage() {
                   </div>
                 </>
               )}
-
               <div className="form-group">
-                <label>Durum</label>
+                <label>{tx(language, t.common.status)}</label>
                 <select value={form.isActive ? 'true' : 'false'}
                   onChange={e => {
                     setForm(f => ({ ...f, isActive: e.target.value === 'true' }));
                     if (errorType === 'passive_conflict') { setError(''); setErrorType(''); setErrorDetail(''); }
                   }}>
-                  <option value="true">Aktif</option>
-                  <option value="false">Pasif</option>
+                  <option value="true">{tx(language, t.common.active)}</option>
+                  <option value="false">{tx(language, t.common.passive)}</option>
                 </select>
               </div>
             </div>
-
             <div className="modal-footer">
-              <button className="btn btn-outline" onClick={closeModal}>İptal</button>
-              <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-                {saving ? 'Kaydediliyor...' : 'Kaydet'}
-              </button>
+              <button className="btn btn-outline" onClick={closeModal}>{tx(language, t.common.cancel)}</button>
+              <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? tx(language, t.common.saving) : tx(language, t.common.save)}</button>
             </div>
           </div>
         </div>

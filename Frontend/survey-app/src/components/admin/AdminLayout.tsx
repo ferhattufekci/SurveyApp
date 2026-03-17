@@ -1,22 +1,25 @@
 import { useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
+import { useLanguageStore } from '../../store/languageStore';
+import { t, tx } from '../../i18n/translations';
 import LanguageToggle from './LanguageToggle';
-
-const navItems = [
-  { path: '/admin/dashboard',         label: 'Dashboard',        icon: '📊' },
-  { path: '/admin/answer-templates',  label: 'Cevap Şablonları', icon: '📋' },
-  { path: '/admin/questions',         label: 'Sorular',          icon: '❓' },
-  { path: '/admin/surveys',           label: 'Anketler',         icon: '📝' },
-  { path: '/admin/users',             label: 'Kullanıcılar',     icon: '👥' },
-  { path: '/admin/reports',           label: 'Raporlar',         icon: '📈' },
-];
 
 export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { user, logout } = useAuthStore();
+  const { language } = useLanguageStore();
   const location = useLocation();
   const navigate = useNavigate();
+
+  const navItems = [
+    { path: '/admin/dashboard',        label: tx(language, t.nav.dashboard),       icon: '📊' },
+    { path: '/admin/answer-templates', label: tx(language, t.nav.answerTemplates), icon: '📋' },
+    { path: '/admin/questions',        label: tx(language, t.nav.questions),        icon: '❓' },
+    { path: '/admin/surveys',          label: tx(language, t.nav.surveys),          icon: '📝' },
+    { path: '/admin/users',            label: tx(language, t.nav.users),            icon: '👥' },
+    { path: '/admin/reports',          label: tx(language, t.nav.reports),          icon: '📈' },
+  ];
 
   const handleLogout = () => { logout(); navigate('/login'); };
 
@@ -65,7 +68,7 @@ export default function AdminLayout() {
             {sidebarOpen && <LanguageToggle />}
             <button
               onClick={handleLogout}
-              title="Çıkış Yap"
+              title={tx(language, t.common.logout)}
               style={{
                 display: 'flex', alignItems: 'center', gap: '6px',
                 background: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca',
@@ -76,7 +79,7 @@ export default function AdminLayout() {
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#dc2626'; (e.currentTarget as HTMLElement).style.color = '#fff'; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '#fee2e2'; (e.currentTarget as HTMLElement).style.color = '#dc2626'; }}
             >
-              {sidebarOpen ? '🚪 Çıkış' : '🚪'}
+              {sidebarOpen ? `🚪 ${tx(language, t.common.logout)}` : '🚪'}
             </button>
           </div>
         </div>

@@ -3,13 +3,15 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { mySurveysApi } from '../../api';
 import type { UserSurvey, SurveyDetail } from '../../types';
 import { useAuthStore } from '../../store/authStore';
+import { useLanguageStore } from '../../store/languageStore';
+import { t, tx } from '../../i18n/translations';
+import LanguageToggle from '../../components/admin/LanguageToggle';
 
 const PAGE_SIZE = 8;
 
-// Bir ankete ait kullanıcı cevaplarını lazy load eden hook
 function useSurveyAnswers(surveyId: number, enabled: boolean) {
-  const [answers, setAnswers] = useState<Record<number, number>>({}); // questionId -> optionId
-  const [loaded, setLoaded]   = useState(false);
+  const [answers, setAnswers] = useState<Record<number, number>>({});
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     if (!enabled || loaded) return;
@@ -24,14 +26,13 @@ function useSurveyAnswers(surveyId: number, enabled: boolean) {
   return answers;
 }
 
-// Tamamlanan anket kartı — seçilen cevapları yeşil gösterir
 function CompletedSurveyCard({ survey }: { survey: UserSurvey }) {
   const [expanded, setExpanded] = useState(false);
   const answers = useSurveyAnswers(survey.id, expanded);
+  const { language } = useLanguageStore();
 
   return (
     <div>
-      {/* Başlık satırı + açıkla/kapat */}
       <div style={{ marginBottom: (survey.questions || []).length > 0 ? '8px' : 0 }}>
         <strong style={{ fontSize: '14px' }}>{survey.title}</strong>
         {survey.description && (
@@ -52,7 +53,7 @@ function CompletedSurveyCard({ survey }: { survey: UserSurvey }) {
               borderRadius: '6px', padding: '3px 10px', cursor: 'pointer', marginBottom: '6px',
             }}
           >
-            {expanded ? '▲ Cevaplarımı Gizle' : '▼ Cevaplarımı Gör'}
+            {expanded ? tx(language, t.userSurveys.hideAnswers) : tx(language, t.userSurveys.showAnswers)}
           </button>
 
           {expanded && (
@@ -60,22 +61,16 @@ function CompletedSurveyCard({ survey }: { survey: UserSurvey }) {
               {(survey.questions || []).map((sq, qi) => {
                 const selectedId = answers[sq.questionId];
                 return (
-                  <div key={sq.questionId} style={{
-                    background: '#f8fafc', border: '1px solid #e2e8f0',
-                    borderRadius: '8px', padding: '8px 10px',
-                  }}>
-                    {/* Soru başlığı */}
+                  <div key={sq.questionId} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 10px' }}>
                     <div style={{ fontSize: '12px', color: '#1e293b', fontWeight: 600, marginBottom: '6px', display: 'flex', gap: '5px' }}>
                       <span style={{ color: '#94a3b8', fontWeight: 700, minWidth: '16px' }}>{qi + 1}.</span>
                       <span>{sq.questionText}</span>
                     </div>
-                    {/* Şablon adı */}
                     <div style={{ paddingLeft: '21px', marginBottom: '5px' }}>
                       <span style={{ fontSize: '10px', background: '#eef2ff', color: '#6366f1', borderRadius: '4px', padding: '1px 7px', fontWeight: 600 }}>
-                        {sq.answerTemplate.name} · {sq.answerTemplate.options.length} seçenek
+                        {sq.answerTemplate.name} · {sq.answerTemplate.options.length} {tx(language, t.userSurveys.options)}
                       </span>
                     </div>
-                    {/* Seçenekler — seçilen yeşil */}
                     <div style={{ paddingLeft: '21px', display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
                       {sq.answerTemplate.options.map(o => {
                         const isSelected = o.id === selectedId;
@@ -95,7 +90,7 @@ function CompletedSurveyCard({ survey }: { survey: UserSurvey }) {
                         );
                       })}
                       {!selectedId && (
-                        <span style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>Yükleniyor...</span>
+                        <span style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>{tx(language, t.common.loading)}</span>
                       )}
                     </div>
                   </div>
@@ -109,8 +104,8 @@ function CompletedSurveyCard({ survey }: { survey: UserSurvey }) {
   );
 }
 
-// Aktif/yaklaşan/geçmiş anket için soru+şablon önizleme
 function SurveyQuestionPreview({ survey }: { survey: UserSurvey }) {
+  const { language } = useLanguageStore();
   const qs = survey.questions || [];
   return (
     <div>
@@ -125,10 +120,7 @@ function SurveyQuestionPreview({ survey }: { survey: UserSurvey }) {
       {qs.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
           {qs.map((sq, qi) => (
-            <div key={sq.questionId} style={{
-              background: '#f8fafc', border: '1px solid #e2e8f0',
-              borderRadius: '7px', padding: '7px 10px',
-            }}>
+            <div key={sq.questionId} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '7px', padding: '7px 10px' }}>
               <div style={{ fontSize: '12px', color: '#1e293b', fontWeight: 500, marginBottom: '4px', display: 'flex', gap: '5px' }}>
                 <span style={{ color: '#94a3b8', fontWeight: 700, minWidth: '16px' }}>{qi + 1}.</span>
                 <span>{sq.questionText}</span>
@@ -137,7 +129,7 @@ function SurveyQuestionPreview({ survey }: { survey: UserSurvey }) {
                 <span style={{ fontSize: '10px', background: '#eef2ff', color: '#6366f1', borderRadius: '4px', padding: '1px 6px', fontWeight: 600 }}>
                   {sq.answerTemplate.name}
                 </span>
-                <span style={{ fontSize: '10px', color: '#94a3b8' }}>· {sq.answerTemplate.options.length} seçenek:</span>
+                <span style={{ fontSize: '10px', color: '#94a3b8' }}>· {sq.answerTemplate.options.length} {tx(language, t.userSurveys.options)}:</span>
                 {sq.answerTemplate.options.map(o => (
                   <span key={o.id} style={{ fontSize: '10px', background: '#f1f5f9', color: '#64748b', borderRadius: '4px', padding: '1px 5px', border: '1px solid #e2e8f0' }}>
                     {o.text}
@@ -155,10 +147,11 @@ function SurveyQuestionPreview({ survey }: { survey: UserSurvey }) {
 export function UserSurveysListPage() {
   const [surveys, setSurveys] = useState<UserSurvey[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch]   = useState('');
-  const [tab, setTab]         = useState<'active' | 'completed' | 'upcoming' | 'expired'>('active');
-  const [page, setPage]       = useState(1);
-  const { user, logout }      = useAuthStore();
+  const [search, setSearch] = useState('');
+  const [tab, setTab] = useState<'active' | 'completed' | 'upcoming' | 'expired'>('active');
+  const [page, setPage] = useState(1);
+  const { user, logout } = useAuthStore();
+  const { language } = useLanguageStore();
   const navigate = useNavigate();
   const isPassive = user && !user.isActive;
 
@@ -172,10 +165,10 @@ export function UserSurveysListPage() {
 
   const grouped: Record<string, UserSurvey[]> = { active, completed, upcoming, expired };
   const tabList = [
-    { key: 'active',    label: '🟢 Aktif',        count: active.length },
-    { key: 'completed', label: '✅ Tamamlanan',    count: completed.length },
-    { key: 'upcoming',  label: '🕐 Yaklaşan',     count: upcoming.length },
-    { key: 'expired',   label: '⏰ Süresi Geçen', count: expired.length },
+    { key: 'active',    label: tx(language, t.userSurveys.tabActive),    count: active.length },
+    { key: 'completed', label: tx(language, t.userSurveys.tabCompleted), count: completed.length },
+    { key: 'upcoming',  label: tx(language, t.userSurveys.tabUpcoming),  count: upcoming.length },
+    { key: 'expired',   label: tx(language, t.userSurveys.tabExpired),   count: expired.length },
   ] as const;
 
   const filtered = (grouped[tab] || []).filter(s => {
@@ -196,10 +189,10 @@ export function UserSurveysListPage() {
   const handleLogout = () => { logout(); navigate('/login'); };
 
   const statusBadge = (s: UserSurvey) => {
-    if (s.isCompleted) return <span className="badge badge-secondary">Tamamlandı</span>;
-    if (new Date(s.startDate) > now) return <span className="badge badge-warning">Yakında</span>;
-    if (new Date(s.endDate) < now) return <span className="badge" style={{ background: '#fee2e2', color: '#dc2626' }}>Süresi Geçti</span>;
-    return <span className="badge badge-success">Aktif</span>;
+    if (s.isCompleted) return <span className="badge badge-secondary">{tx(language, t.userSurveys.statusCompleted)}</span>;
+    if (new Date(s.startDate) > now) return <span className="badge badge-warning">{tx(language, t.userSurveys.statusUpcoming)}</span>;
+    if (new Date(s.endDate) < now) return <span className="badge" style={{ background: '#fee2e2', color: '#dc2626' }}>{tx(language, t.userSurveys.statusExpired)}</span>;
+    return <span className="badge badge-success">{tx(language, t.userSurveys.statusActive)}</span>;
   };
 
   if (loading) return <div className="loading-container"><div className="spinner-large"></div></div>;
@@ -217,55 +210,44 @@ export function UserSurveysListPage() {
         <div className="user-header-right">
           <span style={{ fontSize: '14px', color: '#4b5563' }}>👋 {user?.fullName}</span>
           {isPassive && (
-            <span style={{
-              background: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca',
-              borderRadius: '6px', padding: '3px 10px', fontSize: '12px', fontWeight: 600,
-            }}>Pasif Hesap</span>
+            <span style={{ background: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', padding: '3px 10px', fontSize: '12px', fontWeight: 600 }}>
+              {language === 'tr' ? 'Pasif Hesap' : 'Inactive Account'}
+            </span>
           )}
+          <LanguageToggle />
           <button onClick={handleLogout}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '5px',
-              background: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca',
-              borderRadius: '8px', padding: '6px 14px', cursor: 'pointer',
-              fontSize: '13px', fontWeight: 600, transition: 'all 0.15s',
-            }}
+            style={{ display: 'flex', alignItems: 'center', gap: '5px', background: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '8px', padding: '6px 14px', cursor: 'pointer', fontSize: '13px', fontWeight: 600, transition: 'all 0.15s' }}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#dc2626'; (e.currentTarget as HTMLElement).style.color = '#fff'; }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '#fee2e2'; (e.currentTarget as HTMLElement).style.color = '#dc2626'; }}
-          >🚪 Çıkış</button>
+          >🚪 {tx(language, t.common.logout)}</button>
         </div>
       </header>
 
       <div className="user-content">
         <div className="page-header">
-          <div><h1>Anketlerim</h1><p>Size atanan anketleri görüntüleyin ve doldurun</p></div>
+          <div>
+            <h1>{tx(language, t.userSurveys.title)}</h1>
+            <p>{tx(language, t.userSurveys.subtitle)}</p>
+          </div>
         </div>
 
         {isPassive && (
-          <div style={{
-            background: '#fffbeb', border: '1px solid #fde047', borderLeft: '4px solid #eab308',
-            borderRadius: '8px', padding: '12px 16px', marginBottom: '16px',
-            display: 'flex', alignItems: 'center', gap: '10px',
-          }}>
+          <div style={{ background: '#fffbeb', border: '1px solid #fde047', borderLeft: '4px solid #eab308', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span style={{ fontSize: '20px' }}>⚠️</span>
             <div>
-              <div style={{ fontWeight: 600, color: '#854d0e', marginBottom: '2px' }}>Hesabınız pasif durumda</div>
-              <div style={{ fontSize: '13px', color: '#92400e' }}>Anketleri görüntüleyebilirsiniz, ancak anket dolduramaz ve yanıt gönderemezsiniz.</div>
+              <div style={{ fontWeight: 600, color: '#854d0e', marginBottom: '2px' }}>{tx(language, t.userSurveys.passiveWarning)}</div>
+              <div style={{ fontSize: '13px', color: '#92400e' }}>{tx(language, t.userSurveys.passiveDesc)}</div>
             </div>
           </div>
         )}
 
         {/* Tab sayaçlar */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '20px' }}>
-          {tabList.map(t => (
-            <button key={t.key} onClick={() => { setTab(t.key as any); setPage(1); setSearch(''); }}
-              style={{
-                background: tab === t.key ? '#eef2ff' : 'white',
-                border: `2px solid ${tab === t.key ? '#6366f1' : '#e5e7eb'}`,
-                borderRadius: '10px', padding: '12px', cursor: 'pointer',
-                textAlign: 'center', transition: 'all 0.15s',
-              }}>
-              <div style={{ fontSize: '22px', fontWeight: 800, color: tab === t.key ? '#6366f1' : '#374151' }}>{t.count}</div>
-              <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{t.label}</div>
+          {tabList.map(tItem => (
+            <button key={tItem.key} onClick={() => { setTab(tItem.key as any); setPage(1); setSearch(''); }}
+              style={{ background: tab === tItem.key ? '#eef2ff' : 'white', border: `2px solid ${tab === tItem.key ? '#6366f1' : '#e5e7eb'}`, borderRadius: '10px', padding: '12px', cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s' }}>
+              <div style={{ fontSize: '22px', fontWeight: 800, color: tab === tItem.key ? '#6366f1' : '#374151' }}>{tItem.count}</div>
+              <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{tItem.label}</div>
             </button>
           ))}
         </div>
@@ -275,11 +257,8 @@ export function UserSurveysListPage() {
           <input
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1); }}
-            placeholder="Başlık, açıklama, soru metni, şablon veya seçenek ara..."
-            style={{
-              width: '100%', padding: '9px 14px', borderRadius: '8px',
-              border: '1px solid #d1d5db', fontSize: '14px', outline: 'none', boxSizing: 'border-box',
-            }}
+            placeholder={tx(language, t.userSurveys.searchPh)}
+            style={{ width: '100%', padding: '9px 14px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
           />
         </div>
 
@@ -289,17 +268,17 @@ export function UserSurveysListPage() {
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>Durum</th>
-                  <th>Anket Adı & Sorular</th>
-                  <th>Başlangıç</th>
-                  <th>Bitiş</th>
-                  <th>İşlem</th>
+                  <th>{tx(language, t.userSurveys.colStatus)}</th>
+                  <th>{tx(language, t.userSurveys.colSurvey)}</th>
+                  <th>{tx(language, t.userSurveys.colStart)}</th>
+                  <th>{tx(language, t.userSurveys.colEnd)}</th>
+                  <th>{tx(language, t.userSurveys.colAction)}</th>
                 </tr>
               </thead>
               <tbody>
                 {paginated.length === 0 ? (
                   <tr><td colSpan={6} style={{ textAlign: 'center', padding: '32px', color: '#9ca3af' }}>
-                    {search ? 'Arama sonucu bulunamadı.' : 'Bu kategoride anket yok.'}
+                    {search ? tx(language, t.userSurveys.noResult) : tx(language, t.userSurveys.noCategoryResult)}
                   </td></tr>
                 ) : paginated.map((s, i) => {
                   const rowNum = (safePage - 1) * PAGE_SIZE + i + 1;
@@ -309,21 +288,20 @@ export function UserSurveysListPage() {
                       <td className="text-muted" style={{ fontWeight: 600, verticalAlign: 'top', paddingTop: '14px' }}>{rowNum}</td>
                       <td style={{ verticalAlign: 'top', paddingTop: '14px' }}>{statusBadge(s)}</td>
                       <td>
-                        {/* Tamamlanan: cevap gösterimi; diğerleri: soru önizleme */}
                         {s.isCompleted
                           ? <CompletedSurveyCard survey={s} />
                           : <SurveyQuestionPreview survey={s} />
                         }
                       </td>
-                      <td style={{ fontSize: '13px', color: '#6b7280', verticalAlign: 'top', paddingTop: '14px' }}>{new Date(s.startDate).toLocaleDateString('tr-TR')}</td>
-                      <td style={{ fontSize: '13px', color: '#6b7280', verticalAlign: 'top', paddingTop: '14px' }}>{new Date(s.endDate).toLocaleDateString('tr-TR')}</td>
+                      <td style={{ fontSize: '13px', color: '#6b7280', verticalAlign: 'top', paddingTop: '14px' }}>{new Date(s.startDate).toLocaleDateString(language === 'tr' ? 'tr-TR' : 'en-GB')}</td>
+                      <td style={{ fontSize: '13px', color: '#6b7280', verticalAlign: 'top', paddingTop: '14px' }}>{new Date(s.endDate).toLocaleDateString(language === 'tr' ? 'tr-TR' : 'en-GB')}</td>
                       <td style={{ verticalAlign: 'top', paddingTop: '12px' }}>
                         {canFill ? (
-                          <button className="btn btn-sm btn-primary" onClick={() => navigate(`/user/surveys/${s.id}`)}>Doldur →</button>
+                          <button className="btn btn-sm btn-primary" onClick={() => navigate(`/user/surveys/${s.id}`)}>{tx(language, t.userSurveys.fill)}</button>
                         ) : s.isCompleted ? (
-                          <span style={{ fontSize: '13px', color: '#10b981', fontWeight: 600 }}>✓ Tamamlandı</span>
+                          <span style={{ fontSize: '13px', color: '#10b981', fontWeight: 600 }}>{tx(language, t.userSurveys.completed)}</span>
                         ) : isPassive ? (
-                          <span style={{ fontSize: '12px', color: '#9ca3af' }}>Pasif hesap</span>
+                          <span style={{ fontSize: '12px', color: '#9ca3af' }}>{tx(language, t.userSurveys.passiveAccount)}</span>
                         ) : (
                           <span style={{ fontSize: '12px', color: '#9ca3af' }}>—</span>
                         )}
@@ -338,15 +316,14 @@ export function UserSurveysListPage() {
           {totalPages > 1 && (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderTop: '1px solid #e5e7eb' }}>
               <span style={{ fontSize: '13px', color: '#6b7280' }}>
-                {filtered.length} anket — {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} gösteriliyor
+                {filtered.length} {language === 'tr' ? 'anket' : 'surveys'} — {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} {tx(language, t.common.showing)}
               </span>
               <div style={{ display: 'flex', gap: '4px' }}>
-                <button className="btn btn-sm btn-outline" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage === 1}>‹</button>
+                <button className="btn btn-sm btn-outline" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage === 1}>{tx(language, t.common.prev)}</button>
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-                  <button key={p} className={`btn btn-sm ${p === safePage ? 'btn-primary' : 'btn-outline'}`}
-                    onClick={() => setPage(p)} style={{ minWidth: '32px' }}>{p}</button>
+                  <button key={p} className={`btn btn-sm ${p === safePage ? 'btn-primary' : 'btn-outline'}`} onClick={() => setPage(p)} style={{ minWidth: '32px' }}>{p}</button>
                 ))}
-                <button className="btn btn-sm btn-outline" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}>›</button>
+                <button className="btn btn-sm btn-outline" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}>{tx(language, t.common.next)}</button>
               </div>
             </div>
           )}
@@ -355,8 +332,8 @@ export function UserSurveysListPage() {
         {surveys.length === 0 && (
           <div className="empty-full">
             <div className="empty-icon">📋</div>
-            <h3>Henüz anket atanmamış</h3>
-            <p>Size atanan anketler burada görünecek.</p>
+            <h3>{tx(language, t.userSurveys.noSurveys)}</h3>
+            <p>{tx(language, t.userSurveys.noSurveysDesc)}</p>
           </div>
         )}
       </div>
@@ -368,6 +345,7 @@ export function FillSurveyPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const { language } = useLanguageStore();
   const [survey, setSurvey] = useState<SurveyDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [answers, setAnswers] = useState<Record<number, number>>({});
@@ -380,8 +358,8 @@ export function FillSurveyPage() {
   }, [id]);
 
   const handleSubmit = async () => {
-    if (isPassive) { setError('Pasif hesapla anket doldurulamaz.'); return; }
-    if (Object.keys(answers).length !== survey?.questions.length) { setError('Lütfen tüm soruları cevaplayın.'); return; }
+    if (isPassive) { setError(tx(language, t.fillSurvey.errPassive)); return; }
+    if (Object.keys(answers).length !== survey?.questions.length) { setError(tx(language, t.fillSurvey.errAllRequired)); return; }
     setSubmitting(true);
     try {
       await mySurveysApi.submit(Number(id), {
@@ -389,8 +367,8 @@ export function FillSurveyPage() {
         answers: Object.entries(answers).map(([qId, aId]) => ({ questionId: Number(qId), answerOptionId: Number(aId) }))
       });
       navigate('/user/surveys');
-    } catch (e: any) {
-      setError(e.response?.data?.message || 'Gönderim sırasında hata oluştu.');
+    } catch {
+      setError(tx(language, t.fillSurvey.errSubmit));
     } finally { setSubmitting(false); }
   };
 
@@ -404,9 +382,9 @@ export function FillSurveyPage() {
   return (
     <div className="user-layout">
       <header className="user-header">
-        <button className="btn btn-outline btn-sm" onClick={() => navigate('/user/surveys')}>← Geri</button>
+        <button className="btn btn-outline btn-sm" onClick={() => navigate('/user/surveys')}>{tx(language, t.fillSurvey.back)}</button>
         <div className="survey-progress-header">
-          <span>{answered}/{total} soru cevaplanıyor</span>
+          <span>{answered}/{total} {tx(language, t.fillSurvey.answering)}</span>
           <div className="progress-bar-container">
             <div className="progress-bar" style={{ width: `${progress}%` }}></div>
           </div>
@@ -418,13 +396,13 @@ export function FillSurveyPage() {
           <h1>{survey.title}</h1>
           <p>{survey.description}</p>
           <div className="survey-dates">
-            <span>📅 {new Date(survey.startDate).toLocaleDateString('tr-TR')} - {new Date(survey.endDate).toLocaleDateString('tr-TR')}</span>
+            <span>📅 {new Date(survey.startDate).toLocaleDateString(language === 'tr' ? 'tr-TR' : 'en-GB')} - {new Date(survey.endDate).toLocaleDateString(language === 'tr' ? 'tr-TR' : 'en-GB')}</span>
           </div>
         </div>
 
         {isPassive && (
           <div style={{ background: '#fffbeb', border: '1px solid #fde047', borderLeft: '4px solid #eab308', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px' }}>
-            ⚠️ <strong>Pasif hesabınızla anket gönderemezsiniz.</strong> Yöneticinize başvurun.
+            {tx(language, t.fillSurvey.passiveWarning)}
           </div>
         )}
 
@@ -458,9 +436,9 @@ export function FillSurveyPage() {
             onClick={handleSubmit}
             disabled={submitting || answered !== total || !!isPassive}
           >
-            {submitting ? 'Gönderiliyor...' : `Anketi Gönder (${answered}/${total})`}
+            {submitting ? tx(language, t.fillSurvey.submitting) : `${tx(language, t.fillSurvey.submit)} (${answered}/${total})`}
           </button>
-          {isPassive && <p style={{ marginTop: '8px', fontSize: '13px', color: '#9ca3af' }}>Pasif hesapla anket gönderilemez.</p>}
+          {isPassive && <p style={{ marginTop: '8px', fontSize: '13px', color: '#9ca3af' }}>{tx(language, t.fillSurvey.passiveNote)}</p>}
         </div>
       </div>
     </div>
