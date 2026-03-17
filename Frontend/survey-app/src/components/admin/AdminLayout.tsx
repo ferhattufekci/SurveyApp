@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
+import LanguageToggle from './LanguageToggle';
 
 const navItems = [
-  { path: '/admin/dashboard', label: 'Dashboard', icon: '📊' },
-  { path: '/admin/answer-templates', label: 'Cevap Şablonları', icon: '📋' },
-  { path: '/admin/questions', label: 'Sorular', icon: '❓' },
-  { path: '/admin/surveys', label: 'Anketler', icon: '📝' },
-  { path: '/admin/users', label: 'Kullanıcılar', icon: '👥' },
-  { path: '/admin/reports', label: 'Raporlar', icon: '📈' },
+  { path: '/admin/dashboard',         label: 'Dashboard',        icon: '📊' },
+  { path: '/admin/answer-templates',  label: 'Cevap Şablonları', icon: '📋' },
+  { path: '/admin/questions',         label: 'Sorular',          icon: '❓' },
+  { path: '/admin/surveys',           label: 'Anketler',         icon: '📝' },
+  { path: '/admin/users',             label: 'Kullanıcılar',     icon: '👥' },
+  { path: '/admin/reports',           label: 'Raporlar',         icon: '📈' },
 ];
 
 export default function AdminLayout() {
@@ -60,21 +61,24 @@ export default function AdminLayout() {
               </div>
             )}
           </div>
-          <button
-            onClick={handleLogout}
-            title="Çıkış Yap"
-            style={{
-              display: 'flex', alignItems: 'center', gap: '6px',
-              background: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca',
-              borderRadius: '8px', padding: '6px 12px', cursor: 'pointer',
-              fontSize: '13px', fontWeight: 600, transition: 'all 0.15s',
-              whiteSpace: 'nowrap',
-            }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#dc2626'; (e.currentTarget as HTMLElement).style.color = '#fff'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '#fee2e2'; (e.currentTarget as HTMLElement).style.color = '#dc2626'; }}
-          >
-            {sidebarOpen ? '🚪 Çıkış' : '🚪'}
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
+            {sidebarOpen && <LanguageToggle />}
+            <button
+              onClick={handleLogout}
+              title="Çıkış Yap"
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                background: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca',
+                borderRadius: '8px', padding: '6px 12px', cursor: 'pointer',
+                fontSize: '13px', fontWeight: 600, transition: 'all 0.15s',
+                whiteSpace: 'nowrap',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#dc2626'; (e.currentTarget as HTMLElement).style.color = '#fff'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '#fee2e2'; (e.currentTarget as HTMLElement).style.color = '#dc2626'; }}
+            >
+              {sidebarOpen ? '🚪 Çıkış' : '🚪'}
+            </button>
+          </div>
         </div>
       </aside>
 

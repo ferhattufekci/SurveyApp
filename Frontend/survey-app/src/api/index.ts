@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { useLanguageStore } from '../store/languageStore';
 import type {
   User, AnswerTemplate, QuestionListItem, Question,
   SurveyListItem, SurveyDetail, UserSurvey, SurveyReport,
@@ -33,6 +34,8 @@ api.interceptors.response.use(
 // Servis hataları                  → { message: "..." }
 // İkisini de tek string'e çevirir.
 export function extractErrorMessage(error: unknown): string {
+  const language = useLanguageStore.getState().language;
+
   const e = error as {
     response?: {
       data?: {
@@ -43,16 +46,15 @@ export function extractErrorMessage(error: unknown): string {
   };
 
   const data = e?.response?.data;
-  if (!data) return 'Bir hata oluştu.';
 
-  // ASP.NET validation format: { errors: { Text: ["min 5 karakter..."] } }
+  if (!data) return language === 'tr' ? 'Bir hata oluştu.' : 'An error occurred.';
+
   if (data.errors) {
     const messages = Object.values(data.errors).flat();
     return messages.join(' ');
   }
 
-  // Servis hata formatı: { message: "..." }
-  return data.message ?? 'Bir hata oluştu.';
+  return data.message ?? (language === 'tr' ? 'Bir hata oluştu.' : 'An error occurred.');
 }
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
