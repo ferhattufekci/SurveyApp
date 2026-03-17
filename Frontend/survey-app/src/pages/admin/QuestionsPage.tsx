@@ -8,6 +8,7 @@ import { t, tx } from '../../i18n/translations';
 
 type FilterKey = 'all' | 'active' | 'passive';
 const PAGE_SIZE = 8;
+const Req = () => <span style={{ color: '#ef4444', marginLeft: '2px' }}>*</span>;
 
 export default function QuestionsPage() {
   const location = useLocation();
@@ -24,10 +25,7 @@ export default function QuestionsPage() {
   const [errorType, setErrorType]   = useState<'duplicate' | 'passive_conflict' | 'general' | ''>('');
   const [errorDetail, setErrorDetail] = useState('');
   const [shake, setShake]           = useState(false);
-  const [search, setSearch]         = useState(() => {
-    const params = new URLSearchParams(location.search);
-    return params.get('search') || '';
-  });
+  const [search, setSearch]         = useState(() => { const p = new URLSearchParams(location.search); return p.get('search') || ''; });
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
   const [page, setPage]             = useState(1);
   const [deleteError, setDeleteError] = useState<{ id: number; count: number; detail: string } | null>(null);
@@ -43,18 +41,8 @@ export default function QuestionsPage() {
   useEffect(() => { load(); }, []);
 
   const closeModal = () => { setShowModal(false); setError(''); setErrorType(''); setErrorDetail(''); };
-
-  const openCreate = () => {
-    setEditItem(null);
-    setForm({ text: '', answerTemplateId: templates.filter(tpl => tpl.isActive)[0]?.id || 0, isActive: true });
-    setError(''); setErrorType(''); setShowModal(true);
-  };
-
-  const openEdit = (q: QuestionListItem, rowNum: number) => {
-    setEditItem(q); setEditRowNum(rowNum);
-    setForm({ text: q.text, answerTemplateId: q.answerTemplateId, isActive: q.isActive });
-    setError(''); setErrorType(''); setShowModal(true);
-  };
+  const openCreate = () => { setEditItem(null); setForm({ text: '', answerTemplateId: templates.filter(t => t.isActive)[0]?.id || 0, isActive: true }); setError(''); setErrorType(''); setShowModal(true); };
+  const openEdit = (q: QuestionListItem, rowNum: number) => { setEditItem(q); setEditRowNum(rowNum); setForm({ text: q.text, answerTemplateId: q.answerTemplateId, isActive: q.isActive }); setError(''); setErrorType(''); setShowModal(true); };
 
   const handleSave = async () => {
     setError(''); setErrorType(''); setErrorDetail('');
@@ -62,46 +50,37 @@ export default function QuestionsPage() {
     if (!form.answerTemplateId) { setError(tx(language, t.questions.errTemplateReq)); setErrorType('general'); return; }
     setSaving(true);
     try {
-      if (editItem) {
-        await questionsApi.update(editItem.id, { text: form.text, answerTemplateId: form.answerTemplateId, isActive: form.isActive });
-      } else {
-        await questionsApi.create({ text: form.text, answerTemplateId: form.answerTemplateId, isActive: form.isActive });
-      }
+      if (editItem) await questionsApi.update(editItem.id, { text: form.text, answerTemplateId: form.answerTemplateId, isActive: form.isActive });
+      else await questionsApi.create({ text: form.text, answerTemplateId: form.answerTemplateId, isActive: form.isActive });
       closeModal();
       showSuccess(editItem ? tx(language, t.questions.successUpdate) : tx(language, t.questions.successCreate));
       load();
     } catch (e: any) {
       const msg = extractErrorMessage(e);
       const parts = msg.split('|');
-      const isDuplicate = msg.toLowerCase().includes('zaten bir soru') || msg.toLowerCase().includes('already exists');
-      const isPassiveConflict = parts.length === 3 && (msg.toLowerCase().includes('aktif ankette') || msg.toLowerCase().includes('active survey'));
-      setError(isPassiveConflict ? parts[0] : msg);
-      setErrorType(isPassiveConflict ? 'passive_conflict' : isDuplicate ? 'duplicate' : 'general');
-      if (isPassiveConflict) setErrorDetail(parts[2]);
-      setShake(true);
-      setTimeout(() => setShake(false), 600);
+      const isDup = msg.toLowerCase().includes('zaten bir soru') || msg.toLowerCase().includes('already exists');
+      const isPC  = parts.length === 3 && (msg.toLowerCase().includes('aktif ankette') || msg.toLowerCase().includes('active survey'));
+      setError(isPC ? parts[0] : msg); setErrorType(isPC ? 'passive_conflict' : isDup ? 'duplicate' : 'general');
+      if (isPC) setErrorDetail(parts[2]);
+      setShake(true); setTimeout(() => setShake(false), 600);
     } finally { setSaving(false); }
   };
 
   const handleDelete = async (id: number, rowNum: number) => {
     setDeleteError(null);
     if (!confirm(`${rowNum} ${tx(language, t.questions.deleteConfirm)}`)) return;
-    try {
-      await questionsApi.delete(id); load();
-      showSuccess(`${rowNum} ${tx(language, t.questions.successDelete)}`);
-    } catch (e: any) {
+    try { await questionsApi.delete(id); load(); showSuccess(`${rowNum} ${tx(language, t.questions.successDelete)}`); }
+    catch (e: any) {
       const msg: string = e.response?.data?.message || '';
       const parts = msg.split('|');
-      if (parts.length === 3) setDeleteError({ id, count: parseInt(parts[1]), detail: parts[2] });
-      else setDeleteError({ id, count: 0, detail: msg });
+      setDeleteError(parts.length === 3 ? { id, count: parseInt(parts[1]), detail: parts[2] } : { id, count: 0, detail: msg });
       setTimeout(() => setDeleteError(null), 8000);
     }
   };
 
-  const handleFilterClick = (key: FilterKey) => {
-    setActiveFilter(prev => prev === key ? 'all' : key);
-    setSearch(''); setPage(1);
-  };
+  // ── Toplam Soru → hepsini göster ────────────────────────────────────────
+  const handleTotalClick  = () => { setActiveFilter('all'); setSearch(''); setPage(1); };
+  const handleFilterClick = (key: FilterKey) => { setActiveFilter(prev => prev === key ? 'all' : key); setSearch(''); setPage(1); };
 
   const totalCount   = questions.length;
   const activeCount  = questions.filter(q => q.isActive).length;
@@ -109,77 +88,73 @@ export default function QuestionsPage() {
   const templateMap  = new Map<number, AnswerTemplate>(templates.map(tpl => [tpl.id, tpl]));
 
   const filtered = questions.filter(q => {
-    const passesFilter =
-      activeFilter === 'active'  ? q.isActive :
-      activeFilter === 'passive' ? !q.isActive : true;
-    if (!passesFilter) return false;
+    const ok = activeFilter === 'active' ? q.isActive : activeFilter === 'passive' ? !q.isActive : true;
+    if (!ok) return false;
     if (!search) return true;
     const s = search.toLowerCase();
-    const durum = q.isActive
-      ? `${tx(language, t.common.active).toLowerCase()} active`
-      : `${tx(language, t.common.passive).toLowerCase()} passive`;
+    const st = q.isActive ? `${tx(language, t.common.active).toLowerCase()} active` : `${tx(language, t.common.passive).toLowerCase()} passive`;
     const tpl = templateMap.get(q.answerTemplateId);
-    const optionsText = tpl ? tpl.options.map((o: { text: string }) => o.text).join(' ') : '';
-    return q.text.toLowerCase().includes(s) || q.answerTemplateName.toLowerCase().includes(s) || durum.includes(s) || optionsText.toLowerCase().includes(s);
+    const opts = tpl ? tpl.options.map((o: { text: string }) => o.text).join(' ') : '';
+    return q.text.toLowerCase().includes(s) || q.answerTemplateName.toLowerCase().includes(s) || st.includes(s) || opts.toLowerCase().includes(s);
   });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage   = Math.min(page, totalPages);
   const paginated  = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
-  const pillStyle = (key: FilterKey, activeBg: string, activeColor: string, inactiveBg: string, inactiveColor: string) => ({
-    flex: 1, background: activeFilter === key ? activeBg : inactiveBg,
-    color: activeFilter === key ? activeColor : inactiveColor,
+  const pill = (key: FilterKey, aBg: string, aC: string, iBg: string, iC: string) => ({
+    flex: 1, background: activeFilter === key ? aBg : iBg, color: activeFilter === key ? aC : iC,
     borderRadius: '8px', padding: '6px 10px', textAlign: 'center' as const,
     fontSize: '13px', fontWeight: 600, cursor: 'pointer',
-    border: activeFilter === key ? `2px solid ${activeColor}` : '2px solid transparent',
+    border: activeFilter === key ? `2px solid ${aC}` : '2px solid transparent',
     transition: 'all 0.15s', userSelect: 'none' as const,
   });
+
+  const totalStyle: React.CSSProperties = {
+    fontWeight: 600, cursor: 'pointer',
+    color: activeFilter === 'all' ? '#6366f1' : '#4b5563',
+    background: activeFilter === 'all' ? '#e0e7ff' : 'transparent',
+    borderRadius: '6px', padding: '2px 8px',
+    border: activeFilter === 'all' ? '1.5px solid #6366f144' : '1.5px solid transparent',
+    transition: 'all 0.15s', userSelect: 'none',
+  };
 
   if (loading) return <div className="loading-container"><div className="spinner-large"></div></div>;
 
   function DeletePopover({ question, usedSurveys }: { question: QuestionListItem; usedSurveys: SurveyListItem[] }) {
     const [show, setShow] = useState(false);
-    const [pos, setPos]   = useState({ top: 0, left: 0 });
-    const btnRef          = useRef<HTMLSpanElement>(null);
-    const hideTimer       = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const scheduleHide = () => { hideTimer.current = setTimeout(() => setShow(false), 120); };
-    const cancelHide   = () => { if (hideTimer.current) clearTimeout(hideTimer.current); };
-    const handleEnter  = () => {
-      cancelHide();
-      if (btnRef.current) { const r = btnRef.current.getBoundingClientRect(); setPos({ top: r.top + window.scrollY, left: r.right + window.scrollX }); }
-      setShow(true);
-    };
+    const [pos, setPos] = useState({ top: 0, left: 0 });
+    const ref = useRef<HTMLSpanElement>(null);
+    const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const hide = () => { timer.current = setTimeout(() => setShow(false), 120); };
+    const keep = () => { if (timer.current) clearTimeout(timer.current); };
+    const enter = () => { keep(); if (ref.current) { const r = ref.current.getBoundingClientRect(); setPos({ top: r.top + window.scrollY, left: r.right + window.scrollX }); } setShow(true); };
     return (
       <>
-        <span ref={btnRef} style={{ display: 'inline-block' }} onMouseEnter={handleEnter} onMouseLeave={scheduleHide}>
+        <span ref={ref} style={{ display: 'inline-block' }} onMouseEnter={enter} onMouseLeave={hide}>
           <button style={{ opacity: 0.45, pointerEvents: 'none', cursor: 'not-allowed' }} className="btn btn-sm btn-danger">{tx(language, t.common.delete)}</button>
         </span>
         {show && (
-          <div onMouseEnter={cancelHide} onMouseLeave={scheduleHide} style={{ position: 'fixed', top: pos.top - 10, left: pos.left - 310, width: '300px', background: '#fff', borderRadius: '10px', zIndex: 9999, boxShadow: '0 8px 32px rgba(0,0,0,.2)', border: '1px solid #e5e7eb', overflow: 'hidden', transform: 'translateY(-100%)' }}>
-            <div style={{ background: '#fff7ed', borderBottom: '1px solid #fed7aa', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '16px' }}>🔒</span>
+          <div onMouseEnter={keep} onMouseLeave={hide} style={{ position: 'fixed', top: pos.top - 10, left: pos.left - 310, width: '300px', background: '#fff', borderRadius: '10px', zIndex: 9999, boxShadow: '0 8px 32px rgba(0,0,0,.2)', border: '1px solid #e5e7eb', overflow: 'hidden', transform: 'translateY(-100%)' }}>
+            <div style={{ background: '#fff7ed', borderBottom: '1px solid #fed7aa', padding: '10px 14px', display: 'flex', gap: '8px' }}>
+              <span>🔒</span>
               <div>
                 <div style={{ fontWeight: 700, fontSize: '13px', color: '#c2410c' }}>{tx(language, t.questions.cannotDelete)}</div>
                 <div style={{ fontSize: '12px', color: '#9a3412' }}><strong>{usedSurveys.length}</strong> {tx(language, t.questions.usedIn)}</div>
               </div>
             </div>
-            <div style={{ maxHeight: '200px', overflowY: 'auto', padding: '8px 0' }}>
+            <div style={{ maxHeight: '180px', overflowY: 'auto', padding: '8px 0' }}>
               {usedSurveys.map((s, i) => (
                 <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 14px', borderBottom: i < usedSurveys.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
                   <span style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', minWidth: '16px' }}>{i + 1}</span>
-                  <span style={{ flex: 1, fontSize: '12px', color: '#374151', lineHeight: 1.3 }}>{s.title.length > 40 ? s.title.substring(0, 40) + '…' : s.title}</span>
-                  <span className={`badge ${s.isActive ? 'badge-success' : 'badge-secondary'}`} style={{ fontSize: '10px', padding: '2px 6px' }}>
-                    {s.isActive ? tx(language, t.common.active) : tx(language, t.common.passive)}
-                  </span>
+                  <span style={{ flex: 1, fontSize: '12px', color: '#374151' }}>{s.title.length > 40 ? s.title.substring(0, 40) + '…' : s.title}</span>
+                  <span className={`badge ${s.isActive ? 'badge-success' : 'badge-secondary'}`} style={{ fontSize: '10px' }}>{s.isActive ? tx(language, t.common.active) : tx(language, t.common.passive)}</span>
                 </div>
               ))}
             </div>
             <div style={{ padding: '10px 14px', borderTop: '1px solid #e5e7eb', background: '#f9fafb' }}>
               <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '6px' }}>💡 {tx(language, t.questions.deleteHint)}</div>
-              <Link to={`/admin/surveys?search=${encodeURIComponent(question.text.substring(0, 30))}`}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 600, color: '#6366f1', textDecoration: 'none' }}
-                onClick={() => setShow(false)}>{tx(language, t.questions.viewSurveys)}</Link>
+              <Link to={`/admin/surveys?search=${encodeURIComponent(question.text.substring(0, 30))}`} style={{ fontSize: '12px', fontWeight: 600, color: '#6366f1', textDecoration: 'none' }} onClick={() => setShow(false)}>{tx(language, t.questions.viewSurveys)}</Link>
             </div>
           </div>
         )}
@@ -191,9 +166,7 @@ export default function QuestionsPage() {
     <div className="page">
       <style>{`@keyframes shake{0%,100%{transform:translateX(0)}15%{transform:translateX(-8px)}30%{transform:translateX(8px)}45%{transform:translateX(-6px)}60%{transform:translateX(6px)}75%{transform:translateX(-3px)}90%{transform:translateX(3px)}}.modal-shake{animation:shake 0.6s ease;}`}</style>
 
-      {successMsg && (
-        <div style={{ position: 'fixed', top: '20px', right: '24px', zIndex: 9999, background: '#10b981', color: '#fff', padding: '12px 20px', borderRadius: '10px', fontWeight: 600, fontSize: '14px', boxShadow: '0 4px 16px rgba(16,185,129,.35)', display: 'flex', alignItems: 'center', gap: '8px' }}>✅ {successMsg}</div>
-      )}
+      {successMsg && <div style={{ position: 'fixed', top: '20px', right: '24px', zIndex: 9999, background: '#10b981', color: '#fff', padding: '12px 20px', borderRadius: '10px', fontWeight: 600, fontSize: '14px', boxShadow: '0 4px 16px rgba(16,185,129,.35)' }}>✅ {successMsg}</div>}
 
       <div className="page-header">
         <div><h1>{tx(language, t.questions.title)}</h1><p>{tx(language, t.questions.subtitle)}</p></div>
@@ -202,18 +175,18 @@ export default function QuestionsPage() {
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
         <div style={{ background: '#eef2ff', border: '1px solid #6366f122', borderRadius: '12px', padding: '16px 20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '20px' }}>❓</span>
-            <span style={{ fontWeight: 600, color: '#4b5563' }}>{tx(language, t.questions.totalQuestions)}</span>
+            <span style={totalStyle} onClick={handleTotalClick}>{tx(language, t.questions.totalQuestions)}</span>
             <span style={{ marginLeft: 'auto', fontSize: '28px', fontWeight: 700, color: '#6366f1' }}>{totalCount}</span>
           </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <span style={pillStyle('active', '#15803d', '#fff', '#dcfce7', '#15803d')} onClick={() => handleFilterClick('active')}>✅ {activeCount} {tx(language, t.common.active)}</span>
-            <span style={pillStyle('passive', '#6b7280', '#fff', '#f3f4f6', '#6b7280')} onClick={() => handleFilterClick('passive')}>⏸ {passiveCount} {tx(language, t.common.passive)}</span>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={pill('active',  '#15803d','#fff','#dcfce7','#15803d')} onClick={() => handleFilterClick('active')}>✅ {activeCount} {tx(language, t.common.active)}</span>
+            <span style={pill('passive', '#6b7280','#fff','#f3f4f6','#6b7280')} onClick={() => handleFilterClick('passive')}>⏸ {passiveCount} {tx(language, t.common.passive)}</span>
           </div>
         </div>
-        <div style={{ background: '#f0fdf4', border: '1px solid #10b98122', borderRadius: '12px', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <span style={{ fontSize: '32px' }}>💡</span>
+        <div style={{ background: '#f0fdf4', border: '1px solid #10b98122', borderRadius: '12px', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span style={{ fontSize: '28px', flexShrink: 0 }}>💡</span>
           <div>
             <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '4px' }}>{tx(language, t.questions.infoTitle)}</div>
             <div style={{ fontWeight: 600, color: '#374151' }}>{tx(language, t.questions.infoDesc)}</div>
@@ -224,28 +197,16 @@ export default function QuestionsPage() {
 
       <div className="card">
         <div className="card-toolbar">
-          <SearchInput value={search} placeholder={tx(language, t.questions.searchPlaceholder)}
-            onChange={v => { setSearch(v); setActiveFilter('all'); setPage(1); }} />
-          {activeFilter !== 'all' && (
-            <button className="btn btn-sm btn-outline" onClick={() => { setActiveFilter('all'); setPage(1); }}>{tx(language, t.common.clearFilter)}</button>
-          )}
+          <SearchInput value={search} placeholder={tx(language, t.questions.searchPlaceholder)} onChange={v => { setSearch(v); setActiveFilter('all'); setPage(1); }} />
+          {activeFilter !== 'all' && <button className="btn btn-sm btn-outline" onClick={() => { setActiveFilter('all'); setPage(1); }}>{tx(language, t.common.clearFilter)}</button>}
         </div>
-
         <div className="table-container">
           <table className="table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>{tx(language, t.common.status)}</th>
-                <th>{tx(language, t.questions.colText)}</th>
-                <th>{tx(language, t.questions.colTemplate)}</th>
-                <th>{tx(language, t.questions.colOptions)}</th>
-                <th>{tx(language, t.common.actions)}</th>
-              </tr>
-            </thead>
+            <thead><tr><th>#</th><th>{tx(language, t.common.status)}</th><th>{tx(language, t.questions.colText)}</th><th>{tx(language, t.questions.colTemplate)}</th><th>{tx(language, t.questions.colOptions)}</th><th>{tx(language, t.common.actions)}</th></tr></thead>
             <tbody>
               {paginated.map((q, i) => {
                 const rowNum = (safePage - 1) * PAGE_SIZE + i + 1;
+                const tpl = templateMap.get(q.answerTemplateId);
                 return (
                   <>
                     <tr key={q.id}>
@@ -254,47 +215,37 @@ export default function QuestionsPage() {
                       <td>{q.text}</td>
                       <td><span className="pill">{q.answerTemplateName}</span></td>
                       <td>
-                        {(() => {
-                          const tpl = templateMap.get(q.answerTemplateId);
-                          if (!tpl) return <span className="text-muted">—</span>;
-                          return (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                              <span style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '2px' }}>{tpl.options.length} {tx(language, t.questions.optionCount)}</span>
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                                {tpl.options.map((o: { id: number; text: string }) => (
-                                  <span key={o.id} className="pill" style={{ fontSize: '11px', padding: '2px 7px' }}>{o.text}</span>
-                                ))}
-                              </div>
+                        {tpl ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                            <span style={{ fontSize: '11px', color: '#9ca3af' }}>{tpl.options.length} {tx(language, t.questions.optionCount)}</span>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                              {tpl.options.map((o: { id: number; text: string }) => <span key={o.id} className="pill" style={{ fontSize: '11px', padding: '2px 7px' }}>{o.text}</span>)}
                             </div>
-                          );
-                        })()}
+                          </div>
+                        ) : <span className="text-muted">—</span>}
                       </td>
                       <td>
                         <div className="action-btns">
                           <button className="btn btn-sm btn-outline" onClick={() => openEdit(q, rowNum)}>{tx(language, t.common.edit)}</button>
-                          {q.usedInSurveysCount > 0 ? (
-                            <DeletePopover question={q} usedSurveys={surveys.filter(s => s.questionIds?.includes(q.id))} />
-                          ) : (
-                            <button className="btn btn-sm btn-danger" onClick={() => handleDelete(q.id, rowNum)}>{tx(language, t.common.delete)}</button>
-                          )}
+                          {q.usedInSurveysCount > 0
+                            ? <DeletePopover question={q} usedSurveys={surveys.filter(s => s.questionIds?.includes(q.id))} />
+                            : <button className="btn btn-sm btn-danger" onClick={() => handleDelete(q.id, rowNum)}>{tx(language, t.common.delete)}</button>}
                         </div>
                       </td>
                     </tr>
                     {deleteError?.id === q.id && (
-                      <tr key={`err-${q.id}`}>
-                        <td colSpan={5} style={{ padding: 0, border: 'none' }}>
-                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', background: '#fff7ed', borderLeft: '4px solid #f97316', borderBottom: '1px solid #fed7aa', padding: '12px 16px' }}>
-                            <span style={{ fontSize: '20px', lineHeight: 1, marginTop: '1px' }}>🔒</span>
-                            <div style={{ flex: 1 }}>
-                              <div style={{ fontWeight: 600, color: '#c2410c', fontSize: '13px', marginBottom: '3px' }}>{tx(language, t.questions.errCannotDelete)}</div>
-                              <div style={{ fontSize: '13px', color: '#374151', marginBottom: '4px' }}>{tx(language, t.questions.errUsedIn)}</div>
-                              <div style={{ fontSize: '12px', color: '#6b7280' }}>{deleteError.detail}</div>
-                              <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '6px' }}>{tx(language, t.questions.errHint)}</div>
-                            </div>
-                            <button onClick={() => setDeleteError(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '18px', lineHeight: 1, padding: '0 4px' }}>×</button>
+                      <tr key={`err-${q.id}`}><td colSpan={6} style={{ padding: 0, border: 'none' }}>
+                        <div style={{ display: 'flex', gap: '12px', background: '#fff7ed', borderLeft: '4px solid #f97316', padding: '12px 16px' }}>
+                          <span>🔒</span>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 600, color: '#c2410c', fontSize: '13px', marginBottom: '3px' }}>{tx(language, t.questions.errCannotDelete)}</div>
+                            <div style={{ fontSize: '13px', color: '#374151', marginBottom: '4px' }}>{tx(language, t.questions.errUsedIn)}</div>
+                            <div style={{ fontSize: '12px', color: '#6b7280' }}>{deleteError.detail}</div>
+                            <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>{tx(language, t.questions.errHint)}</div>
                           </div>
-                        </td>
-                      </tr>
+                          <button onClick={() => setDeleteError(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '18px' }}>×</button>
+                        </div>
+                      </td></tr>
                     )}
                   </>
                 );
@@ -303,23 +254,19 @@ export default function QuestionsPage() {
           </table>
           {filtered.length === 0 && <div className="empty-state">{tx(language, t.common.notFound)}</div>}
         </div>
-
         {totalPages > 1 && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderTop: '1px solid #e5e7eb' }}>
-            <span style={{ fontSize: '13px', color: '#6b7280' }}>
-              {filtered.length} {language === 'tr' ? 'sorudan' : 'questions'} {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} {tx(language, t.common.showing)}
-            </span>
-            <div style={{ display: 'flex', gap: '4px' }}>
+          <div className="pagination-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderTop: '1px solid #e5e7eb', flexWrap: 'wrap', gap: '8px' }}>
+            <span style={{ fontSize: '13px', color: '#6b7280' }}>{filtered.length} {language === 'tr' ? 'sorudan' : 'questions'} {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} {tx(language, t.common.showing)}</span>
+            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
               <button className="btn btn-sm btn-outline" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage === 1}>{tx(language, t.common.prev)}</button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-                <button key={p} className={`btn btn-sm ${p === safePage ? 'btn-primary' : 'btn-outline'}`} onClick={() => setPage(p)} style={{ minWidth: '36px' }}>{p}</button>
-              ))}
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => <button key={p} className={`btn btn-sm ${p === safePage ? 'btn-primary' : 'btn-outline'}`} onClick={() => setPage(p)} style={{ minWidth: '36px' }}>{p}</button>)}
               <button className="btn btn-sm btn-outline" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}>{tx(language, t.common.next)}</button>
             </div>
           </div>
         )}
       </div>
 
+      {/* ── Modal ── */}
       {showModal && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className={`modal${shake ? ' modal-shake' : ''}`} onClick={e => e.stopPropagation()}>
@@ -329,16 +276,10 @@ export default function QuestionsPage() {
             </div>
             <div className="modal-body">
               {error && (
-                <div style={{
-                  display: 'flex', alignItems: 'flex-start', gap: '10px',
-                  background: errorType === 'duplicate' ? '#fff7ed' : errorType === 'passive_conflict' ? '#fefce8' : '#fef2f2',
-                  border: `1px solid ${errorType === 'duplicate' ? '#fed7aa' : errorType === 'passive_conflict' ? '#fde047' : '#fecaca'}`,
-                  borderLeft: `4px solid ${errorType === 'duplicate' ? '#f97316' : errorType === 'passive_conflict' ? '#eab308' : '#ef4444'}`,
-                  borderRadius: '8px', padding: '12px 14px', marginBottom: '16px',
-                }}>
+                <div style={{ display: 'flex', gap: '10px', background: errorType === 'duplicate' ? '#fff7ed' : errorType === 'passive_conflict' ? '#fefce8' : '#fef2f2', border: `1px solid ${errorType === 'duplicate' ? '#fed7aa' : errorType === 'passive_conflict' ? '#fde047' : '#fecaca'}`, borderLeft: `4px solid ${errorType === 'duplicate' ? '#f97316' : errorType === 'passive_conflict' ? '#eab308' : '#ef4444'}`, borderRadius: '8px', padding: '12px 14px', marginBottom: '4px' }}>
                   <span style={{ fontSize: '18px', lineHeight: 1 }}>{errorType === 'duplicate' ? '⚠️' : errorType === 'passive_conflict' ? '🔒' : '❌'}</span>
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: '2px', color: errorType === 'duplicate' ? '#c2410c' : errorType === 'passive_conflict' ? '#854d0e' : '#dc2626' }}>
+                    <div style={{ fontWeight: 600, fontSize: '13px', color: errorType === 'duplicate' ? '#c2410c' : errorType === 'passive_conflict' ? '#854d0e' : '#dc2626', marginBottom: '2px' }}>
                       {errorType === 'duplicate' ? tx(language, t.questions.dupTitle) : errorType === 'passive_conflict' ? tx(language, t.questions.passiveTitle) : tx(language, t.common.error)}
                     </div>
                     <div style={{ fontSize: '13px', color: '#374151' }}>{error}</div>
@@ -349,19 +290,14 @@ export default function QuestionsPage() {
                 </div>
               )}
               <div className="form-group">
-                <label>{tx(language, t.questions.questionText)}</label>
-                <textarea rows={3} value={form.text}
-                  onChange={e => { setForm(f => ({ ...f, text: e.target.value })); if (errorType === 'duplicate') { setError(''); setErrorType(''); } }}
-                  placeholder={tx(language, t.questions.questionTextPh)}
-                  style={errorType === 'duplicate' ? { borderColor: '#f97316', boxShadow: '0 0 0 3px #fed7aa66' } : {}} />
+                <label>{tx(language, t.questions.questionText)}<Req /></label>
+                <textarea rows={3} value={form.text} onChange={e => { setForm(f => ({ ...f, text: e.target.value })); if (errorType === 'duplicate') { setError(''); setErrorType(''); } }} placeholder={tx(language, t.questions.questionTextPh)} style={errorType === 'duplicate' ? { borderColor: '#f97316', boxShadow: '0 0 0 3px #fed7aa66' } : {}} />
               </div>
               <div className="form-group">
-                <label>{tx(language, t.questions.templateLabel)}</label>
+                <label>{tx(language, t.questions.templateLabel)}<Req /></label>
                 <select value={form.answerTemplateId} onChange={e => setForm(f => ({ ...f, answerTemplateId: Number(e.target.value) }))}>
                   <option value={0}>{tx(language, t.questions.templateSelect)}</option>
-                  {templates.filter(tpl => tpl.isActive).map(tpl => (
-                    <option key={tpl.id} value={tpl.id}>{tpl.name} ({tpl.options.length} {tx(language, t.questions.optionCount)})</option>
-                  ))}
+                  {templates.filter(tpl => tpl.isActive).map(tpl => <option key={tpl.id} value={tpl.id}>{tpl.name} ({tpl.options.length} {tx(language, t.questions.optionCount)})</option>)}
                 </select>
               </div>
               <div className="form-group">
