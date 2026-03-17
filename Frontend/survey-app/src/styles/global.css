@@ -442,14 +442,33 @@ body {
 
 /* ── ≤1024px: Tablet Landscape ── */
 @media (max-width: 1024px) {
-  /* FIX: always collapse sidebar at this breakpoint regardless of state */
-  .sidebar { width: var(--sidebar-collapsed); }
-  /* FIX: don't let sidebar-open override at tablet — only on desktop */
-  .sidebar-open .sidebar { width: var(--sidebar-collapsed); }
-  .sidebar-open .sidebar .nav-label,
-  .sidebar-open .sidebar .user-details,
-  .sidebar-open .sidebar .sidebar-logo span { display: none; }
+  /*
+   * SIDEBAR OVERLAY PATTERN for tablet:
+   *
+   * Default (collapsed):
+   *   - Sidebar = 60px icon-only, stays fixed
+   *   - admin-main margin = 60px (sidebar is always visible as icon rail)
+   *
+   * Opened (sidebar-open):
+   *   - Sidebar = 240px full width, overlays content (no margin change)
+   *   - Labels ARE visible — never hide them when open
+   *   - Backdrop (.mob-overlay) covers content behind sidebar
+   */
 
+  /* Default: icon-only rail */
+  .sidebar { width: var(--sidebar-collapsed); }
+
+  /* Opened: full sidebar as overlay — content does NOT shift */
+  .admin-layout.sidebar-open .sidebar {
+    width: var(--sidebar-width);
+    box-shadow: var(--shadow-lg);
+    z-index: 150;
+  }
+
+  /* Show backdrop when sidebar is open on tablet */
+  .admin-layout.sidebar-open .mob-overlay { display: block !important; z-index: 149; }
+
+  /* admin-main always has 60px margin — sidebar overlays, never pushes */
   .admin-main { margin-left: var(--sidebar-collapsed) !important; }
 
   .page { padding: 20px; }
@@ -467,22 +486,24 @@ body {
 
 /* ── ≤768px: Tablet Portrait / Mobile ── */
 @media (max-width: 768px) {
-  /* Sidebar → hidden drawer */
+  /*
+   * SIDEBAR DRAWER PATTERN for mobile:
+   * - Sidebar hidden off-screen left by default (translateX -100%)
+   * - sidebar-open: slides in as full overlay drawer
+   * - admin-main margin = 0 (sidebar is fully off-screen when closed)
+   */
   .sidebar {
     transform: translateX(-100%);
     width: var(--sidebar-width) !important;
     box-shadow: var(--shadow-lg);
     z-index: 200;
   }
-  .sidebar .nav-label,
-  .sidebar .user-details,
-  .sidebar .sidebar-logo span { display: block; }
 
   .admin-layout.sidebar-open .sidebar {
     transform: translateX(0);
   }
 
-  /* FIX: force margin-left:0 — sidebar is a fixed overlay on mobile */
+  /* admin-main: no margin — sidebar is pure overlay */
   .admin-main { margin-left: 0 !important; }
 
   /* Mobile overlay */
