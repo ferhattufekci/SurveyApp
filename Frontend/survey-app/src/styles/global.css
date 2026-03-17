@@ -33,6 +33,9 @@
   --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
   --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
   --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+
+  /* FIX: consistent mobile padding token */
+  --page-pad-mobile: 16px;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -43,6 +46,8 @@ body {
   color: var(--gray-800);
   font-size: 14px;
   line-height: 1.5;
+  /* FIX: prevent horizontal scroll at body level */
+  overflow-x: hidden;
 }
 
 /* ===== LOGIN ===== */
@@ -111,11 +116,28 @@ body {
 .user-details { display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
 .user-name { font-size: 13px; font-weight: 600; color: var(--gray-800); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .user-role { font-size: 11px; color: var(--gray-500); }
-.admin-main { flex: 1; margin-left: var(--sidebar-width); min-height: 100vh; transition: margin-left 0.2s; min-width: 0; }
+
+/* FIX: admin-main — overflow hidden prevents table bleed from shifting layout */
+.admin-main {
+  flex: 1;
+  /* FIX: use width + margin instead of flex:1 alone for reliable sizing */
+  width: 100%;
+  margin-left: var(--sidebar-width);
+  min-height: 100vh;
+  transition: margin-left 0.2s;
+  min-width: 0;
+  overflow-x: hidden; /* FIX: critical — prevents horizontal scroll bleed */
+}
 .sidebar-closed .admin-main { margin-left: var(--sidebar-collapsed); }
 
 /* ===== PAGE ===== */
-.page { padding: 28px; max-width: 1400px; }
+/* FIX: width:100% + box-sizing ensures page fills admin-main correctly */
+.page {
+  padding: 28px;
+  max-width: 1400px;
+  width: 100%;           /* FIX */
+  box-sizing: border-box; /* FIX */
+}
 .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
 .page-header h1 { font-size: 22px; font-weight: 800; color: var(--gray-900); }
 .page-header p { color: var(--gray-500); font-size: 13px; margin-top: 2px; }
@@ -167,7 +189,14 @@ body {
 .card-toolbar { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--gray-100); flex-wrap: wrap; }
 
 /* ===== TABLE ===== */
-.table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; }
+/* FIX: table-container needs proper isolation to prevent layout bleed */
+.table-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
+  /* FIX: isolate scroll context so it doesn't shift parent */
+  position: relative;
+}
 .table { width: 100%; border-collapse: collapse; min-width: 500px; }
 .table th {
   background: var(--gray-50); padding: 10px 16px; text-align: left;
@@ -400,9 +429,9 @@ body {
   padding: 6px; color: var(--gray-600); font-size: 20px;
 }
 
-/* =======================================================
+/* ===================================================
    RESPONSIVE BREAKPOINTS
-   ======================================================= */
+   =================================================== */
 
 /* ── ≤1280px: Laptop / Small Desktop ── */
 @media (max-width: 1280px) {
@@ -413,10 +442,15 @@ body {
 
 /* ── ≤1024px: Tablet Landscape ── */
 @media (max-width: 1024px) {
-  .sidebar-closed .sidebar { width: var(--sidebar-collapsed); }
+  /* FIX: always collapse sidebar at this breakpoint regardless of state */
+  .sidebar { width: var(--sidebar-collapsed); }
+  /* FIX: don't let sidebar-open override at tablet — only on desktop */
+  .sidebar-open .sidebar { width: var(--sidebar-collapsed); }
+  .sidebar-open .sidebar .nav-label,
+  .sidebar-open .sidebar .user-details,
+  .sidebar-open .sidebar .sidebar-logo span { display: none; }
+
   .admin-main { margin-left: var(--sidebar-collapsed) !important; }
-  .sidebar-open .admin-main { margin-left: var(--sidebar-width) !important; }
-  .sidebar-closed .admin-main { margin-left: var(--sidebar-collapsed) !important; }
 
   .page { padding: 20px; }
 
@@ -424,9 +458,7 @@ body {
   .stats-grid-3      { grid-template-columns: repeat(2, 1fr); }
   .stat-cards-grid-4 { grid-template-columns: repeat(2, 1fr); gap: 12px; }
 
-  .dashboard-mid-grid {
-    grid-template-columns: 1fr 1fr;
-  }
+  .dashboard-mid-grid { grid-template-columns: 1fr 1fr; }
   .dashboard-pie-col { display: none; }
   .dashboard-rules-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
 
@@ -442,19 +474,23 @@ body {
     box-shadow: var(--shadow-lg);
     z-index: 200;
   }
+  .sidebar .nav-label,
+  .sidebar .user-details,
+  .sidebar .sidebar-logo span { display: block; }
+
   .admin-layout.sidebar-open .sidebar {
     transform: translateX(0);
   }
-  .admin-main {
-    margin-left: 0 !important;
-  }
+
+  /* FIX: force margin-left:0 — sidebar is a fixed overlay on mobile */
+  .admin-main { margin-left: 0 !important; }
 
   /* Mobile overlay */
   .mobile-topbar { display: flex !important; }
   .mob-overlay   { display: block !important; z-index: 199; }
 
-  /* Page */
-  .page { padding: 12px 10px; }
+  /* FIX: page padding matches mobile-topbar padding (both 16px) */
+  .page { padding: 16px; }
   .page-header { flex-direction: column; align-items: stretch; gap: 10px; margin-bottom: 16px; }
   .page-header .btn { width: 100%; justify-content: center; }
 
@@ -502,9 +538,9 @@ body {
   .login-card { padding: 24px; border-radius: 16px; }
 
   /* User layout */
-  .user-header { padding: 10px 14px; }
+  .user-header { padding: 10px 16px; } /* FIX: match 16px standard */
   .user-header-right { gap: 8px; }
-  .user-content { padding: 12px 10px; }
+  .user-content { padding: 16px; } /* FIX: match 16px standard */
 
   /* Fill survey */
   .question-card { padding: 14px; gap: 10px; }
@@ -545,7 +581,7 @@ body {
 
 /* ── ≤360px: Very Small ── */
 @media (max-width: 360px) {
-  .page { padding: 8px; }
+  .page { padding: 12px; }
   .card-header { padding: 12px; }
   .table th, .table td { padding: 8px 10px; }
   .login-card { padding: 14px; }
