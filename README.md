@@ -32,6 +32,7 @@ A full-stack survey management system built with **.NET 8** (Clean Architecture)
 - [Deployment](#deployment)
 - [Default Credentials](#default-credentials)
 - [Switching Databases](#switching-databases)
+- [Contributing](#contributing)
 
 ---
 
@@ -571,6 +572,84 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 ---
 
+## Contributing
+
+Contributions are welcome! Please follow the guidelines below to keep the codebase consistent and the review process smooth.
+
+### How to Contribute
+
+1. **Fork** the repository and create your branch from `main`:
+   ```sh
+   git checkout -b feat/your-feature-name
+   ```
+
+2. **Make your changes.** Keep each commit focused on a single logical change.
+
+3. **Follow the commit message convention** — this project uses [Conventional Commits](https://www.conventionalcommits.org/):
+
+   | Type       | When to use                                             |
+   | ---------- | ------------------------------------------------------- |
+   | `feat`     | A new feature                                           |
+   | `fix`      | A bug fix                                               |
+   | `docs`     | Documentation changes only                             |
+   | `refactor` | Code change that neither fixes a bug nor adds a feature |
+   | `test`     | Adding or updating tests                                |
+   | `chore`    | Build process, tooling, or dependency updates           |
+
+   Examples:
+   ```
+   feat: add export-to-CSV button on reports page
+   fix: prevent duplicate survey submission on slow connections
+   docs: add PostgreSQL migration guide to README
+   ```
+
+4. **Test your changes** locally before opening a pull request:
+   ```sh
+   # Backend
+   cd Backend/SurveyApp.API && dotnet run
+
+   # Frontend
+   cd Frontend/survey-app && npm run dev
+   ```
+
+5. **Open a Pull Request** against the `main` branch. Fill in the PR template:
+   - What problem does this solve?
+   - How was it tested?
+   - Any breaking changes?
+
+### Branch Naming
+
+| Pattern                  | Purpose                              |
+| ------------------------ | ------------------------------------ |
+| `feat/short-description` | New feature                          |
+| `fix/short-description`  | Bug fix                              |
+| `docs/short-description` | Documentation update                 |
+| `refactor/...`           | Refactoring without behavior change  |
+
+### Code Style
+
+- **Backend:** Follow the existing Clean Architecture layer boundaries. Business logic belongs in the Application layer — never in controllers. New endpoints must include `[ProducesResponseType]` annotations.
+- **Frontend:** Keep page-level state in page components; share data-fetching logic through custom hooks. New user-visible strings must be added to `src/i18n/translations.ts` with both `tr` and `en` values.
+- Use **4 spaces** for C# and **2 spaces** for TypeScript/TSX.
+
+### Reporting Bugs
+
+Open an issue and include:
+- Steps to reproduce
+- Expected vs. actual behavior
+- Browser / .NET SDK version
+- Relevant error messages or screenshots
+
+### Suggesting Features
+
+Open an issue with the `enhancement` label. Describe the use case and the proposed solution. For larger changes, discuss the approach in an issue before writing code.
+
+### Code of Conduct
+
+Be respectful and constructive. All contributors are expected to follow the [Contributor Covenant](https://www.contributor-covenant.org/).
+
+---
+
 ## Author
 
 [![Author](https://img.shields.io/badge/author-ferhattufekci-red)](https://github.com/ferhattufekci)
@@ -629,6 +708,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 - [Kurulum](#kurulum)
 - [Varsayılan Giriş Bilgileri](#varsayılan-giriş-bilgileri)
 - [Farklı Veritabanına Geçiş](#farklı-veritabanına-geçiş)
+- [Katkı Sağlama](#katkı-sağlama)
 
 ---
 
@@ -1132,6 +1212,84 @@ builder.Services.AddDbContext<AppDbContext>(options =>
   "DefaultConnection": "Host=localhost;Database=surveyapp;Username=postgres;Password=sifreniz"
 }
 ```
+
+---
+
+## Katkı Sağlama
+
+Katkılarınızı bekliyoruz! Kod tabanının tutarlı kalması ve inceleme sürecinin sorunsuz ilerlemesi için aşağıdaki yönergeleri lütfen takip edin.
+
+### Nasıl Katkı Sağlanır
+
+1. Repoyu **fork**'layın ve `main` dalından kendi dalınızı oluşturun:
+   ```sh
+   git checkout -b feat/ozellik-adiniz
+   ```
+
+2. **Değişikliklerinizi yapın.** Her commit'i tek bir mantıksal değişikliğe odaklı tutun.
+
+3. **Commit mesajı kuralına uyun** — bu proje [Conventional Commits](https://www.conventionalcommits.org/) standardını kullanır:
+
+   | Tür        | Ne zaman kullanılır                                         |
+   | ---------- | ----------------------------------------------------------- |
+   | `feat`     | Yeni bir özellik                                            |
+   | `fix`      | Bir hata düzeltmesi                                         |
+   | `docs`     | Yalnızca dokümantasyon değişiklikleri                       |
+   | `refactor` | Hata düzeltmeyen ve özellik eklemeyen kod değişikliği       |
+   | `test`     | Test ekleme veya güncelleme                                 |
+   | `chore`    | Build süreci, araç güncellemesi veya bağımlılık güncellemesi |
+
+   Örnekler:
+   ```
+   feat: raporlar sayfasına CSV dışa aktarma butonu ekle
+   fix: yavaş bağlantılarda çift anket gönderimini önle
+   docs: README'ye PostgreSQL migration rehberi ekle
+   ```
+
+4. Pull request açmadan önce değişikliklerinizi **yerel ortamda test edin**:
+   ```sh
+   # Backend
+   cd Backend/SurveyApp.API && dotnet run
+
+   # Frontend
+   cd Frontend/survey-app && npm run dev
+   ```
+
+5. `main` dalına yönelik bir **Pull Request** açın. PR açıklamasında şunları belirtin:
+   - Bu hangi sorunu çözüyor?
+   - Nasıl test edildi?
+   - Kırıcı (breaking) değişiklik var mı?
+
+### Dal Adlandırma
+
+| Kalıp                    | Amaç                                        |
+| ------------------------ | ------------------------------------------- |
+| `feat/kısa-açıklama`     | Yeni özellik                                |
+| `fix/kısa-açıklama`      | Hata düzeltmesi                             |
+| `docs/kısa-açıklama`     | Dokümantasyon güncellemesi                  |
+| `refactor/...`           | Davranış değiştirmeyen yeniden yapılandırma |
+
+### Kod Stili
+
+- **Backend:** Mevcut Clean Architecture katman sınırlarına uyun. İş mantığı Application katmanına aittir — asla controller'lara yazılmamalıdır. Yeni endpoint'lere `[ProducesResponseType]` annotation'ı eklenmelidir.
+- **Frontend:** Sayfa düzeyindeki state'i sayfa bileşenlerinde tutun; veri çekme mantığını custom hook'lar üzerinden paylaşın. Kullanıcıya görünen yeni string'ler `src/i18n/translations.ts` dosyasına hem `tr` hem `en` değerleriyle eklenmelidir.
+- C# için **4 boşluk**, TypeScript/TSX için **2 boşluk** kullanın.
+
+### Hata Bildirimi
+
+Bir issue açarak şunları ekleyin:
+- Yeniden üretme adımları
+- Beklenen ve gerçekleşen davranış
+- Tarayıcı / .NET SDK sürümü
+- İlgili hata mesajları veya ekran görüntüleri
+
+### Özellik Önerisi
+
+`enhancement` etiketiyle bir issue açın. Kullanım senaryosunu ve önerilen çözümü açıklayın. Kapsamlı değişiklikler için kod yazmadan önce yaklaşımı bir issue üzerinden tartışın.
+
+### Davranış Kuralları
+
+Saygılı ve yapıcı olun. Tüm katkıcıların [Contributor Covenant](https://www.contributor-covenant.org/) ilkelerine uyması beklenir.
 
 ---
 
