@@ -597,14 +597,19 @@ export default function SurveysPage() {
               <div className="form-row">
                 <div className="form-group">
                   <label>{tx(language, t.surveys.startDate)}<Req /></label>
-                  <input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} />
+                  <input
+                    type="date"
+                    value={form.startDate}
+                    max={form.endDate || undefined}
+                    onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
+                  />
                 </div>
                 <div className="form-group">
                   <label>{tx(language, t.surveys.endDate)}<Req /></label>
                   <input
                     type="date"
                     value={form.endDate}
-                    min={new Date().toISOString().split('T')[0]}
+                    min={form.startDate || new Date().toISOString().split('T')[0]}
                     onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
                   />
                 </div>
