@@ -28,13 +28,40 @@ api.interceptors.response.use(
   }
 );
 
-// Auth
+// ── Hata mesajı çıkarıcı ─────────────────────────────────────────────────────
+// ASP.NET DataAnnotation hataları → { errors: { Field: ["msg"] } }
+// Servis hataları                  → { message: "..." }
+// İkisini de tek string'e çevirir.
+export function extractErrorMessage(error: unknown): string {
+  const e = error as {
+    response?: {
+      data?: {
+        message?: string;
+        errors?: Record<string, string[]>;
+      };
+    };
+  };
+
+  const data = e?.response?.data;
+  if (!data) return 'Bir hata oluştu.';
+
+  // ASP.NET validation format: { errors: { Text: ["min 5 karakter..."] } }
+  if (data.errors) {
+    const messages = Object.values(data.errors).flat();
+    return messages.join(' ');
+  }
+
+  // Servis hata formatı: { message: "..." }
+  return data.message ?? 'Bir hata oluştu.';
+}
+
+// ── Auth ─────────────────────────────────────────────────────────────────────
 export const authApi = {
   login: (email: string, password: string) =>
     api.post('/auth/login', { email, password }).then(r => r.data),
 };
 
-// Users (Admin)
+// ── Users (Admin) ─────────────────────────────────────────────────────────────
 export const usersApi = {
   getAll: (): Promise<User[]> => api.get('/users').then(r => r.data),
   getById: (id: number): Promise<User> => api.get(`/users/${id}`).then(r => r.data),
@@ -44,7 +71,7 @@ export const usersApi = {
   delete: (id: number) => api.delete(`/users/${id}`),
 };
 
-// Answer Templates (Admin)
+// ── Answer Templates (Admin) ──────────────────────────────────────────────────
 export const answerTemplatesApi = {
   getAll: (): Promise<AnswerTemplate[]> => api.get('/answertemplates').then(r => r.data),
   getById: (id: number): Promise<AnswerTemplate> => api.get(`/answertemplates/${id}`).then(r => r.data),
@@ -55,7 +82,7 @@ export const answerTemplatesApi = {
   delete: (id: number) => api.delete(`/answertemplates/${id}`),
 };
 
-// Questions (Admin)
+// ── Questions (Admin) ─────────────────────────────────────────────────────────
 export const questionsApi = {
   getAll: (): Promise<QuestionListItem[]> => api.get('/questions').then(r => r.data),
   getById: (id: number): Promise<Question> => api.get(`/questions/${id}`).then(r => r.data),
@@ -66,7 +93,7 @@ export const questionsApi = {
   delete: (id: number) => api.delete(`/questions/${id}`),
 };
 
-// Surveys (Admin)
+// ── Surveys (Admin) ───────────────────────────────────────────────────────────
 export const surveysApi = {
   getAll: (): Promise<SurveyListItem[]> => api.get('/surveys').then(r => r.data),
   getById: (id: number): Promise<SurveyDetail> => api.get(`/surveys/${id}`).then(r => r.data),
@@ -77,14 +104,14 @@ export const surveysApi = {
   delete: (id: number) => api.delete(`/surveys/${id}`),
 };
 
-// Reports (Admin)
+// ── Reports (Admin) ───────────────────────────────────────────────────────────
 export const reportsApi = {
   getAll: (): Promise<SurveyListItem[]> => api.get('/reports').then(r => r.data),
   getSurveyReport: (surveyId: number): Promise<SurveyReport> =>
     api.get(`/reports/${surveyId}`).then(r => r.data),
 };
 
-// My Surveys (User)
+// ── My Surveys (User) ─────────────────────────────────────────────────────────
 export const mySurveysApi = {
   getAll: (): Promise<UserSurvey[]> => api.get('/my-surveys').then(r => r.data),
   getById: (id: number): Promise<SurveyDetail> => api.get(`/my-surveys/${id}`).then(r => r.data),

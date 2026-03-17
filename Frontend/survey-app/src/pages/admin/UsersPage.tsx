@@ -1,6 +1,6 @@
 import SearchInput from '../../components/admin/SearchInput';
 import { useEffect, useState } from 'react';
-import { usersApi, surveysApi } from '../../api';
+import { usersApi, surveysApi, extractErrorMessage } from '../../api';
 import { useAuthStore } from '../../store/authStore';
 import type { User, SurveyListItem } from '../../types';
 
@@ -91,7 +91,7 @@ export default function UsersPage() {
       showSuccess(editItem ? 'Kullanıcı başarıyla güncellendi.' : 'Kullanıcı başarıyla oluşturuldu.');
       load();
     } catch (e: any) {
-      const msg: string = e.response?.data?.message || 'Bir hata oluştu.';
+      const msg = extractErrorMessage(e);
       const parts = msg.split('|');
       const isPassiveConflict = parts.length === 3 && msg.toLowerCase().includes('aktif ankete atanmıştır');
       setError(isPassiveConflict ? parts[0] : msg);

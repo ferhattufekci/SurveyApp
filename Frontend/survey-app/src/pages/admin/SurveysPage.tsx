@@ -1,7 +1,7 @@
 import SearchInput from '../../components/admin/SearchInput';
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { surveysApi, questionsApi, usersApi, answerTemplatesApi } from '../../api';
+import { surveysApi, questionsApi, usersApi, answerTemplatesApi, extractErrorMessage } from '../../api';
 import type { SurveyListItem, QuestionListItem, User, AnswerTemplate } from '../../types';
 
 type FilterKey = 'all' | 'active' | 'passive' | 'expired';
@@ -116,7 +116,7 @@ export default function SurveysPage() {
       showSuccess(editItem ? 'Anket başarıyla güncellendi.' : 'Anket başarıyla oluşturuldu.');
       load();
     } catch (e: any) {
-      const msg: string = e.response?.data?.message || 'Bir hata oluştu.';
+      const msg = extractErrorMessage(e);
       const parts = msg.split('|');
       const isDuplicate = msg.toLowerCase().includes('zaten mevcut');
       const isResponded = parts.length === 3 && msg.toLowerCase().includes('yanıtlanmıştır');

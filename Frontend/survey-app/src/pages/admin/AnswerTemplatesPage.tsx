@@ -1,11 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
-import { answerTemplatesApi, questionsApi } from '../../api';
+import { answerTemplatesApi, questionsApi, extractErrorMessage } from '../../api';
 import type { AnswerTemplate, QuestionListItem } from '../../types';
 import SearchInput from '../../components/admin/SearchInput';
 import { Link } from 'react-router-dom';
 
 type FilterKey = 'all' | 'active' | 'passive';
-
 const PAGE_SIZE = 8;
 
 export default function AnswerTemplatesPage() {
@@ -23,7 +22,7 @@ export default function AnswerTemplatesPage() {
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
   const [deleteError, setDeleteError] = useState<{ id: number; count: number; detail: string } | null>(null);
-  const [editRowNum, setEditRowNum]   = useState(0);
+  const [editRowNum, setEditRowNum] = useState(0);
   const [page, setPage] = useState(1);
   const [successMsg, setSuccessMsg] = useState('');
 
@@ -68,7 +67,7 @@ export default function AnswerTemplatesPage() {
       showSuccess(editItem ? 'Şablon başarıyla güncellendi.' : 'Şablon başarıyla oluşturuldu.');
       load();
     } catch (e: any) {
-      const msg = e.response?.data?.message || 'Bir hata oluştu.';
+      const msg = extractErrorMessage(e);
       const parts = msg.split('|');
       const isDuplicate = msg.toLowerCase().includes('zaten mevcut');
       const isPassiveConflict = parts.length === 3 && msg.toLowerCase().includes('aktif soruda');
@@ -94,7 +93,6 @@ export default function AnswerTemplatesPage() {
       } else {
         setDeleteError({ id, count: 0, detail: msg });
       }
-      // 8 sn sonra otomatik kapat
       setTimeout(() => setDeleteError(null), 8000);
     }
   };
@@ -136,17 +134,13 @@ export default function AnswerTemplatesPage() {
   if (loading) return <div className="loading-container"><div className="spinner-large"></div></div>;
 
   function DeletePopover({ template, usedQuestions }: { template: AnswerTemplate; usedQuestions: QuestionListItem[] }) {
-    const [show, setShow]     = useState(false);
-    const [pos, setPos]       = useState({ top: 0, left: 0 });
+    const [show, setShow] = useState(false);
+    const [pos, setPos]   = useState({ top: 0, left: 0 });
     const btnRef  = useRef<HTMLSpanElement>(null);
     const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const scheduleHide = () => {
-      hideTimer.current = setTimeout(() => setShow(false), 120);
-    };
-    const cancelHide = () => {
-      if (hideTimer.current) clearTimeout(hideTimer.current);
-    };
+    const scheduleHide = () => { hideTimer.current = setTimeout(() => setShow(false), 120); };
+    const cancelHide = () => { if (hideTimer.current) clearTimeout(hideTimer.current); };
 
     const handleEnter = () => {
       cancelHide();
@@ -159,44 +153,23 @@ export default function AnswerTemplatesPage() {
 
     return (
       <>
-        <span ref={btnRef} style={{ display: 'inline-block' }}
-          onMouseEnter={handleEnter}
-          onMouseLeave={scheduleHide}>
-          <button
-            style={{ opacity: 0.45, pointerEvents: 'none', cursor: 'not-allowed' }}
-            className="btn btn-sm btn-danger"
-          >Sil</button>
+        <span ref={btnRef} style={{ display: 'inline-block' }} onMouseEnter={handleEnter} onMouseLeave={scheduleHide}>
+          <button style={{ opacity: 0.45, pointerEvents: 'none', cursor: 'not-allowed' }} className="btn btn-sm btn-danger">Sil</button>
         </span>
-
         {show && (
-          <div
-            onMouseEnter={cancelHide}
-            onMouseLeave={scheduleHide}
-            style={{
-              position: 'fixed',
-              top: pos.top - 10,
-              left: pos.left - 310,
-              width: '300px',
-              background: '#fff',
-              borderRadius: '10px',
-              zIndex: 9999,
-              boxShadow: '0 8px 32px rgba(0,0,0,.2)',
-              border: '1px solid #e5e7eb',
-              overflow: 'hidden',
-              transform: 'translateY(-100%)',
-            }}>
-            {/* Başlık */}
+          <div onMouseEnter={cancelHide} onMouseLeave={scheduleHide} style={{
+            position: 'fixed', top: pos.top - 10, left: pos.left - 310, width: '300px',
+            background: '#fff', borderRadius: '10px', zIndex: 9999,
+            boxShadow: '0 8px 32px rgba(0,0,0,.2)', border: '1px solid #e5e7eb',
+            overflow: 'hidden', transform: 'translateY(-100%)',
+          }}>
             <div style={{ background: '#fff7ed', borderBottom: '1px solid #fed7aa', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '16px' }}>🔒</span>
               <div>
                 <div style={{ fontWeight: 700, fontSize: '13px', color: '#c2410c' }}>Şablon Silinemez</div>
-                <div style={{ fontSize: '12px', color: '#9a3412' }}>
-                  <strong>{usedQuestions.length} soruda</strong> kullanılıyor
-                </div>
+                <div style={{ fontSize: '12px', color: '#9a3412' }}><strong>{usedQuestions.length} soruda</strong> kullanılıyor</div>
               </div>
             </div>
-
-            {/* Soru listesi */}
             <div style={{ maxHeight: '200px', overflowY: 'auto', padding: '8px 0' }}>
               {usedQuestions.map((q, i) => (
                 <div key={q.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 14px', borderBottom: i < usedQuestions.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
@@ -210,19 +183,11 @@ export default function AnswerTemplatesPage() {
                 </div>
               ))}
             </div>
-
-            {/* Alt link */}
             <div style={{ padding: '10px 14px', borderTop: '1px solid #e5e7eb', background: '#f9fafb' }}>
-              <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '6px' }}>
-                💡 Silmek için bu soruları farklı bir şablonla güncelleyin.
-              </div>
-              <Link
-                to={`/admin/questions?search=${encodeURIComponent(template.name)}`}
+              <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '6px' }}>💡 Silmek için bu soruları farklı bir şablonla güncelleyin.</div>
+              <Link to={`/admin/questions?search=${encodeURIComponent(template.name)}`}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '12px', fontWeight: 600, color: '#6366f1', textDecoration: 'none' }}
-                onClick={() => setShow(false)}
-              >
-                🔗 Soruları görüntüle →
-              </Link>
+                onClick={() => setShow(false)}>🔗 Soruları görüntüle →</Link>
             </div>
           </div>
         )}
@@ -235,13 +200,7 @@ export default function AnswerTemplatesPage() {
       <style>{`@keyframes shake{0%,100%{transform:translateX(0)}15%{transform:translateX(-8px)}30%{transform:translateX(8px)}45%{transform:translateX(-6px)}60%{transform:translateX(6px)}75%{transform:translateX(-3px)}90%{transform:translateX(3px)}}.modal-shake{animation:shake 0.6s ease;}`}</style>
 
       {successMsg && (
-        <div style={{
-          position: 'fixed', top: '20px', right: '24px', zIndex: 9999,
-          background: '#10b981', color: '#fff', padding: '12px 20px',
-          borderRadius: '10px', fontWeight: 600, fontSize: '14px',
-          boxShadow: '0 4px 16px rgba(16,185,129,.35)',
-          display: 'flex', alignItems: 'center', gap: '8px',
-        }}>✅ {successMsg}</div>
+        <div style={{ position: 'fixed', top: '20px', right: '24px', zIndex: 9999, background: '#10b981', color: '#fff', padding: '12px 20px', borderRadius: '10px', fontWeight: 600, fontSize: '14px', boxShadow: '0 4px 16px rgba(16,185,129,.35)', display: 'flex', alignItems: 'center', gap: '8px' }}>✅ {successMsg}</div>
       )}
 
       <div className="page-header">
@@ -249,7 +208,6 @@ export default function AnswerTemplatesPage() {
         <button className="btn btn-primary" onClick={openCreate}>+ Yeni Şablon</button>
       </div>
 
-      {/* Stat kartları */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
         <div style={{ background: '#eef2ff', border: '1px solid #6366f122', borderRadius: '12px', padding: '16px 20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
@@ -274,11 +232,8 @@ export default function AnswerTemplatesPage() {
 
       <div className="card">
         <div className="card-toolbar">
-          <SearchInput
-            value={search}
-            placeholder="Şablon adı, seçenek veya durum ara..."
-            onChange={v => { setSearch(v); setActiveFilter('all'); setPage(1); }}
-          />
+          <SearchInput value={search} placeholder="Şablon adı, seçenek veya durum ara..."
+            onChange={v => { setSearch(v); setActiveFilter('all'); setPage(1); }} />
           {activeFilter !== 'all' && (
             <button className="btn btn-sm btn-outline" onClick={() => { setActiveFilter('all'); setPage(1); }}>Filtreyi Temizle ×</button>
           )}
@@ -293,63 +248,41 @@ export default function AnswerTemplatesPage() {
               {paginated.map((t, i) => {
                 const rowNum = (safePage - 1) * PAGE_SIZE + i + 1;
                 return (
-                <>
-                  <tr key={t.id}>
-                    <td className="text-muted" style={{ fontWeight: 600 }}>{rowNum}</td>
-                    <td><span className={`badge ${t.isActive ? 'badge-success' : 'badge-secondary'}`}>{t.isActive ? 'Aktif' : 'Pasif'}</span></td>
-                    <td><strong>{t.name}</strong></td>
-                    <td>{t.options.length}</td>
-                    <td><div className="option-pills">{t.options.map(o => <span key={o.id} className="pill">{o.text}</span>)}</div></td>
-                    <td>
-                      <div className="action-btns">
-                        <button className="btn btn-sm btn-outline" onClick={() => openEdit(t, rowNum)}>Düzenle</button>
-                        {t.usedInQuestionsCount > 0 ? (
-                          <DeletePopover
-                            template={t}
-                            usedQuestions={questions.filter(q => q.answerTemplateId === t.id)}
-                          />
-                        ) : (
-                          <button className="btn btn-sm btn-danger" onClick={() => handleDelete(t.id, rowNum)}>Sil</button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                  {deleteError?.id === t.id && (
-                    <tr key={`err-${t.id}`}>
-                      <td colSpan={6} style={{ padding: 0, border: 'none' }}>
-                        <div style={{
-                          display: 'flex', alignItems: 'flex-start', gap: '12px',
-                          background: '#fff7ed',
-                          borderLeft: '4px solid #f97316',
-                          borderBottom: '1px solid #fed7aa',
-                          padding: '12px 16px',
-                          animation: 'slideDown 0.2s ease'
-                        }}>
-                          <span style={{ fontSize: '20px', lineHeight: 1, marginTop: '1px' }}>🔒</span>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 600, color: '#c2410c', fontSize: '13px', marginBottom: '3px' }}>
-                              Şablon Silinemez — Kullanımda
-                            </div>
-                            <div style={{ fontSize: '13px', color: '#374151', marginBottom: '4px' }}>
-                              <strong>"{t.name}"</strong> şablonu <strong>{deleteError.count} soruda</strong> kullanılmaktadır.
-                            </div>
-                            <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                              {deleteError.detail}
-                            </div>
-                            <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '6px' }}>
-                              💡 Silmek için önce bu şablonu kullanan soruları farklı bir şablonla güncelleyin.
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => setDeleteError(null)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '18px', lineHeight: 1, padding: '0 4px' }}
-                            title="Kapat"
-                          >×</button>
+                  <>
+                    <tr key={t.id}>
+                      <td className="text-muted" style={{ fontWeight: 600 }}>{rowNum}</td>
+                      <td><span className={`badge ${t.isActive ? 'badge-success' : 'badge-secondary'}`}>{t.isActive ? 'Aktif' : 'Pasif'}</span></td>
+                      <td><strong>{t.name}</strong></td>
+                      <td>{t.options.length}</td>
+                      <td><div className="option-pills">{t.options.map(o => <span key={o.id} className="pill">{o.text}</span>)}</div></td>
+                      <td>
+                        <div className="action-btns">
+                          <button className="btn btn-sm btn-outline" onClick={() => openEdit(t, rowNum)}>Düzenle</button>
+                          {t.usedInQuestionsCount > 0 ? (
+                            <DeletePopover template={t} usedQuestions={questions.filter(q => q.answerTemplateId === t.id)} />
+                          ) : (
+                            <button className="btn btn-sm btn-danger" onClick={() => handleDelete(t.id, rowNum)}>Sil</button>
+                          )}
                         </div>
                       </td>
                     </tr>
-                  )}
-                </>
+                    {deleteError?.id === t.id && (
+                      <tr key={`err-${t.id}`}>
+                        <td colSpan={6} style={{ padding: 0, border: 'none' }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', background: '#fff7ed', borderLeft: '4px solid #f97316', borderBottom: '1px solid #fed7aa', padding: '12px 16px', animation: 'slideDown 0.2s ease' }}>
+                            <span style={{ fontSize: '20px', lineHeight: 1, marginTop: '1px' }}>🔒</span>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: 600, color: '#c2410c', fontSize: '13px', marginBottom: '3px' }}>Şablon Silinemez — Kullanımda</div>
+                              <div style={{ fontSize: '13px', color: '#374151', marginBottom: '4px' }}><strong>"{t.name}"</strong> şablonu <strong>{deleteError.count} soruda</strong> kullanılmaktadır.</div>
+                              <div style={{ fontSize: '12px', color: '#6b7280' }}>{deleteError.detail}</div>
+                              <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '6px' }}>💡 Silmek için önce bu şablonu kullanan soruları farklı bir şablonla güncelleyin.</div>
+                            </div>
+                            <button onClick={() => setDeleteError(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '18px', lineHeight: 1, padding: '0 4px' }} title="Kapat">×</button>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </>
                 );
               })}
             </tbody>
@@ -357,31 +290,17 @@ export default function AnswerTemplatesPage() {
           {filtered.length === 0 && <div className="empty-state">Şablon bulunamadı.</div>}
         </div>
 
-        {/* Pagination */}
         {totalPages > 1 && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderTop: '1px solid #e5e7eb' }}>
             <span style={{ fontSize: '13px', color: '#6b7280' }}>
               {filtered.length} şablondan {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} gösteriliyor
             </span>
             <div style={{ display: 'flex', gap: '4px' }}>
-              <button
-                className="btn btn-sm btn-outline"
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={safePage === 1}
-              >‹ Önceki</button>
+              <button className="btn btn-sm btn-outline" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage === 1}>‹ Önceki</button>
               {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-                <button
-                  key={p}
-                  className={`btn btn-sm ${p === safePage ? 'btn-primary' : 'btn-outline'}`}
-                  onClick={() => setPage(p)}
-                  style={{ minWidth: '36px' }}
-                >{p}</button>
+                <button key={p} className={`btn btn-sm ${p === safePage ? 'btn-primary' : 'btn-outline'}`} onClick={() => setPage(p)} style={{ minWidth: '36px' }}>{p}</button>
               ))}
-              <button
-                className="btn btn-sm btn-outline"
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                disabled={safePage === totalPages}
-              >Sonraki ›</button>
+              <button className="btn btn-sm btn-outline" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}>Sonraki ›</button>
             </div>
           </div>
         )}
@@ -389,22 +308,7 @@ export default function AnswerTemplatesPage() {
 
       {showModal && (
         <>
-          <style>{`
-            @keyframes shake {
-              0%, 100% { transform: translateX(0); }
-              15%       { transform: translateX(-8px); }
-              30%       { transform: translateX(8px); }
-              45%       { transform: translateX(-6px); }
-              60%       { transform: translateX(6px); }
-              75%       { transform: translateX(-3px); }
-              90%       { transform: translateX(3px); }
-            }
-            .modal-shake { animation: shake 0.6s ease; }
-            @keyframes slideDown {
-              from { opacity: 0; transform: translateY(-6px); }
-              to   { opacity: 1; transform: translateY(0); }
-            }
-          `}</style>
+          <style>{`@keyframes slideDown { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }`}</style>
           <div className="modal-overlay" onClick={() => { setShowModal(false); setError(''); setErrorType(''); }}>
             <div className={`modal${shake ? ' modal-shake' : ''}`} onClick={e => e.stopPropagation()}>
               <div className="modal-header">
@@ -420,38 +324,24 @@ export default function AnswerTemplatesPage() {
                     borderLeft: `4px solid ${errorType === 'duplicate' ? '#f97316' : errorType === 'passive_conflict' ? '#eab308' : '#ef4444'}`,
                     borderRadius: '8px', padding: '12px 14px', marginBottom: '16px'
                   }}>
-                    <span style={{ fontSize: '18px', lineHeight: 1 }}>
-                      {errorType === 'duplicate' ? '⚠️' : errorType === 'passive_conflict' ? '🔒' : '❌'}
-                    </span>
+                    <span style={{ fontSize: '18px', lineHeight: 1 }}>{errorType === 'duplicate' ? '⚠️' : errorType === 'passive_conflict' ? '🔒' : '❌'}</span>
                     <div>
                       <div style={{ fontWeight: 600, fontSize: '13px', color: errorType === 'duplicate' ? '#c2410c' : errorType === 'passive_conflict' ? '#854d0e' : '#dc2626', marginBottom: '2px' }}>
                         {errorType === 'duplicate' ? 'Yinelenen Şablon Adı' : errorType === 'passive_conflict' ? 'Pasife Alınamaz — Aktif Sorularda Kullanımda' : 'Hata'}
                       </div>
                       <div style={{ fontSize: '13px', color: '#374151' }}>{error}</div>
-                      {errorType === 'passive_conflict' && errorDetail && (
-                        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>{errorDetail}</div>
-                      )}
-                      {errorType === 'passive_conflict' && (
-                        <div style={{ fontSize: '12px', color: '#92400e', marginTop: '6px', fontWeight: 500 }}>
-                          💡 Bu soruları önce pasife alın, ardından şablonu pasife alabilirsiniz.
-                        </div>
-                      )}
-                      {errorType === 'duplicate' && (
-                        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-                          Şablon adını değiştirerek tekrar deneyebilirsiniz.
-                        </div>
-                      )}
+                      {errorType === 'passive_conflict' && errorDetail && (<div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>{errorDetail}</div>)}
+                      {errorType === 'passive_conflict' && (<div style={{ fontSize: '12px', color: '#92400e', marginTop: '6px', fontWeight: 500 }}>💡 Bu soruları önce pasife alın, ardından şablonu pasife alabilirsiniz.</div>)}
+                      {errorType === 'duplicate' && (<div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>Şablon adını değiştirerek tekrar deneyebilirsiniz.</div>)}
                     </div>
                   </div>
                 )}
                 <div className="form-group">
                   <label>Şablon Adı</label>
-                  <input
-                    value={form.name}
+                  <input value={form.name}
                     onChange={e => { setForm(f => ({ ...f, name: e.target.value })); if (errorType === 'duplicate') { setError(''); setErrorType(''); } }}
                     placeholder="Örn: Evet/Hayır"
-                    style={errorType === 'duplicate' ? { borderColor: '#f97316', boxShadow: '0 0 0 3px #fed7aa66' } : {}}
-                  />
+                    style={errorType === 'duplicate' ? { borderColor: '#f97316', boxShadow: '0 0 0 3px #fed7aa66' } : {}} />
                 </div>
                 <div className="form-group">
                   <label>Durum</label>
