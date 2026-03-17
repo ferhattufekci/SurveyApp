@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using SurveyApp.Application.DTOs;
+using SurveyApp.Application.Extensions;
 using SurveyApp.Application.Interfaces;
 using SurveyApp.Domain.Entities;
 using SurveyApp.Domain.Exceptions;

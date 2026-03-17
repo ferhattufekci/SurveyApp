@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using SurveyApp.Application.DTOs;
+using SurveyApp.Application.Extensions;
 using SurveyApp.Application.Interfaces;
 using SurveyApp.Domain.Entities;
 using SurveyApp.Domain.Exceptions;
@@ -9,7 +10,6 @@ namespace SurveyApp.Application.Services;
 
 public class QuestionService : IQuestionService
 {
-    private readonly IUnitOfWork _uow;
     private readonly IUnitOfWork _uow;
     private readonly ILogger<QuestionService> _logger;
 
@@ -21,11 +21,6 @@ public class QuestionService : IQuestionService
 
 	public async Task<List<QuestionListDto>> GetAllAsync()
 	{
-		// ÖNCE: sıralı — toplam süre = T1 + T2
-		// var questions = await _uow.Questions.GetAllWithTemplatesAsync();
-		// var surveys   = await _uow.Surveys.GetAllWithDetailsAsync();
-
-		// SONRA: paralel — toplam süre = max(T1, T2)
 		var (questions, surveys) = await (
 			_uow.Questions.GetAllWithTemplatesAsync(),
 			_uow.Surveys.GetAllWithDetailsAsync()
