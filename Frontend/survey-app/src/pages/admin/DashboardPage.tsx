@@ -44,7 +44,7 @@ function MiniPagination({ total, page, onPage }: { total: number; page: number; 
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   if (pages <= 1) return null;
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '10px 16px', borderTop: '1px solid #e5e7eb' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '10px 16px', borderTop: '1px solid #e5e7eb', flexWrap: 'wrap' }}>
       <button onClick={() => onPage(Math.max(1, page - 1))} disabled={page === 1}
         style={{ padding: '3px 9px', fontSize: '13px', borderRadius: '6px', border: '1px solid #d1d5db', background: page === 1 ? '#f9fafb' : '#fff', cursor: page === 1 ? 'default' : 'pointer', color: '#374151' }}>‹</button>
       {Array.from({ length: pages }, (_, i) => i + 1).map(p => (
@@ -161,8 +161,8 @@ export default function DashboardPage() {
         <h1>{tx(language, t.dashboard.title)}</h1>
       </div>
 
-      {/* Stat kartları */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginBottom: '24px' }}>
+      {/* ── Stat kartları — CSS class kullanıyoruz, media query çalışsın ── */}
+      <div className="stat-cards-grid-4">
         {statCards.map(c => (
           <Link key={c.label} to={c.link} style={{
             background: c.bg, border: `1px solid ${c.border}`, borderLeft: `4px solid ${c.accent}`,
@@ -185,11 +185,11 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Orta bölüm */}
-      <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr 1fr', gap: '16px', marginBottom: '16px', alignItems: 'start' }}>
+      {/* ── Orta bölüm: pasta + 2 tablo — CSS class ile responsive ── */}
+      <div className="dashboard-mid-grid">
 
-        {/* Pasta grafik */}
-        <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '16px', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+        {/* Pasta grafik — .dashboard-pie-col sayesinde tablet/mobilde gizlenir */}
+        <div className="dashboard-pie-col">
           <div style={{ fontWeight: 700, fontSize: '13px', color: '#374151', marginBottom: '12px' }}>{tx(language, t.dashboard.surveyStatus)}</div>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '14px' }}>
             <PieChart slices={[
@@ -280,8 +280,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Kural kartları */}
-      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px 20px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+      {/* ── Kural kartları — CSS class ile responsive ── */}
+      <div className="dashboard-rules-grid">
         {infoCards.map(card => (
           <div key={card.title}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
