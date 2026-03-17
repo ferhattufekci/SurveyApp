@@ -95,7 +95,6 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.UseMiddleware<GlobalExceptionMiddleware>();
-// Swagger tüm ortamlarda aktif
 app.UseSwagger();
 app.UseSwaggerUI();
 
@@ -103,5 +102,8 @@ app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+// Railway healthcheck endpoint
+app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
 
 app.Run();
