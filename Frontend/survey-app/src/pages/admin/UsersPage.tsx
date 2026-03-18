@@ -81,8 +81,13 @@ export default function UsersPage() {
 
   const handleDelete = async (u: User, rowNum: number) => {
     if (u.email === currentUser?.email) { alert(tx(language, t.users.errSelf)); return; }
+
+    // FIX: Only check the "last active admin" constraint when the account being
+    // deleted is itself active. Removing an already-inactive admin account never
+    // reduces the number of active admins, so this guard must not fire then.
     const adminCount = users.filter(x => x.role === 'Admin' && x.isActive).length;
-    if (u.role === 'Admin' && adminCount <= 1) { alert(tx(language, t.users.errLastAdmin)); return; }
+    if (u.role === 'Admin' && u.isActive && adminCount <= 1) { alert(tx(language, t.users.errLastAdmin)); return; }
+
     if (!confirm(`${rowNum} ${u.role === 'Admin' ? tx(language, t.users.deleteAdminConfirm) : tx(language, t.users.deleteConfirm)}`)) return;
     try { await usersApi.delete(u.id); load(); showSuccess(`${rowNum} ${tx(language, t.users.successDelete)}`); }
     catch (e: any) { alert(e.response?.data?.message || tx(language, t.common.error)); }
@@ -212,7 +217,9 @@ export default function UsersPage() {
               {paginated.map((u, i) => {
                 const rowNum      = (safePage - 1) * PAGE_SIZE + i + 1;
                 const isSelf      = u.email === currentUser?.email;
-                const isLastAdmin = u.role === 'Admin' && users.filter(x => x.role === 'Admin' && x.isActive).length <= 1;
+                // FIX: An inactive admin is not "the last active admin" — only block
+                // deletion when the account is active AND it is the sole active admin.
+                const isLastAdmin = u.role === 'Admin' && u.isActive && users.filter(x => x.role === 'Admin' && x.isActive).length <= 1;
                 const canDelete   = !isSelf && !isLastAdmin;
                 const deleteTip   = isSelf ? tx(language, t.users.tooltipSelf) : isLastAdmin ? tx(language, t.users.tooltipLastAdmin) : '';
                 return (
