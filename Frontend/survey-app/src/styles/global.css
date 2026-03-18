@@ -413,6 +413,19 @@ body {
 }
 .option-label:hover { border-color: var(--primary); background: var(--primary-light); }
 .option-label.selected { border-color: var(--primary); background: var(--primary-light); color: var(--primary); font-weight: 600; }
+/* FIX: class was applied in JSX but never defined — passive users saw no
+   visual difference between interactive and non-interactive options. */
+.option-label.disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: var(--gray-50);
+  color: var(--gray-400);
+  border-color: var(--gray-200);
+}
+.option-label.disabled:hover {
+  border-color: var(--gray-200);
+  background: var(--gray-50);
+}
 .option-label input { display: none; }
 .submit-section { padding: 24px 0; display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .empty-full { text-align: center; padding: 80px 20px; }
