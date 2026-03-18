@@ -33,10 +33,7 @@ function Tooltip({ text, children }: { text: string; children: React.ReactNode }
   );
 }
 
-/* ── SelectionPanel ─────────────────────────────────────────────────────────
-   Arama destekli, seçili sayısını gösteren, temiz checkbox listesi.
-   Grid layout sayesinde text overflow sorunsuz çalışır.
-   ─────────────────────────────────────────────────────────────────────────── */
+/* ── SelectionPanel ───────────────────────────────────────────────────────── */
 interface SelectionPanelProps {
   label: string;
   note?: string;
@@ -73,7 +70,6 @@ function SelectionPanel({
 
   return (
     <div className="form-group">
-      {/* Başlık satırı */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '6px' }}>
         <label style={{ margin: 0 }}>
           {label}
@@ -85,10 +81,7 @@ function SelectionPanel({
         </span>
       </div>
 
-      {/* Panel kutusu */}
       <div style={{ border: '1.5px solid #d1d5db', borderRadius: '8px', overflow: 'hidden', background: '#fff' }}>
-
-        {/* Arama + toplu işlem satırı */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', borderBottom: '1px solid #e5e7eb', background: '#f9fafb' }}>
           <div style={{ position: 'relative', flex: 1 }}>
             <span style={{ position: 'absolute', left: '9px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', fontSize: '13px', pointerEvents: 'none' }}>🔍</span>
@@ -96,12 +89,7 @@ function SelectionPanel({
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder={searchPlaceholder}
-              style={{
-                width: '100%', padding: '6px 10px 6px 28px',
-                border: '1px solid #e5e7eb', borderRadius: '6px',
-                fontSize: '12px', fontFamily: 'inherit', outline: 'none',
-                background: '#fff', boxSizing: 'border-box',
-              }}
+              style={{ width: '100%', padding: '6px 10px 6px 28px', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '12px', fontFamily: 'inherit', outline: 'none', background: '#fff', boxSizing: 'border-box' }}
               onFocus={e => (e.currentTarget.style.borderColor = '#6366f1')}
               onBlur={e => (e.currentTarget.style.borderColor = '#e5e7eb')}
             />
@@ -109,17 +97,13 @@ function SelectionPanel({
               <button onClick={() => setSearch('')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: '#e5e7eb', border: 'none', borderRadius: '50%', width: '16px', height: '16px', cursor: 'pointer', fontSize: '10px', color: '#6b7280', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>×</button>
             )}
           </div>
-          <button
-            type="button"
-            onClick={onSelectAll}
+          <button type="button" onClick={onSelectAll}
             style={{ fontSize: '11px', fontWeight: 600, color: '#6366f1', background: 'none', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', padding: '4px 6px', borderRadius: '4px' }}
             onMouseEnter={e => (e.currentTarget.style.background = '#eef2ff')}
             onMouseLeave={e => (e.currentTarget.style.background = 'none')}
           >{selectAllLabel}</button>
           {selectedCount > 0 && (
-            <button
-              type="button"
-              onClick={onClear}
+            <button type="button" onClick={onClear}
               style={{ fontSize: '11px', fontWeight: 600, color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', padding: '4px 6px', borderRadius: '4px' }}
               onMouseEnter={e => (e.currentTarget.style.background = '#fef2f2')}
               onMouseLeave={e => (e.currentTarget.style.background = 'none')}
@@ -127,7 +111,6 @@ function SelectionPanel({
           )}
         </div>
 
-        {/* Liste */}
         <div style={{ maxHeight: '220px', overflowY: 'auto' }}>
           {items.length === 0 ? (
             <div style={{ padding: '16px', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>{emptyLabel}</div>
@@ -136,68 +119,20 @@ function SelectionPanel({
           ) : filtered.map((item, idx) => {
             const isSelected = selectedIds.includes(item.id);
             return (
-              <label
-                key={item.id}
-                style={{
-                  /* Grid: checkbox | primary text | tag/secondary */
-                  display: 'grid',
-                  gridTemplateColumns: '20px 1fr auto',
-                  alignItems: 'center',
-                  gap: '10px',
-                  padding: '9px 12px',
-                  cursor: 'pointer',
-                  borderBottom: idx < filtered.length - 1 ? '1px solid #f3f4f6' : 'none',
-                  background: isSelected ? '#f5f3ff' : 'transparent',
-                  transition: 'background 0.1s',
-                }}
+              <label key={item.id} style={{ display: 'grid', gridTemplateColumns: '20px 1fr auto', alignItems: 'center', gap: '10px', padding: '9px 12px', cursor: 'pointer', borderBottom: idx < filtered.length - 1 ? '1px solid #f3f4f6' : 'none', background: isSelected ? '#f5f3ff' : 'transparent', transition: 'background 0.1s' }}
                 onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLElement).style.background = '#f9fafb'; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = isSelected ? '#f5f3ff' : 'transparent'; }}
               >
-                {/* Checkbox */}
-                <input
-                  type="checkbox"
-                  checked={isSelected}
-                  onChange={() => onToggle(item.id)}
-                  style={{ width: '15px', height: '15px', cursor: 'pointer', accentColor: '#6366f1', flexShrink: 0 }}
-                />
-
-                {/* Primary text — taşmaz, kırpılır */}
-                <span style={{
-                  fontSize: '13px',
-                  color: isSelected ? '#4338ca' : '#374151',
-                  fontWeight: isSelected ? 600 : 400,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  minWidth: 0,
-                }} title={item.primary}>
-                  {item.primary}
-                </span>
-
-                {/* Tag veya secondary — sağda sabit genişlik */}
+                <input type="checkbox" checked={isSelected} onChange={() => onToggle(item.id)} style={{ width: '15px', height: '15px', cursor: 'pointer', accentColor: '#6366f1', flexShrink: 0 }} />
+                <span style={{ fontSize: '13px', color: isSelected ? '#4338ca' : '#374151', fontWeight: isSelected ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }} title={item.primary}>{item.primary}</span>
                 {(item.tag || item.secondary) && (
-                  <span style={{
-                    fontSize: '11px',
-                    padding: item.tag ? '2px 7px' : '0',
-                    background: item.tag ? '#eef2ff' : 'transparent',
-                    color: item.tag ? '#6366f1' : '#9ca3af',
-                    borderRadius: item.tag ? '20px' : '0',
-                    fontWeight: item.tag ? 600 : 400,
-                    maxWidth: '140px',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0,
-                  }} title={item.tag || item.secondary}>
-                    {item.tag || item.secondary}
-                  </span>
+                  <span style={{ fontSize: '11px', padding: item.tag ? '2px 7px' : '0', background: item.tag ? '#eef2ff' : 'transparent', color: item.tag ? '#6366f1' : '#9ca3af', borderRadius: item.tag ? '20px' : '0', fontWeight: item.tag ? 600 : 400, maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }} title={item.tag || item.secondary}>{item.tag || item.secondary}</span>
                 )}
               </label>
             );
           })}
         </div>
 
-        {/* Alt özet */}
         {selectedCount > 0 && (
           <div style={{ padding: '7px 12px', borderTop: '1px solid #e5e7eb', background: '#f5f3ff', fontSize: '12px', color: '#6366f1', fontWeight: 500 }}>
             ✓ {selectedCount} {selectedCount === 1 ? 'öğe' : 'öğe'} seçildi
@@ -230,6 +165,7 @@ export default function SurveysPage() {
   const [errorDetail, setErrorDetail] = useState('');
   const [shake, setShake]             = useState(false);
   const [successMsg, setSuccessMsg]   = useState('');
+  const [deleteError, setDeleteError] = useState('');
   const [search, setSearch]           = useState(() => { const p = new URLSearchParams(location.search); return p.get('search') || ''; });
   const [activeFilter, setActiveFilter] = useState<FilterKey>(() => {
     const p = new URLSearchParams(location.search);
@@ -273,11 +209,9 @@ export default function SurveysPage() {
 
   const handleSave = async () => {
     setError(''); setErrorType(''); setErrorDetail('');
-    
-	if (!form.title.trim())               { setError(tx(language, t.surveys.errTitleReq));     setErrorType('general'); return; }
+    if (!form.title.trim())               { setError(tx(language, t.surveys.errTitleReq));     setErrorType('general'); return; }
     if (!form.description.trim())         { setError(tx(language, t.surveys.errDescReq));      setErrorType('general'); return; }
     if (!form.startDate || !form.endDate) { setError(tx(language, t.surveys.errDatesReq));     setErrorType('general'); return; }
-	
     if (form.questionIds.length === 0)    { setError(tx(language, t.surveys.errQuestionsReq)); setErrorType('general'); return; }
     setSaving(true);
     try {
@@ -299,10 +233,20 @@ export default function SurveysPage() {
     } finally { setSaving(false); }
   };
 
+  // FIX: Added try/catch so backend errors during deletion are surfaced to the
+  // user instead of being silently swallowed as an unhandled Promise rejection.
   const handleDelete = async (id: number, rowNum: number) => {
     if (!confirm(`${rowNum} ${tx(language, t.surveys.deleteConfirm)}`)) return;
-    await surveysApi.delete(id); load();
-    showSuccess(`${rowNum} ${tx(language, t.surveys.successDelete)}`);
+    setDeleteError('');
+    try {
+      await surveysApi.delete(id);
+      load();
+      showSuccess(`${rowNum} ${tx(language, t.surveys.successDelete)}`);
+    } catch (e: any) {
+      const msg = extractErrorMessage(e);
+      setDeleteError(msg);
+      setTimeout(() => setDeleteError(''), 6000);
+    }
   };
 
   const handleTotalClick  = () => { setActiveFilter('all'); setSearch(''); setPage(1); };
@@ -362,20 +306,10 @@ export default function SurveysPage() {
     transition: 'all 0.15s', userSelect: 'none',
   };
 
-  // SelectionPanel için item listelerini hazırla
   const activeQuestions = questions.filter(q => q.isActive);
-  const questionItems = activeQuestions.map(q => ({
-    id: q.id,
-    primary: q.text,
-    tag: q.answerTemplateName,
-  }));
-
+  const questionItems = activeQuestions.map(q => ({ id: q.id, primary: q.text, tag: q.answerTemplateName }));
   const activeUsers = users.filter(u => u.isActive);
-  const userItems = activeUsers.map(u => ({
-    id: u.id,
-    primary: u.fullName,
-    secondary: u.email,
-  }));
+  const userItems = activeUsers.map(u => ({ id: u.id, primary: u.fullName, secondary: u.email }));
 
   if (loading) return <div className="loading-container"><div className="spinner-large"></div></div>;
 
@@ -393,6 +327,15 @@ export default function SurveysPage() {
       {successMsg && (
         <div style={{ position: 'fixed', top: '20px', right: '24px', zIndex: 9999, background: '#10b981', color: '#fff', padding: '12px 20px', borderRadius: '10px', fontWeight: 600, fontSize: '14px', boxShadow: '0 4px 16px rgba(16,185,129,.35)' }}>
           ✅ {successMsg}
+        </div>
+      )}
+
+      {/* FIX: delete error banner — shown when handleDelete catch fires */}
+      {deleteError && (
+        <div style={{ position: 'fixed', top: '20px', right: '24px', zIndex: 9999, background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', padding: '12px 20px', borderRadius: '10px', fontWeight: 600, fontSize: '14px', boxShadow: '0 4px 16px rgba(239,68,68,.2)', display: 'flex', alignItems: 'center', gap: '10px', maxWidth: '380px' }}>
+          <span>❌</span>
+          <span>{deleteError}</span>
+          <button onClick={() => setDeleteError('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: '18px', lineHeight: 1, marginLeft: 'auto' }}>×</button>
         </div>
       )}
 
@@ -532,7 +475,7 @@ export default function SurveysPage() {
         )}
       </div>
 
-      {/* ══════════════════════════════════ MODAL ══════════════════════════════════ */}
+      {/* ══════════════════ MODAL ══════════════════ */}
       {showModal && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className={`modal modal-lg${shake ? ' modal-shake' : ''}`} onClick={e => e.stopPropagation()}>
@@ -541,16 +484,8 @@ export default function SurveysPage() {
               <button className="modal-close" onClick={closeModal}>×</button>
             </div>
             <div className="modal-body">
-
-              {/* Hata banner */}
               {error && (
-                <div style={{
-                  display: 'flex', gap: '10px',
-                  background: errorType === 'duplicate' ? '#fff7ed' : errorType === 'responded' ? '#fefce8' : '#fef2f2',
-                  border: `1px solid ${errorType === 'duplicate' ? '#fed7aa' : errorType === 'responded' ? '#fde047' : '#fecaca'}`,
-                  borderLeft: `4px solid ${errorType === 'duplicate' ? '#f97316' : errorType === 'responded' ? '#eab308' : '#ef4444'}`,
-                  borderRadius: '8px', padding: '12px 14px',
-                }}>
+                <div style={{ display: 'flex', gap: '10px', background: errorType === 'duplicate' ? '#fff7ed' : errorType === 'responded' ? '#fefce8' : '#fef2f2', border: `1px solid ${errorType === 'duplicate' ? '#fed7aa' : errorType === 'responded' ? '#fde047' : '#fecaca'}`, borderLeft: `4px solid ${errorType === 'duplicate' ? '#f97316' : errorType === 'responded' ? '#eab308' : '#ef4444'}`, borderRadius: '8px', padding: '12px 14px' }}>
                   <span style={{ fontSize: '18px', lineHeight: 1 }}>{errorType === 'duplicate' ? '⚠️' : errorType === 'responded' ? '🔒' : '❌'}</span>
                   <div>
                     <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: '2px', color: errorType === 'duplicate' ? '#c2410c' : errorType === 'responded' ? '#854d0e' : '#dc2626' }}>
@@ -564,16 +499,10 @@ export default function SurveysPage() {
                 </div>
               )}
 
-              {/* Başlık + Durum */}
               <div className="form-row">
                 <div className="form-group">
                   <label>{tx(language, t.surveys.titleLabel)}<Req /></label>
-                  <input
-                    value={form.title}
-                    onChange={e => { setForm(f => ({ ...f, title: e.target.value })); if (errorType === 'duplicate') { setError(''); setErrorType(''); } }}
-                    placeholder={tx(language, t.surveys.titlePh)}
-                    style={errorType === 'duplicate' ? { borderColor: '#f97316', boxShadow: '0 0 0 3px #fed7aa66' } : {}}
-                  />
+                  <input value={form.title} onChange={e => { setForm(f => ({ ...f, title: e.target.value })); if (errorType === 'duplicate') { setError(''); setErrorType(''); } }} placeholder={tx(language, t.surveys.titlePh)} style={errorType === 'duplicate' ? { borderColor: '#f97316', boxShadow: '0 0 0 3px #fed7aa66' } : {}} />
                 </div>
                 <div className="form-group">
                   <label>{tx(language, t.common.status)}</label>
@@ -584,40 +513,22 @@ export default function SurveysPage() {
                 </div>
               </div>
 
-              {}
               <div className="form-group">
                 <label>{tx(language, t.surveys.descLabel)}<Req /></label>
-                <textarea
-                  rows={2}
-                  value={form.description}
-                  onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                  placeholder={tx(language, t.surveys.descPh)}
-                />
+                <textarea rows={2} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder={tx(language, t.surveys.descPh)} />
               </div>
 
-              {/* Tarihler */}
               <div className="form-row">
                 <div className="form-group">
                   <label>{tx(language, t.surveys.startDate)}<Req /></label>
-                  <input
-                    type="date"
-                    value={form.startDate}
-                    max={form.endDate || undefined}
-                    onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
-                  />
+                  <input type="date" value={form.startDate} max={form.endDate || undefined} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} />
                 </div>
                 <div className="form-group">
                   <label>{tx(language, t.surveys.endDate)}<Req /></label>
-                  <input
-                    type="date"
-                    value={form.endDate}
-                    min={form.startDate || new Date().toISOString().split('T')[0]}
-                    onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
-                  />
+                  <input type="date" value={form.endDate} min={form.startDate || new Date().toISOString().split('T')[0]} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} />
                 </div>
               </div>
 
-              {/* ── Sorular — SelectionPanel ── */}
               <SelectionPanel
                 label={tx(language, t.surveys.questionsLabel)}
                 note={tx(language, t.surveys.questionsNote)}
@@ -635,7 +546,6 @@ export default function SurveysPage() {
                 onClear={() => setForm(f => ({ ...f, questionIds: [] }))}
               />
 
-              {/* ── Kullanıcılar — SelectionPanel ── */}
               <SelectionPanel
                 label={tx(language, t.surveys.usersLabel)}
                 note={tx(language, t.surveys.usersNote)}
@@ -651,7 +561,6 @@ export default function SurveysPage() {
                 onSelectAll={() => setForm(f => ({ ...f, userIds: activeUsers.map(u => u.id) }))}
                 onClear={() => setForm(f => ({ ...f, userIds: [] }))}
               />
-
             </div>
             <div className="modal-footer">
               <button className="btn btn-outline" onClick={closeModal}>{tx(language, t.common.cancel)}</button>
