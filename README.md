@@ -382,11 +382,12 @@ Protected endpoints require `Authorization: Bearer <token>`.
 
 ### My Surveys _(User only)_
 
-| Method | Endpoint                            | Description                                             |
-| ------ | ----------------------------------- | ------------------------------------------------------- |
-| `GET`  | `/api/my-surveys`                   | List all assigned surveys (with questions and options)  |
-| `GET`  | `/api/my-surveys/{surveyId}`        | Get survey detail for filling (active and in-date only) |
-| `POST` | `/api/my-surveys/{surveyId}/submit` | Submit answers                                          |
+| Method | Endpoint                                    | Description                                             |
+| ------ | ------------------------------------------- | ------------------------------------------------------- |
+| `GET`  | `/api/my-surveys`                           | List all assigned surveys (with questions and options)  |
+| `GET`  | `/api/my-surveys/{surveyId}`                | Get survey detail for filling (active and in-date only) |
+| `GET`  | `/api/my-surveys/{surveyId}/my-answers`     | Get the current user's submitted answers for a survey   |
+| `POST` | `/api/my-surveys/{surveyId}/submit`         | Submit answers                                          |
 
 **Submit body**
 ```json
@@ -398,6 +399,17 @@ Protected endpoints require `Authorization: Bearer <token>`.
   ]
 }
 ```
+
+**Response `200 OK`** — `GET /api/my-surveys/{surveyId}/my-answers`
+(returns an empty array if the survey has not been completed yet)
+```json
+[
+  { "questionId": 1, "answerOptionId": 2 },
+  { "questionId": 2, "answerOptionId": 5 }
+]
+```
+
+
 
 ---
 
@@ -1063,11 +1075,12 @@ Korumalı endpoint'ler `Authorization: Bearer <token>` gerektirir.
 
 ### Anketlerim _(Yalnızca User)_
 
-| Metod  | Endpoint                            | Açıklama                                                                       |
-| ------ | ----------------------------------- | ------------------------------------------------------------------------------ |
-| `GET`  | `/api/my-surveys`                   | Atanan tüm anketleri listele (sorular ve seçeneklerle)                         |
-| `GET`  | `/api/my-surveys/{surveyId}`        | Doldurmak için anket detayı getir (yalnızca aktif ve tarih aralığında olanlar) |
-| `POST` | `/api/my-surveys/{surveyId}/submit` | Yanıtları gönder                                                               |
+| Metod  | Endpoint                                    | Açıklama                                                                       |
+| ------ | ------------------------------------------- | ------------------------------------------------------------------------------ |
+| `GET`  | `/api/my-surveys`                           | Atanan tüm anketleri listele (sorular ve seçeneklerle)                         |
+| `GET`  | `/api/my-surveys/{surveyId}`                | Doldurmak için anket detayı getir (yalnızca aktif ve tarih aralığında olanlar) |
+| `GET`  | `/api/my-surveys/{surveyId}/my-answers`     | Giriş yapmış kullanıcının bir ankete verdiği yanıtları getir                   |
+| `POST` | `/api/my-surveys/{surveyId}/submit`         | Yanıtları gönder                                                               |
 
 **Gönderme gövdesi**
 ```json
@@ -1078,6 +1091,15 @@ Korumalı endpoint'ler `Authorization: Bearer <token>` gerektirir.
     { "questionId": 2, "answerOptionId": 5 }
   ]
 }
+```
+
+**Yanıt `200 OK`** — `GET /api/my-surveys/{surveyId}/my-answers`
+(anket henüz tamamlanmadıysa boş dizi döner)
+```json
+[
+  { "questionId": 1, "answerOptionId": 2 },
+  { "questionId": 2, "answerOptionId": 5 }
+]
 ```
 
 ---
