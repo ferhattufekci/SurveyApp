@@ -73,7 +73,7 @@ export default function AdminLayout() {
             <div className="user-avatar">{user?.fullName?.[0]?.toUpperCase()}</div>
             {sidebarOpen && (
               <div className="user-details">
-                <span className="user-name">{user?.fullName}</span>
+                <span className="user-name" title={user?.fullName || ''}>{user?.fullName}</span>
                 <span className="user-role">Admin</span>
               </div>
             )}

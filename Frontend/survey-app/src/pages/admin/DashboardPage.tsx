@@ -119,11 +119,11 @@ export default function DashboardPage() {
       </td>
       <td>
         <button onClick={() => goToSurveys(s.title)}
-          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontWeight: 600, color: '#4b5563', fontSize: '13px', textAlign: 'left', textDecoration: 'underline', textDecorationColor: 'transparent', transition: 'color 0.15s' }}
+          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontWeight: 600, color: '#4b5563', fontSize: '13px', textAlign: 'left', textDecoration: 'underline', textDecorationColor: 'transparent', transition: 'color 0.15s', whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.4 }}
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#6366f1'; (e.currentTarget as HTMLElement).style.textDecorationColor = '#6366f1'; }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#4b5563'; (e.currentTarget as HTMLElement).style.textDecorationColor = 'transparent'; }}
         >
-          {s.title.length > 28 ? s.title.substring(0, 28) + '…' : s.title}
+          {s.title}
         </button>
       </td>
       <td style={{ fontSize: '13px', color: '#6b7280' }}>{new Date(s.endDate).toLocaleDateString(language === 'tr' ? 'tr-TR' : 'en-GB')}</td>

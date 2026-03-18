@@ -195,6 +195,7 @@ export const t = {
     successUpdate:   { tr: 'Anket başarıyla güncellendi.', en: 'Survey updated successfully.' },
     successDelete:   { tr: 'numaralı anket başarıyla silindi.', en: 'Survey deleted successfully.' },
     errTitleReq:     { tr: 'Anket başlığı zorunludur.', en: 'Survey title is required.' },
+	errDescReq:      { tr: 'Anket açıklaması zorunludur.', en: 'Survey description is required.' },
     errDatesReq:     { tr: 'Tarihler zorunludur.', en: 'Dates are required.' },
     errQuestionsReq: { tr: 'En az bir soru seçiniz.', en: 'Please select at least one question.' },
     tooltipExpiredDel:   { tr: 'Süresi geçmiş anketler silinemez', en: 'Expired surveys cannot be deleted' },

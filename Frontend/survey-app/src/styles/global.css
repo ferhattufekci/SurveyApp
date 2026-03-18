@@ -114,7 +114,7 @@ body {
   color: white; font-weight: 700; font-size: 14px; flex-shrink: 0;
 }
 .user-details { display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
-.user-name { font-size: 13px; font-weight: 600; color: var(--gray-800); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.user-name { font-size: 13px; font-weight: 600; color: var(--gray-800); white-space: normal; overflow: hidden; word-break: break-word; }
 .user-role { font-size: 11px; color: var(--gray-500); }
 
 /* FIX: admin-main — overflow hidden prevents table bleed from shifting layout */

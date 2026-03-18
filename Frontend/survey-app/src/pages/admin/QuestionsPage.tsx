@@ -10,6 +10,192 @@ type FilterKey = 'all' | 'active' | 'passive';
 const PAGE_SIZE = 8;
 const Req = () => <span style={{ color: '#ef4444', marginLeft: '2px' }}>*</span>;
 
+// ── SearchableTemplateSelect ──────────────────────────────────────────────────
+interface SearchableSelectOption {
+  id: number;
+  name: string;
+  optionsCount: number;
+}
+
+interface SearchableTemplateSelectProps {
+  value: number;
+  onChange: (id: number) => void;
+  options: SearchableSelectOption[];
+  placeholder: string;
+  optionCountLabel: string;
+  searchPlaceholder?: string;
+  noResultsLabel?: string;
+}
+
+function SearchableTemplateSelect({
+  value,
+  onChange,
+  options,
+  placeholder,
+  optionCountLabel,
+  searchPlaceholder = 'Ara...',
+  noResultsLabel = 'Sonuç bulunamadı',
+}: SearchableTemplateSelectProps) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Alfabetik sıralama (Türkçe karakter desteğiyle)
+  const sorted = [...options].sort((a, b) =>
+    a.name.localeCompare(b.name, 'tr', { sensitivity: 'base' })
+  );
+  const filtered = sorted.filter(o =>
+    o.name.toLowerCase().includes(search.toLowerCase())
+  );
+  const selected = options.find(o => o.id === value);
+
+  // Dışarı tıklanınca kapat
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch('');
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      {/* Trigger */}
+      <div
+        role="combobox"
+        aria-expanded={open}
+        onClick={() => setOpen(o => !o)}
+        style={{
+          padding: '9px 12px',
+          border: `1.5px solid ${open ? 'var(--primary)' : '#d1d5db'}`,
+          boxShadow: open ? '0 0 0 3px rgba(37,99,235,0.1)' : 'none',
+          borderRadius: 'var(--radius)',
+          cursor: 'pointer',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          background: '#fff',
+          fontSize: '14px',
+          color: selected ? '#1f2937' : '#9ca3af',
+          transition: 'border-color 0.15s, box-shadow 0.15s',
+          userSelect: 'none',
+        }}
+      >
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+          {selected
+            ? `${selected.name} (${selected.optionsCount} ${optionCountLabel})`
+            : placeholder}
+        </span>
+        <span style={{ color: '#9ca3af', fontSize: '11px', marginLeft: '8px', flexShrink: 0 }}>
+          {open ? '▲' : '▼'}
+        </span>
+      </div>
+
+      {/* Dropdown panel */}
+      {open && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 4px)',
+            left: 0,
+            right: 0,
+            background: '#fff',
+            border: '1.5px solid #d1d5db',
+            borderRadius: 'var(--radius)',
+            zIndex: 300,
+            boxShadow: '0 8px 24px rgba(0,0,0,.12)',
+            overflow: 'hidden',
+          }}
+        >
+          {/* Arama inputu */}
+          <div style={{ padding: '8px', borderBottom: '1px solid #f3f4f6', background: '#fafafa' }}>
+            <input
+              autoFocus
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder={searchPlaceholder}
+              onClick={e => e.stopPropagation()}
+              style={{
+                width: '100%',
+                padding: '7px 10px',
+                border: '1px solid #e5e7eb',
+                borderRadius: '6px',
+                fontSize: '13px',
+                outline: 'none',
+                boxSizing: 'border-box',
+                fontFamily: 'inherit',
+                background: '#fff',
+              }}
+              onFocus={e => (e.currentTarget.style.borderColor = 'var(--primary)')}
+              onBlur={e => (e.currentTarget.style.borderColor = '#e5e7eb')}
+            />
+          </div>
+
+          {/* Seçenek listesi */}
+          <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+            {filtered.length === 0 ? (
+              <div style={{ padding: '14px', textAlign: 'center', color: '#9ca3af', fontSize: '13px' }}>
+                {noResultsLabel}
+              </div>
+            ) : (
+              filtered.map(opt => {
+                const isSelected = opt.id === value;
+                return (
+                  <div
+                    key={opt.id}
+                    onClick={() => { onChange(opt.id); setOpen(false); setSearch(''); }}
+                    style={{
+                      padding: '9px 12px',
+                      cursor: 'pointer',
+                      background: isSelected ? '#eef2ff' : 'transparent',
+                      color: isSelected ? '#4338ca' : '#374151',
+                      fontWeight: isSelected ? 600 : 400,
+                      fontSize: '13px',
+                      borderBottom: '1px solid #f9fafb',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: '8px',
+                    }}
+                    onMouseEnter={e => {
+                      if (!isSelected)
+                        (e.currentTarget as HTMLElement).style.background = '#f5f3ff';
+                    }}
+                    onMouseLeave={e => {
+                      (e.currentTarget as HTMLElement).style.background =
+                        isSelected ? '#eef2ff' : 'transparent';
+                    }}
+                  >
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                      {opt.name}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        background: '#f3f4f6',
+                        color: '#6b7280',
+                        borderRadius: '10px',
+                        padding: '1px 7px',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {opt.optionsCount} {optionCountLabel}
+                    </span>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function QuestionsPage() {
   const location = useLocation();
   const { language } = useLanguageStore();
@@ -293,13 +479,23 @@ export default function QuestionsPage() {
                 <label>{tx(language, t.questions.questionText)}<Req /></label>
                 <textarea rows={3} value={form.text} onChange={e => { setForm(f => ({ ...f, text: e.target.value })); if (errorType === 'duplicate') { setError(''); setErrorType(''); } }} placeholder={tx(language, t.questions.questionTextPh)} style={errorType === 'duplicate' ? { borderColor: '#f97316', boxShadow: '0 0 0 3px #fed7aa66' } : {}} />
               </div>
+
+              {/* ── Aranabilir & Alfabetik Cevap Şablonu ── */}
               <div className="form-group">
                 <label>{tx(language, t.questions.templateLabel)}<Req /></label>
-                <select value={form.answerTemplateId} onChange={e => setForm(f => ({ ...f, answerTemplateId: Number(e.target.value) }))}>
-                  <option value={0}>{tx(language, t.questions.templateSelect)}</option>
-                  {templates.filter(tpl => tpl.isActive).map(tpl => <option key={tpl.id} value={tpl.id}>{tpl.name} ({tpl.options.length} {tx(language, t.questions.optionCount)})</option>)}
-                </select>
+                <SearchableTemplateSelect
+                  value={form.answerTemplateId}
+                  onChange={id => setForm(f => ({ ...f, answerTemplateId: id }))}
+                  options={templates
+                    .filter(tpl => tpl.isActive)
+                    .map(tpl => ({ id: tpl.id, name: tpl.name, optionsCount: tpl.options.length }))}
+                  placeholder={tx(language, t.questions.templateSelect)}
+                  optionCountLabel={tx(language, t.questions.optionCount)}
+                  searchPlaceholder={language === 'tr' ? 'Şablon ara...' : 'Search template...'}
+                  noResultsLabel={language === 'tr' ? 'Sonuç bulunamadı' : 'No results found'}
+                />
               </div>
+
               <div className="form-group">
                 <label>{tx(language, t.common.status)}</label>
                 <select value={form.isActive ? 'true' : 'false'} onChange={e => setForm(f => ({ ...f, isActive: e.target.value === 'true' }))}>

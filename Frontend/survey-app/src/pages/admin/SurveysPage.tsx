@@ -273,9 +273,11 @@ export default function SurveysPage() {
 
   const handleSave = async () => {
     setError(''); setErrorType(''); setErrorDetail('');
-    // Açıklama zorunlu DEĞİL — backend [StringLength(2000)] min yok, boş string geçiyor
-    if (!form.title.trim())               { setError(tx(language, t.surveys.errTitleReq));     setErrorType('general'); return; }
+    
+	if (!form.title.trim())               { setError(tx(language, t.surveys.errTitleReq));     setErrorType('general'); return; }
+    if (!form.description.trim())         { setError(tx(language, t.surveys.errDescReq));      setErrorType('general'); return; }
     if (!form.startDate || !form.endDate) { setError(tx(language, t.surveys.errDatesReq));     setErrorType('general'); return; }
+	
     if (form.questionIds.length === 0)    { setError(tx(language, t.surveys.errQuestionsReq)); setErrorType('general'); return; }
     setSaving(true);
     try {
@@ -582,9 +584,9 @@ export default function SurveysPage() {
                 </div>
               </div>
 
-              {/* Açıklama — zorunlu DEĞİL (backend boş string kabul ediyor) */}
+              {}
               <div className="form-group">
-                <label>{tx(language, t.surveys.descLabel)}</label>
+                <label>{tx(language, t.surveys.descLabel)}<Req /></label>
                 <textarea
                   rows={2}
                   value={form.description}
