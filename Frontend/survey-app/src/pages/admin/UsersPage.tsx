@@ -1,10 +1,10 @@
 import SearchInput from '../../components/admin/SearchInput';
 import { useEffect, useState } from 'react';
-import { usersApi, surveysApi, extractErrorMessage } from '../../api';
+import { usersApi, extractErrorMessage } from '../../api';
 import { useAuthStore } from '../../store/authStore';
 import { useLanguageStore } from '../../store/languageStore';
 import { t, tx } from '../../i18n/translations';
-import type { User, SurveyListItem } from '../../types';
+import type { User } from '../../types';
 
 type FilterKey = 'all' | 'active' | 'passive' | 'admin' | 'admin_active' | 'admin_passive' | 'user' | 'user_active' | 'user_passive';
 const PAGE_SIZE = 8;
@@ -28,7 +28,6 @@ function Tooltip({ text, children }: { text: string; children: React.ReactNode }
 export default function UsersPage() {
   const { language } = useLanguageStore();
   const [users, setUsers]     = useState<User[]>([]);
-  const [surveys, setSurveys] = useState<SurveyListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal]   = useState(false);
   const [editItem, setEditItem]     = useState<User | null>(null);
@@ -47,10 +46,14 @@ export default function UsersPage() {
 
   const showSuccess = (msg: string) => { setSuccessMsg(msg); setTimeout(() => setSuccessMsg(''), 3000); };
 
+  // FIX: removed unnecessary surveysApi.getAll() parallel fetch —
+  // surveys state was loaded but never read anywhere in this component,
+  // causing a wasted GET /api/surveys on every mount and mutation.
   const load = () =>
-    Promise.all([usersApi.getAll(), surveysApi.getAll()])
-      .then(([u, s]) => { setUsers(u); setSurveys(s); })
+    usersApi.getAll()
+      .then(u => setUsers(u))
       .finally(() => setLoading(false));
+
   useEffect(() => { load(); }, []);
 
   const closeModal = () => { setShowModal(false); setError(''); setErrorType(''); setErrorDetail(''); };
@@ -81,13 +84,8 @@ export default function UsersPage() {
 
   const handleDelete = async (u: User, rowNum: number) => {
     if (u.email === currentUser?.email) { alert(tx(language, t.users.errSelf)); return; }
-
-    // FIX: Only check the "last active admin" constraint when the account being
-    // deleted is itself active. Removing an already-inactive admin account never
-    // reduces the number of active admins, so this guard must not fire then.
     const adminCount = users.filter(x => x.role === 'Admin' && x.isActive).length;
     if (u.role === 'Admin' && u.isActive && adminCount <= 1) { alert(tx(language, t.users.errLastAdmin)); return; }
-
     if (!confirm(`${rowNum} ${u.role === 'Admin' ? tx(language, t.users.deleteAdminConfirm) : tx(language, t.users.deleteConfirm)}`)) return;
     try { await usersApi.delete(u.id); load(); showSuccess(`${rowNum} ${tx(language, t.users.successDelete)}`); }
     catch (e: any) { alert(e.response?.data?.message || tx(language, t.common.error)); }
@@ -217,8 +215,6 @@ export default function UsersPage() {
               {paginated.map((u, i) => {
                 const rowNum      = (safePage - 1) * PAGE_SIZE + i + 1;
                 const isSelf      = u.email === currentUser?.email;
-                // FIX: An inactive admin is not "the last active admin" — only block
-                // deletion when the account is active AND it is the sole active admin.
                 const isLastAdmin = u.role === 'Admin' && u.isActive && users.filter(x => x.role === 'Admin' && x.isActive).length <= 1;
                 const canDelete   = !isSelf && !isLastAdmin;
                 const deleteTip   = isSelf ? tx(language, t.users.tooltipSelf) : isLastAdmin ? tx(language, t.users.tooltipLastAdmin) : '';
