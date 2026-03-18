@@ -87,7 +87,10 @@ public class UserService : IUserService
         var u = await _uow.Users.GetByIdAsync(id);
         if (u == null) return false;
 
-        if (u.Role == "Admin")
+        // FIX: Only enforce the "last admin" rule when the account being deleted
+        // is itself active. Deleting an inactive admin never reduces the pool of
+        // active admins, so the guard must not fire in that case.
+        if (u.Role == "Admin" && u.IsActive)
         {
             var adminCount = await _uow.Users.GetActiveAdminCountAsync();
             if (adminCount <= 1)
