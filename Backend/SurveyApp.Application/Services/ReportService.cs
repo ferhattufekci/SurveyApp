@@ -26,7 +26,7 @@ public class ReportService : IReportService
         var respondedUserIds = responses.Select(r => r.UserId).ToHashSet();
         var pendingUserIds = assignedUserIds.Except(respondedUserIds).ToList();
 
-        var allUsers = await _uow.Users.GetAllActiveUsersAsync();
+        var allUsers = await _uow.Users.GetAllAsync();
         var pendingUsers = allUsers.Where(u => pendingUserIds.Contains(u.Id))
             .Select(u => new UserDto(u.Id, u.Email, u.FullName, u.Role, u.IsActive)).ToList();
 
