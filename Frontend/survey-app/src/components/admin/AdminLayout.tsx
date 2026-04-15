@@ -79,7 +79,11 @@ export default function AdminLayout() {
             )}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
-            {sidebarOpen && <LanguageToggle />}
+            {sidebarOpen && (
+			  <div className="sidebar-lang-desktop">   
+				<LanguageToggle />
+			  </div>
+			)}
             <button onClick={handleLogout} title={tx(language, t.common.logout)} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', fontSize: '13px', fontWeight: 600, transition: 'all 0.15s', whiteSpace: 'nowrap' }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#dc2626'; (e.currentTarget as HTMLElement).style.color = '#fff'; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '#fee2e2'; (e.currentTarget as HTMLElement).style.color = '#dc2626'; }}>

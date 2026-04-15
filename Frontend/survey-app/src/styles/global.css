@@ -522,6 +522,13 @@ body {
   /* Mobile overlay */
   .mobile-topbar { display: flex !important; }
   .mob-overlay   { display: block !important; z-index: 199; }
+  
+  /*
+    FIX: On mobile the sidebar footer's LanguageToggle is hidden because the
+    mobile topbar already renders one. Without this rule, opening the sidebar
+    produced a duplicate floating card at the bottom of the sidebar panel.
+  */
+  .sidebar-lang-desktop { display: none; }
 
   /* FIX: page padding matches mobile-topbar padding (both 16px) */
   .page { padding: 16px; }
