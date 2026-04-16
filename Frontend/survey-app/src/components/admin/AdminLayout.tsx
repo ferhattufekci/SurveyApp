@@ -127,14 +127,6 @@ export default function AdminLayout() {
           </div>
         </div>
 
-        <style>{`
-          .mobile-topbar { display: none; }
-          @media (max-width: 768px) {
-            .mobile-topbar { display: flex !important; }
-            .mob-overlay   { display: block !important; }
-          }
-        `}</style>
-
         <Outlet />
       </main>
     </div>
