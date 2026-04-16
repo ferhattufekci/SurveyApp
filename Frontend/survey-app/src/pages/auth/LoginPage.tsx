@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState,useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { useLanguageStore } from '../../store/languageStore';
@@ -14,7 +14,17 @@ export default function LoginPage() {
   const { login } = useAuthStore();
   const { language } = useLanguageStore();
   const navigate = useNavigate();
-
+useEffect(() => {
+  const viewport = document.querySelector('meta[name="viewport"]');
+  if (viewport) {
+    viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+  }
+  return () => {
+    if (viewport) {
+      viewport.setAttribute('content', 'width=device-width, initial-scale=1.0');
+    }
+  };
+}, []);
   const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
   setError('');
