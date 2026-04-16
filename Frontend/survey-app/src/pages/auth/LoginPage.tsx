@@ -16,44 +16,38 @@ export default function LoginPage() {
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+  e.preventDefault();
+  setError('');
+  setLoading(true);
 
-    /*
-     * iOS Safari fix — blur the focused input BEFORE the async API call.
-     *
-     * Problem: iOS Safari zooms the visual viewport when an input is focused.
-     * In a React SPA, client-side navigation (navigate()) does not do a true
-     * page reload, so the zoomed viewport scale persists on the next screen.
-     *
-     * Solution: Calling .blur() dismisses the software keyboard. iOS then
-     * plays its standard "keyboard close" animation and resets the visual
-     * viewport scale back to 1. Because the login API call takes at least
-     * ~100 ms (network round-trip), iOS has enough time to complete the
-     * scale-reset animation BEFORE navigate() fires. The next page therefore
-     * renders at the correct 1× scale with no layout distortion.
-     *
-     * Why this is safe: .blur() is a synchronous DOM call. It does not
-     * affect the sidebar, any height/overflow property, the viewport <meta>
-     * tag, or position:fixed elements — the root causes of hata2.
-     */
-    if (document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
-    }
-// iOS viewport reset için bekle
-await new Promise(resolve => setTimeout(resolve, 150));
-    try {
-      await login(email, password);
-      const updatedUser = useAuthStore.getState().user;
-      if (updatedUser?.role === 'Admin') navigate('/admin/dashboard');
-      else navigate('/user/surveys');
-    } catch {
-      setError(tx(language, t.login.errInvalid));
-    } finally {
-      setLoading(false);
-    }
-  };
+  // iOS Safari fix — input blur + viewport scale sıfırlama
+  // blur() klavyeyi kapatır, viewport meta geçici maximum-scale=1 ile
+  // zoom'u sıfırlar, 300ms sonra normal haline döner.
+  if (document.activeElement instanceof HTMLElement) {
+    document.activeElement.blur();
+  }
+
+  const viewport = document.querySelector('meta[name="viewport"]');
+  if (viewport) {
+    viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0');
+    setTimeout(() => {
+      viewport.setAttribute('content', 'width=device-width, initial-scale=1.0');
+    }, 300);
+  }
+
+  await new Promise(resolve => setTimeout(resolve, 300));
+
+  try {
+    await login(email, password);
+    const updatedUser = useAuthStore.getState().user;
+    if (updatedUser?.role === 'Admin') navigate('/admin/dashboard');
+    else navigate('/user/surveys');
+  } catch {
+    setError(tx(language, t.login.errInvalid));
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="login-page">

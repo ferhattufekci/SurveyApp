@@ -256,7 +256,7 @@ body {
 .form-group textarea {
   padding: 9px 12px;
   border: 1.5px solid var(--gray-300); border-radius: var(--radius);
-  font-size: 16px; font-family: inherit; color: var(--gray-800);
+  font-size: 16px !important; font-family: inherit; color: var(--gray-800);
   background: white; transition: border-color 0.15s; outline: none; width: 100%;
 }
 .form-group input:focus,
