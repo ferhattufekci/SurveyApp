@@ -40,7 +40,8 @@ export default function LoginPage() {
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
-
+// iOS viewport reset için bekle
+await new Promise(resolve => setTimeout(resolve, 150));
     try {
       await login(email, password);
       const updatedUser = useAuthStore.getState().user;

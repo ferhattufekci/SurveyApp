@@ -4,7 +4,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useLanguageStore } from '../../store/languageStore';
 import { t, tx } from '../../i18n/translations';
 import LanguageToggle from './LanguageToggle';
-
+import ThemeToggle from './ThemeToggle';
 // ── Kök neden ──────────────────────────────────────────────────────────────────
 // Eski kod: useState(true) → her cihazda sidebar açık başlıyordu.
 // Mobilde CSS media query margin-left:0 !important uygulasa da,
@@ -85,42 +85,46 @@ export default function AdminLayout() {
         </nav>
 
         <div className="sidebar-footer">
-          <div className="user-info">
-            <div className="user-avatar">{user?.fullName?.[0]?.toUpperCase()}</div>
-            {sidebarOpen && (
-              <div className="user-details">
-                <span className="user-name" title={user?.fullName || ''}>{user?.fullName}</span>
-                <span className="user-role">Admin</span>
-              </div>
-            )}
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
-            {sidebarOpen && (
-              <div className="sidebar-lang-desktop">
-                <LanguageToggle />
-              </div>
-            )}
-            <button onClick={handleLogout} title={tx(language, t.common.logout)} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', fontSize: '13px', fontWeight: 600, transition: 'all 0.15s', whiteSpace: 'nowrap' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#dc2626'; (e.currentTarget as HTMLElement).style.color = '#fff'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '#fee2e2'; (e.currentTarget as HTMLElement).style.color = '#dc2626'; }}>
-              {sidebarOpen ? `🚪 ${tx(language, t.common.logout)}` : '🚪'}
-            </button>
-          </div>
+  {sidebarOpen && (
+    <div className="sidebar-lang-desktop" style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '8px' }}>
+      <LanguageToggle />
+      <ThemeToggle />
+    </div>
+  )}
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap:'8px' }}>
+    <div className="user-info" style={{ minWidth: 0, flex: 1 }}>
+      <div className="user-avatar">{user?.fullName?.[0]?.toUpperCase()}</div>
+      {sidebarOpen && (
+        <div className="user-details">
+          <span className="user-name" title={user?.fullName || ''}>{user?.fullName}</span>
+          <span className="user-role">Admin</span>
         </div>
+      )}
+    </div>
+    <button onClick={handleLogout} title={tx(language, t.common.logout)} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', fontSize: '13px', fontWeight: 600, transition: 'all 0.15s', whiteSpace: 'nowrap' }}
+      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#dc2626'; (e.currentTarget as HTMLElement).style.color = '#fff'; }}
+      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '#fee2e2'; (e.currentTarget as HTMLElement).style.color = '#dc2626'; }}>
+      {sidebarOpen ? `🚪 ${tx(language, t.common.logout)}` : '🚪'}
+    </button>
+  </div>
+</div>
       </aside>
 
       <main className="admin-main">
         {/* Mobil üst bar — sadece küçük ekranda görünür */}
-        <div className="mobile-topbar" style={{ alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'white', borderBottom: '1px solid var(--gray-200)', position: 'sticky', top: 0, zIndex: 50 }}>
+        <div className="mobile-topbar" style={{ alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)', position: 'sticky', top: 0, zIndex: 50 }}>
           <button onClick={() => setSidebarOpen(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '22px', color: 'var(--gray-600)', padding: '4px', lineHeight: 1 }}>☰</button>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <svg viewBox="0 0 32 32" fill="none" style={{ width: 24, height: 24 }}>
               <rect width="32" height="32" rx="8" fill="#2563EB"/>
               <path d="M8 10h16M8 15h11M8 20h13" stroke="white" strokeWidth="2" strokeLinecap="round"/>
             </svg>
-            <span style={{ fontWeight: 800, fontSize: '15px' }}>SurveyApp</span>
+            <span style={{ fontWeight: 800, fontSize: '15px', color: 'var(--color-text-primary)' }}>SurveyApp</span>
           </div>
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
           <LanguageToggle />
+          <ThemeToggle />
+          </div>
         </div>
 
         <style>{`

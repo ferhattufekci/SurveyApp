@@ -6,7 +6,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useLanguageStore } from '../../store/languageStore';
 import { t, tx } from '../../i18n/translations';
 import LanguageToggle from '../../components/admin/LanguageToggle';
-
+import ThemeToggle from '../../components/admin/ThemeToggle';
 const PAGE_SIZE = 8;
 
 function useSurveyAnswers(surveyId: number, enabled: boolean) {
@@ -215,6 +215,7 @@ export function UserSurveysListPage() {
             </span>
           )}
           <LanguageToggle />
+          <ThemeToggle />
           <button onClick={handleLogout}
             style={{ display: 'flex', alignItems: 'center', gap: '5px', background: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '8px', padding: '6px 14px', cursor: 'pointer', fontSize: '13px', fontWeight: 600, transition: 'all 0.15s' }}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#dc2626'; (e.currentTarget as HTMLElement).style.color = '#fff'; }}
