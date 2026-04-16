@@ -8,30 +8,31 @@ export default function LanguageToggle() {
       display: 'flex',
       alignItems: 'center',
       gap: '2px',
-      background: '#f3f4f6',
-      borderRadius: '8px',
+      background: 'var(--color-surface)',
+      borderRadius: '10px',
       padding: '3px',
-      border: '1px solid #e5e7eb',
+      border: '1px solid var(--color-border)',
+      boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
     }}>
       {(['tr', 'en'] as const).map(lang => (
         <button
           key={lang}
           onClick={() => setLanguage(lang)}
           style={{
-            padding: '4px 10px',
-            borderRadius: '6px',
+            padding: '5px 11px',
+            borderRadius: '7px',
             border: 'none',
             cursor: 'pointer',
             fontSize: '12px',
             fontWeight: 700,
             fontFamily: 'inherit',
             transition: 'all 0.15s',
-            background: language === lang ? '#fff' : 'transparent',
-            color: language === lang ? '#2563EB' : '#6b7280',
-            boxShadow: language === lang ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+            background: language === lang ? 'var(--primary)' : 'transparent',
+            color: language === lang ? '#fff' : 'var(--color-text-secondary)',
+            boxShadow: language === lang ? '0 1px 4px rgba(37,99,235,0.3)' : 'none',
           }}
         >
-          {lang === 'tr' ? '🇹🇷 TR' : '🇬🇧 EN'}
+          {lang === 'tr' ? 'TR' : 'EN'}
         </button>
       ))}
     </div>
