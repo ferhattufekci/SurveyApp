@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useThemeStore } from './store/themeStore';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -21,6 +22,7 @@ function RequireAuth({ children, role }: { children: React.ReactNode; role?: str
 
 export default function App() {
   const { initFromStorage } = useAuthStore();
+  useThemeStore();
 
   useEffect(() => { initFromStorage(); }, [initFromStorage]);
 

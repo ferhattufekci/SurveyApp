@@ -36,6 +36,12 @@
 
   /* FIX: consistent mobile padding token */
   --page-pad-mobile: 16px;
+  /* Theme tokens */
+  --color-bg: #f9fafb;
+  --color-surface: #ffffff;
+  --color-border: #e5e7eb;
+  --color-text-primary: #1f2937;
+  --color-text-secondary: #4b5563;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -107,7 +113,7 @@ body {
      max() ile en az 12px garantilenir (normal cihazlarda değişmez) */
   padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
   border-top: 1px solid var(--gray-100);
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex; flex-direction: column; align-items: stretch;
   flex-shrink: 0; overflow: hidden;
 }
 .user-info { display: flex; align-items: center; gap: 10px; overflow: hidden; min-width: 0; }
@@ -636,9 +642,70 @@ body {
 }
 
 @supports (-webkit-touch-callout: none) {
-  input:not([type="button"])... ,
+  input:not([type="button"]),
   select,
   textarea {
     font-size: 16px;
   }
+}
+/* ===== DARK THEME ===== */
+[data-theme="dark"] {
+  --color-bg: #0d1117;
+  --color-surface: #161b22;
+  --color-border: #30363d;
+  --color-text-primary: #e6edf3;
+  --color-text-secondary: #8b949e;
+  --primary: #58a6ff;
+  --danger-light: #2d1117;
+  --success-light: #0d2119;
+  --warning-light: #272012;
+  --gray-50: #161b22;
+  --gray-100: #1c2128;
+  --gray-200: #30363d;
+  --gray-300: #3d444d;
+  --gray-400: #656d76;
+  --gray-500: #8b949e;
+  --gray-600: #9198a1;
+  --gray-700: #cdd9e5;
+  --gray-800: #e6edf3;
+  --gray-900: #f0f6fc;
+}
+
+[data-theme="dark"] body {
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+}
+
+[data-theme="dark"] .sidebar,
+[data-theme="dark"] .card,
+[data-theme="dark"] .modal,
+[data-theme="dark"] .modal-header,
+[data-theme="dark"] .modal-footer,
+[data-theme="dark"] .user-header,
+[data-theme="dark"] .login-card,
+[data-theme="dark"] .stat-card,
+[data-theme="dark"] .survey-title-card,
+[data-theme="dark"] .question-card,
+[data-theme="dark"] .dashboard-pie-col {
+  background: var(--color-surface);
+}
+
+[data-theme="dark"] .form-group input,
+[data-theme="dark"] .form-group select,
+[data-theme="dark"] .form-group textarea {
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+}
+
+[data-theme="dark"] .table th {
+  background: var(--gray-100);
+}
+
+[data-theme="dark"] .table tr:hover td {
+  background: var(--gray-100);
+}
+
+[data-theme="dark"] .response-answers {
+  background: var(--gray-100);
 }
