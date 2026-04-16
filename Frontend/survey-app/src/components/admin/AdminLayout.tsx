@@ -112,14 +112,14 @@ export default function AdminLayout() {
 
       <main className="admin-main">
         {/* Mobil üst bar — sadece küçük ekranda görünür */}
-        <div className="mobile-topbar" style={{ alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'white', borderBottom: '1px solid var(--gray-200)', position: 'sticky', top: 0, zIndex: 50 }}>
+        <div className="mobile-topbar" style={{ alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)', position: 'sticky', top: 0, zIndex: 50 }}>
           <button onClick={() => setSidebarOpen(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '22px', color: 'var(--gray-600)', padding: '4px', lineHeight: 1 }}>☰</button>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <svg viewBox="0 0 32 32" fill="none" style={{ width: 24, height: 24 }}>
               <rect width="32" height="32" rx="8" fill="#2563EB"/>
               <path d="M8 10h16M8 15h11M8 20h13" stroke="white" strokeWidth="2" strokeLinecap="round"/>
             </svg>
-            <span style={{ fontWeight: 800, fontSize: '15px' }}>SurveyApp</span>
+            <span style={{ fontWeight: 800, fontSize: '15px', color: 'var(--color-text-primary)' }}>SurveyApp</span>
           </div>
           <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
           <LanguageToggle />
