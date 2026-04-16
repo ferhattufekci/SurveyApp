@@ -5,8 +5,24 @@ import { useLanguageStore } from '../../store/languageStore';
 import { t, tx } from '../../i18n/translations';
 import LanguageToggle from './LanguageToggle';
 
+// ── Kök neden ──────────────────────────────────────────────────────────────────
+// Eski kod: useState(true) → her cihazda sidebar açık başlıyordu.
+// Mobilde CSS media query margin-left:0 !important uygulasa da,
+// "sidebar-open" class'ı nedeniyle sidebar transform:translateX(0) alıyor
+// ve içerik alanının üzerine biniyordu. Kullanıcı sidebar'ı kapatıp açınca
+// düzeliyordu çünkü state değişince re-render oluyor ve CSS tekrar hesaplanıyordu.
+//
+// Fix: Başlangıç değerini typeof window kontrolüyle viewport genişliğine göre
+// belirle. ≤1024px → false (kapalı), >1024px → true (açık).
+// SSR ortamları için typeof window === 'undefined' guard'ı da eklendi.
+// ──────────────────────────────────────────────────────────────────────────────
+function getInitialSidebarState(): boolean {
+  if (typeof window === 'undefined') return true; // SSR guard
+  return window.innerWidth > 1024;
+}
+
 export default function AdminLayout() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(getInitialSidebarState);
   const { user, logout } = useAuthStore();
   const { language } = useLanguageStore();
   const location = useLocation();
@@ -60,7 +76,7 @@ export default function AdminLayout() {
               key={item.path}
               to={item.path}
               className={`nav-item ${location.pathname.startsWith(item.path) ? 'active' : ''}`}
-              onClick={() => { if (window.innerWidth <= 768) setSidebarOpen(false); }}
+              onClick={() => { if (window.innerWidth <= 1024) setSidebarOpen(false); }}
             >
               <span className="nav-icon">{item.icon}</span>
               {sidebarOpen && <span className="nav-label">{item.label}</span>}
@@ -80,10 +96,10 @@ export default function AdminLayout() {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
             {sidebarOpen && (
-			  <div className="sidebar-lang-desktop">   
-				<LanguageToggle />
-			  </div>
-			)}
+              <div className="sidebar-lang-desktop">
+                <LanguageToggle />
+              </div>
+            )}
             <button onClick={handleLogout} title={tx(language, t.common.logout)} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', fontSize: '13px', fontWeight: 600, transition: 'all 0.15s', whiteSpace: 'nowrap' }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#dc2626'; (e.currentTarget as HTMLElement).style.color = '#fff'; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '#fee2e2'; (e.currentTarget as HTMLElement).style.color = '#dc2626'; }}>

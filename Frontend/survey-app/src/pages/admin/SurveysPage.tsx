@@ -89,7 +89,7 @@ function SelectionPanel({
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder={searchPlaceholder}
-              style={{ width: '100%', padding: '6px 10px 6px 28px', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '12px', fontFamily: 'inherit', outline: 'none', background: '#fff', boxSizing: 'border-box' }}
+              style={{ width: '100%', padding: '6px 10px 6px 28px', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '16px', fontFamily: 'inherit', outline: 'none', background: '#fff', boxSizing: 'border-box' }}
               onFocus={e => (e.currentTarget.style.borderColor = '#6366f1')}
               onBlur={e => (e.currentTarget.style.borderColor = '#e5e7eb')}
             />

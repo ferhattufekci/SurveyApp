@@ -102,7 +102,11 @@ body {
 .nav-icon { font-size: 16px; flex-shrink: 0; }
 .nav-label { font-size: 13px; }
 .sidebar-footer {
-  padding: 12px; border-top: 1px solid var(--gray-100);
+  padding: 12px;
+  /* env(safe-area-inset-bottom): iPhone X/11/12/13/14/15 home indicator = ~34px
+     max() ile en az 12px garantilenir (normal cihazlarda değişmez) */
+  padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
+  border-top: 1px solid var(--gray-100);
   display: flex; align-items: center; justify-content: space-between;
   flex-shrink: 0; overflow: hidden;
 }
@@ -123,7 +127,7 @@ body {
   /* FIX: use width + margin instead of flex:1 alone for reliable sizing */
   width: 100%;
   margin-left: var(--sidebar-width);
-  min-height: 100vh;
+  min-height: 100vh; min-height: 100dvh;
   transition: margin-left 0.2s;
   min-width: 0;
   overflow-x: hidden; /* FIX: critical — prevents horizontal scroll bleed */
@@ -246,7 +250,7 @@ body {
 .form-group textarea {
   padding: 9px 12px;
   border: 1.5px solid var(--gray-300); border-radius: var(--radius);
-  font-size: 14px; font-family: inherit; color: var(--gray-800);
+  font-size: 16px; font-family: inherit; color: var(--gray-800);
   background: white; transition: border-color 0.15s; outline: none; width: 100%;
 }
 .form-group input:focus,
@@ -629,4 +633,12 @@ body {
   .page-header h1 { font-size: 16px; }
   .btn { font-size: 12px; padding: 7px 12px; }
   .btn-sm { font-size: 11px; padding: 4px 7px; }
+}
+
+@supports (-webkit-touch-callout: none) {
+  input:not([type="button"])... ,
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }

@@ -258,7 +258,7 @@ export function UserSurveysListPage() {
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1); }}
             placeholder={tx(language, t.userSurveys.searchPh)}
-            style={{ width: '100%', padding: '9px 14px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
+            style={{ width: '100%', padding: '9px 14px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }}
           />
         </div>
 

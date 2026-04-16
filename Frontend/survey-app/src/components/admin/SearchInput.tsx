@@ -17,7 +17,7 @@ export default function SearchInput({ value, onChange, placeholder = 'Ara...' }:
           width: '100%', boxSizing: 'border-box',
           padding: '8px 32px 8px 34px',
           border: '1.5px solid #d1d5db', borderRadius: '8px',
-          fontSize: '13px', fontFamily: 'inherit', outline: 'none',
+          fontSize: '16px', fontFamily: 'inherit', outline: 'none',
           transition: 'border-color 0.15s, box-shadow 0.15s',
           background: '#fff',
         }}

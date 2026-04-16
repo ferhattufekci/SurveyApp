@@ -123,7 +123,7 @@ function SearchableTemplateSelect({
                 padding: '7px 10px',
                 border: '1px solid #e5e7eb',
                 borderRadius: '6px',
-                fontSize: '13px',
+                fontSize: '16px',
                 outline: 'none',
                 boxSizing: 'border-box',
                 fontFamily: 'inherit',
