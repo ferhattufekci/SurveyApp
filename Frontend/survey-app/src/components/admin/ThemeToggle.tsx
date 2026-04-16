@@ -12,14 +12,16 @@ export default function ThemeToggle() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        width: '36px',
-        height: '36px',
-        borderRadius: '8px',
-        border: '1px solid #e5e7eb',
-        background: '#f3f4f6',
+        width: '34px',
+        height: '34px',
+        borderRadius: '10px',
+        border: '1px solid var(--color-border)',
+        background: 'var(--color-surface)',
         cursor: 'pointer',
-        fontSize: '16px',
+        fontSize: '15px',
         transition: 'all 0.15s',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+        flexShrink: 0,
       }}
     >
       {isDark ? '☀️' : '🌙'}

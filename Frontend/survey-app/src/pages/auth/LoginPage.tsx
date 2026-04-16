@@ -4,6 +4,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useLanguageStore } from '../../store/languageStore';
 import { t, tx } from '../../i18n/translations';
 import LanguageToggle from '../../components/admin/LanguageToggle';
+import ThemeToggle from '../../components/admin/ThemeToggle';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -57,9 +58,10 @@ await new Promise(resolve => setTimeout(resolve, 150));
   return (
     <div className="login-page">
       <div className="login-card">
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
-          <LanguageToggle />
-        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '6px', marginBottom: '20px' }}>
+  <LanguageToggle />
+  <ThemeToggle />
+</div>
         <div className="login-logo">
           <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
             <rect width="40" height="40" rx="12" fill="#2563EB"/>
