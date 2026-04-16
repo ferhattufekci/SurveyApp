@@ -530,10 +530,7 @@ body {
   .admin-main { margin-left: 0 !important; }
 
   /* Mobile overlay */
-  .mobile-topbar { display: none; }
-@media (max-width: 768px) {
   .mobile-topbar { display: flex !important; }
-}
   .mob-overlay   { display: block !important; z-index: 199; }
   
   /*
