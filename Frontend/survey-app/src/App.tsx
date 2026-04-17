@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useThemeStore } from './store/themeStore';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 import ErrorBoundary from './components/ErrorBoundary';
 import LoginPage from './pages/auth/LoginPage';
@@ -12,6 +12,14 @@ import SurveysPage from './pages/admin/SurveysPage';
 import UsersPage from './pages/admin/UsersPage';
 import { ReportsListPage, SurveyReportPage } from './pages/admin/ReportsPage';
 import { UserSurveysListPage, FillSurveyPage } from './pages/user/UserSurveysPage';
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
 
 function RequireAuth({ children, role }: { children: React.ReactNode; role?: string }) {
   const { isAuthenticated, user } = useAuthStore();
@@ -28,6 +36,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <ErrorBoundary>
         <Routes>
           <Route path="/login" element={<LoginPage />} />

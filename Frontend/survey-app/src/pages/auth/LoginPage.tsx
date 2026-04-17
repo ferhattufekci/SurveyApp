@@ -27,7 +27,6 @@ export default function LoginPage() {
   try {
     await login(email, password);
     const updatedUser = useAuthStore.getState().user;
-    window.scrollTo(0, 0);
     if (updatedUser?.role === 'Admin') navigate('/admin/dashboard');
     else navigate('/user/surveys');
   } catch {
