@@ -112,7 +112,7 @@ export default function AdminLayout() {
 
       <main className="admin-main">
         {/* Mobil üst bar — sadece küçük ekranda görünür */}
-        <div className="mobile-topbar" style={{ alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)', position: 'fixed', top: 0, zIndex: 50 }}>
+        <div className="mobile-topbar" style={{ alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)', position: 'sticky', top: 0, zIndex: 50 }}>
           <button onClick={() => setSidebarOpen(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '22px', color: 'var(--gray-600)', padding: '4px', lineHeight: 1 }}>☰</button>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <svg viewBox="0 0 32 32" fill="none" style={{ width: 24, height: 24 }}>
