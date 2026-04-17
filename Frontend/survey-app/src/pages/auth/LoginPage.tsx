@@ -23,11 +23,11 @@ export default function LoginPage() {
   if (document.activeElement instanceof HTMLElement) {
     document.activeElement.blur();
   }
-  window.scrollTo(0, 0);
 
   try {
     await login(email, password);
     const updatedUser = useAuthStore.getState().user;
+    window.scrollTo(0, 0);
     if (updatedUser?.role === 'Admin') navigate('/admin/dashboard');
     else navigate('/user/surveys');
   } catch {
