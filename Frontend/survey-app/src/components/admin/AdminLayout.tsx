@@ -86,7 +86,7 @@ export default function AdminLayout() {
 
         <div className="sidebar-footer">
   {sidebarOpen && (
-    <div className="sidebar-lang-desktop" style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '8px' }}>
+    <div className="sidebar-lang-desktop" style={{gap: '6px', alignItems: 'center', marginBottom: '8px' }}>
       <LanguageToggle />
       <ThemeToggle />
     </div>

@@ -451,6 +451,7 @@ body {
   display: none; background: none; border: none; cursor: pointer;
   padding: 6px; color: var(--gray-600); font-size: 20px;
 }
+.sidebar-lang-desktop { display: flex; }
 
 /* ===================================================
    RESPONSIVE BREAKPOINTS
@@ -538,7 +539,7 @@ body {
     mobile topbar already renders one. Without this rule, opening the sidebar
     produced a duplicate floating card at the bottom of the sidebar panel.
   */
-  .sidebar-lang-desktop { display: none; }
+  .sidebar-lang-desktop { display: none !important; }
 
   /* FIX: page padding matches mobile-topbar padding (both 16px) */
   .page { padding: 16px; }
