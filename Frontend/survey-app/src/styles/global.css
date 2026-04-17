@@ -527,7 +527,7 @@ body {
   }
 
   /* admin-main: no margin — sidebar is pure overlay */
-  .admin-main { margin-left: 0 !important; padding-top: 56px;}
+  .admin-main { margin-left: 0 !important; padding-top: 72px;}
 
   /* Mobile overlay */
   .mobile-topbar { display: flex !important; }
