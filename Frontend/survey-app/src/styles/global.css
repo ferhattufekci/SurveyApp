@@ -521,6 +521,7 @@ body {
     width: var(--sidebar-width) !important;
     box-shadow: var(--shadow-lg);
     z-index: 200;
+    height: 80vh; 
   }
 
   .admin-layout.sidebar-open .sidebar {
