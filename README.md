@@ -667,6 +667,8 @@ Be respectful and constructive. All contributors are expected to follow the [Con
 [![Author](https://img.shields.io/badge/author-ferhattufekci-red)](https://github.com/ferhattufekci)
 [![Contact](https://img.shields.io/badge/contact-linkedin-blue)](https://www.linkedin.com/in/ferhattufekci/)
 
+> ⭐ If you find this project useful, consider giving it a star!
+
 ---
 
 <h2 align="center">👏 Support My Work</h2>
@@ -1320,4 +1322,5 @@ Saygılı ve yapıcı olun. Tüm katkıcıların [Contributor Covenant](https://
 [![Author](https://img.shields.io/badge/author-ferhattufekci-red)](https://github.com/ferhattufekci)
 [![Contact](https://img.shields.io/badge/contact-linkedin-blue)](https://www.linkedin.com/in/ferhattufekci/)
 
+> ⭐ Bu projeyi faydalı bulduysanız yıldız vermeyi unutmayın!
 ---
